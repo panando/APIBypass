@@ -20,6 +20,7 @@ struct InjectedParameters: Codable, Equatable {
     let retryCount: Int?
     let customHeaders: [String: String]?
     let thinking: ThinkingConfig?
+    let customFields: [String: String]?
 
     init(
         temperature: Double? = nil,
@@ -30,7 +31,8 @@ struct InjectedParameters: Codable, Equatable {
         timeout: TimeInterval? = nil,
         retryCount: Int? = nil,
         customHeaders: [String: String]? = nil,
-        thinking: ThinkingConfig? = nil
+        thinking: ThinkingConfig? = nil,
+        customFields: [String: String]? = nil
     ) {
         self.temperature = temperature
         self.maxTokens = maxTokens
@@ -41,6 +43,7 @@ struct InjectedParameters: Codable, Equatable {
         self.retryCount = retryCount
         self.customHeaders = customHeaders
         self.thinking = thinking
+        self.customFields = customFields
     }
 
     static let empty = InjectedParameters()

@@ -45,15 +45,27 @@ final class ProxyEngine {
         }
 
         // Anthropic-specific thinking parameter
-        if format == .anthropic, let thinking = params.thinking {
-            if thinking.enabled {
-                var thinkingDict: [String: Any] = ["type": "enabled"]
-                if let budget = thinking.budgetTokens {
-                    thinkingDict["budget_tokens"] = budget
+        if format == .anthropic, let thinking = params.thinking, thinking.enabled {
+            var thinkingDict: [String: Any] = ["type": "enabled"]
+            if let budget = thinking.budgetTokens {
+                thinkingDict["budget_tokens"] = budget
+            }
+            json["thinking"] = thinkingDict
+        }
+        // Note: When thinking is disabled, we don't send the "thinking" parameter at all
+        // This is the correct way to disable extended thinking in Anthropic API
+
+        // Custom fields - allow users to inject arbitrary JSON parameters
+        if let customFields = params.customFields {
+            for (key, valueString) in customFields {
+                // Try to parse value as JSON (supports numbers, booleans, objects, arrays)
+                if let data = valueString.data(using: .utf8),
+                   let parsedValue = try? JSONSerialization.jsonObject(with: data) {
+                    json[key] = parsedValue
+                } else {
+                    // If not valid JSON, use as plain string
+                    json[key] = valueString
                 }
-                json["thinking"] = thinkingDict
-            } else {
-                json["thinking"] = ["type": "disabled"]
             }
         }
     }

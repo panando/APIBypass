@@ -76,6 +76,9 @@ struct NewMappingView: View {
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
 
+    // 自定义字段
+    @State private var customFields: [CustomField] = []
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -212,6 +215,54 @@ struct NewMappingView: View {
                     .cornerRadius(8)
                 }
 
+                // 自定义参数字段
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("自定义参数")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button(action: {
+                            customFields.append(CustomField(key: "", value: ""))
+                        }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if customFields.isEmpty {
+                        Text("添加自定义 JSON 参数字段")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(customFields.indices, id: \.self) { index in
+                                HStack {
+                                    TextField("字段名", text: $customFields[index].key)
+                                        .frame(width: 120)
+                                    TextField("值 (JSON格式)", text: $customFields[index].value)
+                                    Button(action: {
+                                        customFields.remove(at: index)
+                                    }) {
+                                        Image(systemName: "minus.circle")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
+                    Text("提示: 值支持 JSON 格式，如 \"low\"、123、true、{\"key\": \"value\"}")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+
                 HStack {
                     Button("取消") {
                         dismiss()
@@ -228,7 +279,7 @@ struct NewMappingView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 600)
+        .frame(width: 500, height: 700)
         .onAppear {
             baseURL = apiProvider.defaultBaseURL.absoluteString
         }
@@ -260,13 +311,18 @@ struct NewMappingView: View {
             ? ThinkingConfig(enabled: true, budgetTokens: Int(thinkingBudget))
             : nil
 
+        let customFieldsDict: [String: String]? = customFields.isEmpty
+            ? nil
+            : Dictionary(uniqueKeysWithValues: customFields.filter { !$0.key.isEmpty }.map { ($0.key, $0.value) })
+
         return InjectedParameters(
             temperature: temp,
             maxTokens: tokens,
             topP: topPValue,
             frequencyPenalty: freqPenalty,
             presencePenalty: presPenalty,
-            thinking: thinking
+            thinking: thinking,
+            customFields: customFieldsDict
         )
     }
 }

@@ -1,5 +1,11 @@
 import SwiftUI
 
+struct CustomField: Identifiable {
+    let id = UUID()
+    var key: String
+    var value: String
+}
+
 struct MappingDetailView: View {
     @ObservedObject var configManager: ConfigManager
     let mappingId: UUID
@@ -21,6 +27,9 @@ struct MappingDetailView: View {
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
     @State private var isEnabled = true
+
+    // 自定义字段
+    @State private var customFields: [CustomField] = []
 
     @State private var showSaveConfirmation = false
 
@@ -128,27 +137,77 @@ struct MappingDetailView: View {
                 .cornerRadius(8)
 
                 // 思考模式 (Anthropic)
-                VStack(alignment: .leading, spacing: 12) {
-                    Text("思考模式 (Anthropic)")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                if apiProvider == .anthropic {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("思考模式 (Anthropic)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
 
-                    VStack(spacing: 8) {
-                        HStack {
-                            Toggle("启用思考模式", isOn: $thinkingEnabled)
-                            Spacer()
-                        }
-                        if thinkingEnabled {
+                        VStack(spacing: 8) {
                             HStack {
-                                Text("思考预算")
-                                    .frame(width: 120, alignment: .trailing)
-                                TextField("tokens 数量", text: $thinkingBudget)
-                                Text("如 10000")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
+                                Toggle("启用思考模式", isOn: $thinkingEnabled)
+                                Spacer()
+                            }
+                            if thinkingEnabled {
+                                HStack {
+                                    Text("思考预算")
+                                        .frame(width: 120, alignment: .trailing)
+                                    TextField("tokens 数量", text: $thinkingBudget)
+                                    Text("如 10000")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
                             }
                         }
                     }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+
+                // 自定义参数字段
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("自定义参数")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button(action: {
+                            customFields.append(CustomField(key: "", value: ""))
+                        }) {
+                            Image(systemName: "plus.circle")
+                        }
+                        .buttonStyle(.plain)
+                    }
+
+                    if customFields.isEmpty {
+                        Text("添加自定义 JSON 参数字段")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 8)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(customFields.indices, id: \.self) { index in
+                                HStack {
+                                    TextField("字段名", text: $customFields[index].key)
+                                        .frame(width: 120)
+                                    TextField("值 (JSON格式)", text: $customFields[index].value)
+                                    Button(action: {
+                                        customFields.remove(at: index)
+                                    }) {
+                                        Image(systemName: "minus.circle")
+                                            .foregroundColor(.red)
+                                    }
+                                    .buttonStyle(.plain)
+                                }
+                            }
+                        }
+                    }
+
+                    Text("提示: 值支持 JSON 格式，如 \"low\"、123、true、{\"key\": \"value\"}")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
@@ -220,6 +279,10 @@ struct MappingDetailView: View {
             }
         }
 
+        if let fields = mapping.parameters.customFields {
+            customFields = fields.map { CustomField(key: $0.key, value: $0.value) }
+        }
+
         if let key = try? keychain.retrieve(forKey: mappingId.uuidString) {
             apiKey = key
         }
@@ -259,13 +322,18 @@ struct MappingDetailView: View {
             ? ThinkingConfig(enabled: true, budgetTokens: Int(thinkingBudget))
             : nil
 
+        let customFieldsDict: [String: String]? = customFields.isEmpty
+            ? nil
+            : Dictionary(uniqueKeysWithValues: customFields.filter { !$0.key.isEmpty }.map { ($0.key, $0.value) })
+
         return InjectedParameters(
             temperature: temp,
             maxTokens: tokens,
             topP: topPValue,
             frequencyPenalty: freqPenalty,
             presencePenalty: presPenalty,
-            thinking: thinking
+            thinking: thinking,
+            customFields: customFieldsDict
         )
     }
 }

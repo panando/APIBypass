@@ -26,7 +26,7 @@ struct MappingDetailView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
-    @State private var thinkingOverride = false
+    @State private var hasThinkingConfig = false
     @State private var isEnabled = true
 
     // 自定义字段
@@ -137,24 +137,28 @@ struct MappingDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                // 思考模式
+                // 思考模式 (所有提供商)
                 VStack(alignment: .leading, spacing: 12) {
                     Text("思考模式")
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    Toggle("覆盖思考模式", isOn: $thinkingOverride)
-
-                    if thinkingOverride {
-                        Divider()
-
-                        Toggle("启用思考模式", isOn: $thinkingEnabled)
-
+                    VStack(spacing: 8) {
+                        HStack {
+                            Toggle("启用思考模式", isOn: $thinkingEnabled)
+                                .onChange(of: thinkingEnabled) { _, _ in
+                                    hasThinkingConfig = true
+                                }
+                            Spacer()
+                        }
                         if thinkingEnabled && apiProvider == .anthropic {
                             HStack {
                                 Text("思考预算")
                                     .frame(width: 120, alignment: .trailing)
                                 TextField("tokens 数量", text: $thinkingBudget)
+                                    .onChange(of: thinkingBudget) { _, _ in
+                                        hasThinkingConfig = true
+                                    }
                                 Text("如 10000")
                                     .foregroundColor(.secondary)
                                     .font(.caption)
@@ -274,7 +278,7 @@ struct MappingDetailView: View {
             presencePenalty = String(pres)
         }
         if let thinking = mapping.parameters.thinking {
-            thinkingOverride = true
+            hasThinkingConfig = true
             thinkingEnabled = thinking.enabled
             if let budget = thinking.budgetTokens {
                 thinkingBudget = String(budget)
@@ -321,7 +325,7 @@ struct MappingDetailView: View {
         let presPenalty = Double(presencePenalty)
 
         let thinking: ThinkingConfig? = {
-            guard thinkingOverride else { return nil }
+            guard hasThinkingConfig else { return nil }
             return ThinkingConfig(
                 enabled: thinkingEnabled,
                 budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil

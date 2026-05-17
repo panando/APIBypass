@@ -139,14 +139,9 @@ struct MappingDetailView: View {
 
                 // 思考模式 (所有提供商)
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("思考模式")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text(thinkingHelpText)
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Text("思考模式")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
 
                     VStack(spacing: 8) {
                         HStack {
@@ -254,15 +249,6 @@ struct MappingDetailView: View {
         }
         .alert("已保存", isPresented: $showSaveConfirmation) {
             Button("好的", role: .cancel) { }
-        }
-    }
-
-    private var thinkingHelpText: String {
-        switch apiProvider {
-        case .openai:
-            return "(注入 enable_thinking 参数，用于 DeepSeek/Qwen3/GLM 等)"
-        case .anthropic:
-            return "(注入 thinking 参数)"
         }
     }
 

@@ -190,16 +190,9 @@ struct NewMappingView: View {
 
                 // 思考模式
                 VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("思考模式")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Text(apiProvider == .openai
-                            ? "(注入 enable_thinking 参数)"
-                            : "(注入 thinking 参数)")
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
+                    Text("思考模式")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
 
                     VStack(spacing: 8) {
                         HStack {

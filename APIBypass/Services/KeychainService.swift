@@ -17,14 +17,25 @@ final class KeychainService {
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
-            kSecValueData as String: data
+            kSecValueData as String: data,
+            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
         ]
 
-        // 先删除已存在的值
-        SecItemDelete(query as CFDictionary)
-
+        // Try to add first
         let status = SecItemAdd(query as CFDictionary, nil)
-        guard status == errSecSuccess else {
+
+        // If item already exists, update it
+        if status == errSecDuplicateItem {
+            let updateQuery: [String: Any] = [
+                kSecClass as String: kSecClassGenericPassword,
+                kSecAttrService as String: service,
+                kSecAttrAccount as String: key
+            ]
+            let updateStatus = SecItemUpdate(updateQuery as CFDictionary, [kSecValueData as String: data] as CFDictionary)
+            guard updateStatus == errSecSuccess else {
+                throw KeychainError.saveFailed(updateStatus)
+            }
+        } else if status != errSecSuccess {
             throw KeychainError.saveFailed(status)
         }
     }

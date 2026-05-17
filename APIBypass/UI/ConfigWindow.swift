@@ -109,7 +109,7 @@ struct NewMappingView: View {
                             TextField("如 claude-sonnet-4-6", text: $actualModel)
                         }
                         HStack {
-                            Text("API 提供商")
+                            Text("API接口类型")
                                 .frame(width: 100, alignment: .trailing)
                             Picker("", selection: $apiProvider) {
                                 Text("OpenAI").tag(APIProvider.openai)

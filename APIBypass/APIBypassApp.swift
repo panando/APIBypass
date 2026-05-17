@@ -11,14 +11,27 @@ struct APIBypassApp: App {
         NSApplication.shared.setActivationPolicy(.regular)
     }
 
+    private var menuBarImage: NSImage? {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }
+
     var body: some Scene {
-        MenuBarExtra("APIBypass", systemImage: isRunning ? "network" : "network.slash") {
+        MenuBarExtra {
             MenuBarView(
                 configManager: configManager,
                 isRunning: $isRunning,
                 onStart: startServer,
                 onStop: stopServer
             )
+        } label: {
+            if let icon = menuBarImage {
+                Image(nsImage: icon)
+            } else {
+                Image(systemName: isRunning ? "network" : "network.slash")
+            }
         }
         .menuBarExtraStyle(.menu)
     }

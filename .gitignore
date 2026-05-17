@@ -5,6 +5,9 @@ Packages/
 DerivedData/
 *.app/
 *.dmg
+*.icns
+icon.iconset/
+dmg_staging/
 
 # Swift Package Manager
 Package.resolved

@@ -55,8 +55,22 @@ On first launch, allow network connections when prompted.
 ```bash
 swift build -c release
 
+# Generate .icns from icon.png
+mkdir -p icon.iconset
+sips -z 16 16 icon.png --out icon.iconset/icon_16x16.png
+sips -z 32 32 icon.png --out icon.iconset/icon_32x32.png
+sips -z 64 64 icon.png --out icon.iconset/icon_64x64.png
+sips -z 128 128 icon.png --out icon.iconset/icon_128x128.png
+sips -z 256 256 icon.png --out icon.iconset/icon_256x256.png
+sips -z 512 512 icon.png --out icon.iconset/icon_512x512.png
+sips -z 1024 1024 icon.png --out icon.iconset/icon_512x512@2x.png
+iconutil -c icns icon.iconset -o icon.icns
+rm -rf icon.iconset
+
+# Create .app bundle
 mkdir -p APIBypass.app/Contents/MacOS APIBypass.app/Contents/Resources
 cp .build/arm64-apple-macosx/release/APIBypass APIBypass.app/Contents/MacOS/
+cp icon.icns APIBypass.app/Contents/Resources/AppIcon.icns
 
 cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
@@ -65,6 +79,8 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 <dict>
 	<key>CFBundleExecutable</key>
 	<string>APIBypass</string>
+	<key>CFBundleIconFile</key>
+	<string>AppIcon</string>
 	<key>CFBundleIdentifier</key>
 	<string>com.apibypass.app</string>
 	<key>CFBundleName</key>

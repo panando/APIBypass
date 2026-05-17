@@ -2,12 +2,14 @@ import Foundation
 import Hummingbird
 import HTTPTypes
 import NIOCore
+import ServiceLifecycle
 
-final class HTTPServer {
+final class HTTPServer: @unchecked Sendable {
     private let configManager: ConfigManager
     private let keychain: KeychainService
     private let proxyEngine: ProxyEngine
     private let networkService: NetworkService
+    private var serviceGroup: ServiceGroup?
 
     let port: Int = 8390
 
@@ -49,7 +51,16 @@ final class HTTPServer {
             configuration: .init(address: .hostname("127.0.0.1", port: port))
         )
 
-        try await app.runService()
+        let group = ServiceGroup(
+            configuration: .init(services: [app], logger: app.logger)
+        )
+        self.serviceGroup = group
+        try await group.run()
+    }
+
+    func stop() async {
+        await serviceGroup?.triggerGracefulShutdown()
+        serviceGroup = nil
     }
 
     private func handleProxyRequest(

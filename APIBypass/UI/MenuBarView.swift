@@ -1,22 +1,37 @@
 import SwiftUI
 
 struct MenuBarView: View {
+    @Binding var isRunning: Bool
+    let onStart: () -> Void
+    let onStop: () -> Void
+
     var body: some View {
         VStack {
             HStack {
                 Circle()
-                    .fill(Color.green)
+                    .fill(isRunning ? Color.green : Color.red)
                     .frame(width: 8, height: 8)
-                Text("服务运行中")
+                Text(isRunning ? "服务运行中" : "服务已停止")
             }
-            Text("端口: 8390")
-                .font(.caption)
-                .foregroundColor(.secondary)
+
+            if isRunning {
+                Text("端口: 8390")
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+            }
 
             Divider()
 
             Button("打开配置...") {
                 openConfigWindow()
+            }
+
+            Button(isRunning ? "停止服务" : "启动服务") {
+                if isRunning {
+                    onStop()
+                } else {
+                    onStart()
+                }
             }
 
             Divider()
@@ -28,6 +43,11 @@ struct MenuBarView: View {
     }
 
     private func openConfigWindow() {
+        if let existingWindow = NSApplication.shared.windows.first(where: { $0.title == "APIBypass 配置" }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],

@@ -5,7 +5,6 @@ Packages/
 DerivedData/
 *.app/
 *.dmg
-*.icns
 icon.iconset/
 dmg_staging/
 

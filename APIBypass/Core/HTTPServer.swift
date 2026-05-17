@@ -14,7 +14,6 @@ final class HTTPServer: ObservableObject {
     private var serviceGroup: ServiceGroup?
 
     let port: Int = 8390
-    @Published var isRunning = false
 
     init(configManager: ConfigManager, keychain: KeychainService = KeychainService()) {
         self.configManager = configManager
@@ -69,7 +68,6 @@ final class HTTPServer: ObservableObject {
                     configuration: .init(services: [newApp], logger: newApp.logger)
                 )
                 self.serviceGroup = group
-                isRunning = true
                 try await group.run()
             } catch {
                 print("Server error: \(error)")
@@ -79,7 +77,6 @@ final class HTTPServer: ObservableObject {
 
     func stop() async {
         await serviceGroup?.triggerGracefulShutdown()
-        isRunning = false
         serviceGroup = nil
         app = nil
     }

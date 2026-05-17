@@ -44,6 +44,7 @@ struct ConfigWindow: View {
                     mappingId: mappingId,
                     keychain: keychain
                 )
+                .id(mappingId)
             } else {
                 Text("选择一个映射配置")
                     .foregroundColor(.secondary)

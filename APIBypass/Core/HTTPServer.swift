@@ -12,7 +12,6 @@ final class HTTPServer: ObservableObject {
     private let networkService: NetworkService
     private var app: Application<RouterResponder<BasicRequestContext>>?
     private var serviceGroup: ServiceGroup?
-    private var serverTask: Task<Void, Never>?
 
     let port: Int = 8390
 
@@ -62,8 +61,8 @@ final class HTTPServer: ObservableObject {
 
         self.app = newApp
 
-        // 在后台启动服务，保存 Task 引用防止被取消
-        serverTask = Task { @MainActor in
+        // 在后台启动服务
+        Task { @MainActor in
             do {
                 let group = ServiceGroup(
                     configuration: .init(services: [newApp], logger: newApp.logger)
@@ -71,15 +70,13 @@ final class HTTPServer: ObservableObject {
                 self.serviceGroup = group
                 try await group.run()
             } catch {
-                print("[APIBypass] Server error: \(error)")
+                print("Server error: \(error)")
             }
         }
     }
 
     func stop() async {
         await serviceGroup?.triggerGracefulShutdown()
-        serverTask?.cancel()
-        serverTask = nil
         serviceGroup = nil
         app = nil
     }
@@ -168,13 +165,7 @@ final class HTTPServer: ObservableObject {
         // 发送请求并返回响应
         do {
             let (responseData, response) = try await networkService.send(request: upstreamRequest)
-            guard let httpResponse = response as? HTTPURLResponse else {
-                print("[APIBypass] 上游响应不是 HTTPURLResponse, 直接透传")
-                return Response(
-                    status: .ok,
-                    body: .init(byteBuffer: ByteBuffer(data: responseData))
-                )
-            }
+            let httpResponse = response as! HTTPURLResponse
 
             var headers = HTTPFields()
             for (key, value) in httpResponse.allHeaderFields {
@@ -189,7 +180,6 @@ final class HTTPServer: ObservableObject {
                 body: .init(byteBuffer: ByteBuffer(data: responseData))
             )
         } catch {
-            print("[APIBypass] 上游请求失败: \(error)")
             let errorData = #"{"error": "Upstream API request failed"}"#.data(using: .utf8)!
             return Response(
                 status: .badGateway,

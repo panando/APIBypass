@@ -36,22 +36,14 @@ final class ConfigManager: ObservableObject {
     private func save() {
         guard let data = try? JSONEncoder().encode(mappings) else { return }
         defaults.set(data, forKey: defaultsKey)
-        if let json = String(data: data, encoding: .utf8) {
-            print("[Config] 保存 \(mappings.count) 条映射: \(json)")
-        }
     }
 
     private func load() {
         guard let data = defaults.data(forKey: defaultsKey),
               let decoded = try? JSONDecoder().decode([ModelMapping].self, from: data) else {
             mappings = []
-            print("[Config] 未找到已保存配置, 初始化为空")
             return
         }
         mappings = decoded
-        print("[Config] 加载 \(mappings.count) 条映射")
-        for m in mappings {
-            print("[Config]   - id=\(m.id) name=\(m.name) incoming=\(m.incomingModel) actual=\(m.actualModel) thinking=\(String(describing: m.parameters.thinking))")
-        }
     }
 }

@@ -61,6 +61,7 @@ struct MenuBarView: View {
         )
         window.title = "APIBypass 配置"
         window.identifier = NSUserInterfaceItemIdentifier("config-window")
+        window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: ConfigWindow(configManager: configManager))
         window.center()
         window.makeKeyAndOrderFront(nil)

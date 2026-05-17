@@ -58,11 +58,9 @@ final class ProxyEngine {
                     json["thinking"] = ["type": "disabled"]
                 }
             case .openai:
-                if !thinking.enabled {
-                    // enable_thinking 用于 DeepSeek/Qwen3/GLM 等第三方 OpenAI 兼容 API
-                    json["enable_thinking"] = false
-                }
-                // thinking.enabled=true 时不注入，因为默认即为启用思考模式
+                // enable_thinking 用于 DeepSeek/Qwen3/GLM 等第三方 OpenAI 兼容 API
+                // 必须显式传 true/false，因为这些 API 默认行为不一致
+                json["enable_thinking"] = thinking.enabled
             }
         }
 

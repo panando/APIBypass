@@ -213,7 +213,7 @@ struct MappingDetailView: View {
                         }
                     }
 
-                    Text("提示: 值支持 JSON 格式，如 {\"enable_thinking\":true}")
+                    Text("提示: 值支持 JSON 格式，如 \"enable_thinking\":true, \"thinking\": {\"type\": \"disabled\"}")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

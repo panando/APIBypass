@@ -75,7 +75,7 @@ struct NewMappingView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
-    @State private var hasThinkingConfig = false
+    @State private var thinkingOverride = false
 
     // 自定义字段
     @State private var customFields: [CustomField] = []
@@ -190,30 +190,26 @@ struct NewMappingView: View {
 
                 // 思考模式
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("思考模式")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Text("思考模式")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $thinkingOverride)
+                            .labelsHidden()
+                    }
 
-                    VStack(spacing: 8) {
+                    Toggle("启用思考模式", isOn: $thinkingEnabled)
+                        .disabled(!thinkingOverride)
+
+                    if thinkingEnabled && thinkingOverride && apiProvider == .anthropic {
                         HStack {
-                            Toggle("启用思考模式", isOn: $thinkingEnabled)
-                                .onChange(of: thinkingEnabled) { _, _ in
-                                    hasThinkingConfig = true
-                                }
-                            Spacer()
-                        }
-                        if thinkingEnabled && apiProvider == .anthropic {
-                            HStack {
-                                Text("思考预算")
-                                    .frame(width: 120, alignment: .trailing)
-                                TextField("tokens 数量", text: $thinkingBudget)
-                                    .onChange(of: thinkingBudget) { _, _ in
-                                        hasThinkingConfig = true
-                                    }
-                                Text("如 10000")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            }
+                            Text("思考预算")
+                                .frame(width: 120, alignment: .trailing)
+                            TextField("tokens 数量", text: $thinkingBudget)
+                            Text("如 10000")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
                         }
                     }
                 }
@@ -314,7 +310,7 @@ struct NewMappingView: View {
         let presPenalty = Double(presencePenalty)
 
         let thinking: ThinkingConfig? = {
-            guard hasThinkingConfig else { return nil }
+            guard thinkingOverride else { return nil }
             return ThinkingConfig(
                 enabled: thinkingEnabled,
                 budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil

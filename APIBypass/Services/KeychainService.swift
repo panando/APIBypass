@@ -13,29 +13,36 @@ final class KeychainService {
             throw KeychainError.encodingFailed
         }
 
+        // 先删除旧条目（可能在之前创建时没有 access control）
+        let deleteQuery: [String: Any] = [
+            kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: service,
+            kSecAttrAccount as String: key
+        ]
+        SecItemDelete(deleteQuery as CFDictionary)
+
+        // 创建 access control: 不需要用户认证，应用密码保护即可
+        var error: Unmanaged<CFError>?
+        guard let access = SecAccessControlCreateWithFlags(
+            kCFAllocatorDefault,
+            kSecAttrAccessibleWhenUnlocked,
+            [],
+            &error
+        ) else {
+            let desc = error?.takeRetainedValue().localizedDescription ?? "unknown"
+            throw KeychainError.accessControlFailed(desc)
+        }
+
         let query: [String: Any] = [
             kSecClass as String: kSecClassGenericPassword,
             kSecAttrService as String: service,
             kSecAttrAccount as String: key,
             kSecValueData as String: data,
-            kSecAttrAccessible as String: kSecAttrAccessibleWhenUnlocked
+            kSecAttrAccessControl as String: access
         ]
 
-        // Try to add first
         let status = SecItemAdd(query as CFDictionary, nil)
-
-        // If item already exists, update it
-        if status == errSecDuplicateItem {
-            let updateQuery: [String: Any] = [
-                kSecClass as String: kSecClassGenericPassword,
-                kSecAttrService as String: service,
-                kSecAttrAccount as String: key
-            ]
-            let updateStatus = SecItemUpdate(updateQuery as CFDictionary, [kSecValueData as String: data] as CFDictionary)
-            guard updateStatus == errSecSuccess else {
-                throw KeychainError.saveFailed(updateStatus)
-            }
-        } else if status != errSecSuccess {
+        guard status == errSecSuccess else {
             throw KeychainError.saveFailed(status)
         }
     }
@@ -68,12 +75,12 @@ final class KeychainService {
         ]
 
         SecItemDelete(query as CFDictionary)
-        // 删除不存在的项不视为错误
     }
 }
 
 enum KeychainError: Error {
     case encodingFailed
+    case accessControlFailed(String)
     case saveFailed(OSStatus)
     case retrieveFailed(OSStatus)
 }

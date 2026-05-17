@@ -121,7 +121,7 @@ struct NewMappingView: View {
                             }
                         }
                         HStack {
-                            Text("API 地址")
+                            Text("Base URL")
                                 .frame(width: 100, alignment: .trailing)
                             TextField("Base URL", text: $baseURL)
                         }

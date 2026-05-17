@@ -53,11 +53,11 @@ swift package generate-xcodeproj
 ## Install
 
 ```bash
-# Run directly
+# Run directly (easiest)
 swift run
 
-# Or copy to Applications (optional)
-cp -r .build/apple/Products/Release/APIBypass.app /Applications/
+# Or run the release binary directly
+.build/arm64-apple-macosx/release/APIBypass
 ```
 
 On first launch, allow network connections when prompted.

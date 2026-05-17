@@ -53,11 +53,11 @@ swift package generate-xcodeproj
 ## 安装
 
 ```bash
-# 直接运行
+# 直接运行（最简单）
 swift run
 
-# 或复制到 Applications（可选）
-cp -r .build/apple/Products/Release/APIBypass.app /Applications/
+# 或直接执行编译好的二进制文件
+.build/arm64-apple-macosx/release/APIBypass
 ```
 
 首次运行时，系统会提示授予网络权限，请允许。

@@ -3,6 +3,8 @@
 Packages/
 *.xcodeproj/
 DerivedData/
+*.app/
+*.dmg
 
 # Swift Package Manager
 Package.resolved

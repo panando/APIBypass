@@ -60,6 +60,65 @@ swift run
 .build/arm64-apple-macosx/release/APIBypass
 ```
 
+### 创建 .app 包
+
+```bash
+# 编译 release 版本
+swift build -c release
+
+# 创建 .app 包
+mkdir -p APIBypass.app/Contents/MacOS APIBypass.app/Contents/Resources
+cp .build/arm64-apple-macosx/release/APIBypass APIBypass.app/Contents/MacOS/
+
+# 创建 Info.plist
+cat > APIBypass.app/Contents/Info.plist << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>APIBypass</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apibypass.app</string>
+	<key>CFBundleName</key>
+	<string>APIBypass</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
+PLIST
+```
+
+通过 Finder 或 `open APIBypass.app` 运行。
+
+### 创建 DMG
+
+```bash
+mkdir -p dmg_staging
+cp -R APIBypass.app dmg_staging/
+ln -s /Applications dmg_staging/Applications
+hdiutil create -volname "APIBypass" \
+  -srcfolder dmg_staging \
+  -ov -format UDZO \
+  APIBypass-1.0.0.dmg
+rm -rf dmg_staging
+```
+
 首次运行时，系统会提示授予网络权限，请允许。
 
 ## 使用说明

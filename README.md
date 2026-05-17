@@ -60,6 +60,72 @@ swift run
 .build/arm64-apple-macosx/release/APIBypass
 ```
 
+### Create .app Bundle
+
+```bash
+# Build release binary
+swift build -c release
+
+# Create .app bundle
+mkdir -p APIBypass.app/Contents/MacOS APIBypass.app/Contents/Resources
+
+# Copy binary
+cp .build/arm64-apple-macosx/release/APIBypass APIBypass.app/Contents/MacOS/
+
+# Create Info.plist
+cat > APIBypass.app/Contents/Info.plist << 'PLIST'
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<key>CFBundleExecutable</key>
+	<string>APIBypass</string>
+	<key>CFBundleIdentifier</key>
+	<string>com.apibypass.app</string>
+	<key>CFBundleName</key>
+	<string>APIBypass</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundlePackageType</key>
+	<string>APPL</string>
+	<key>LSMinimumSystemVersion</key>
+	<string>14.0</string>
+	<key>LSUIElement</key>
+	<true/>
+	<key>NSHighResolutionCapable</key>
+	<true/>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
+</dict>
+</plist>
+PLIST
+```
+
+Now you can run it via Finder or `open APIBypass.app`.
+
+### Create DMG
+
+```bash
+# Prepare staging folder
+mkdir -p dmg_staging
+cp -R APIBypass.app dmg_staging/
+ln -s /Applications dmg_staging/Applications
+
+# Create DMG
+hdiutil create -volname "APIBypass" \
+  -srcfolder dmg_staging \
+  -ov -format UDZO \
+  APIBypass-1.0.0.dmg
+
+# Clean up
+rm -rf dmg_staging
+```
+
 On first launch, allow network connections when prompted.
 
 ## Usage

@@ -44,16 +44,27 @@ final class ProxyEngine {
             json["presence_penalty"] = presencePenalty
         }
 
-        // Anthropic-specific thinking parameter
-        if format == .anthropic, let thinking = params.thinking, thinking.enabled {
-            var thinkingDict: [String: Any] = ["type": "enabled"]
-            if let budget = thinking.budgetTokens {
-                thinkingDict["budget_tokens"] = budget
+        // 思考模式控制 (Anthropic + OpenAI 兼容)
+        if let thinking = params.thinking {
+            switch format {
+            case .anthropic:
+                if thinking.enabled {
+                    var thinkingDict: [String: Any] = ["type": "enabled"]
+                    if let budget = thinking.budgetTokens {
+                        thinkingDict["budget_tokens"] = budget
+                    }
+                    json["thinking"] = thinkingDict
+                } else {
+                    json["thinking"] = ["type": "disabled"]
+                }
+            case .openai:
+                if !thinking.enabled {
+                    // enable_thinking 用于 DeepSeek/Qwen3/GLM 等第三方 OpenAI 兼容 API
+                    json["enable_thinking"] = false
+                }
+                // thinking.enabled=true 时不注入，因为默认即为启用思考模式
             }
-            json["thinking"] = thinkingDict
         }
-        // Note: When thinking is disabled, we don't send the "thinking" parameter at all
-        // This is the correct way to disable extended thinking in Anthropic API
 
         // Custom fields - allow users to inject arbitrary JSON parameters
         if let customFields = params.customFields {

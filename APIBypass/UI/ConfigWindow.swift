@@ -75,6 +75,7 @@ struct NewMappingView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
+    @State private var hasThinkingConfig = false
 
     // 自定义字段
     @State private var customFields: [CustomField] = []
@@ -187,33 +188,45 @@ struct NewMappingView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                if apiProvider == .anthropic {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("思考模式 (Anthropic)")
+                // 思考模式
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("思考模式")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                        Text(apiProvider == .openai
+                            ? "(注入 enable_thinking 参数)"
+                            : "(注入 thinking 参数)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
 
-                        VStack(spacing: 8) {
-                            HStack {
-                                Toggle("启用思考模式", isOn: $thinkingEnabled)
-                                Spacer()
-                            }
-                            if thinkingEnabled {
-                                HStack {
-                                    Text("思考预算")
-                                        .frame(width: 120, alignment: .trailing)
-                                    TextField("tokens 数量", text: $thinkingBudget)
-                                    Text("如 10000")
-                                        .foregroundColor(.secondary)
-                                        .font(.caption)
+                    VStack(spacing: 8) {
+                        HStack {
+                            Toggle("启用思考模式", isOn: $thinkingEnabled)
+                                .onChange(of: thinkingEnabled) { _, _ in
+                                    hasThinkingConfig = true
                                 }
+                            Spacer()
+                        }
+                        if thinkingEnabled && apiProvider == .anthropic {
+                            HStack {
+                                Text("思考预算")
+                                    .frame(width: 120, alignment: .trailing)
+                                TextField("tokens 数量", text: $thinkingBudget)
+                                    .onChange(of: thinkingBudget) { _, _ in
+                                        hasThinkingConfig = true
+                                    }
+                                Text("如 10000")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
                             }
                         }
                     }
-                    .padding()
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(8)
                 }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
 
                 // 自定义参数字段
                 VStack(alignment: .leading, spacing: 12) {
@@ -307,9 +320,13 @@ struct NewMappingView: View {
         let freqPenalty = Double(frequencyPenalty)
         let presPenalty = Double(presencePenalty)
 
-        let thinking: ThinkingConfig? = thinkingEnabled
-            ? ThinkingConfig(enabled: true, budgetTokens: Int(thinkingBudget))
-            : nil
+        let thinking: ThinkingConfig? = {
+            guard hasThinkingConfig else { return nil }
+            return ThinkingConfig(
+                enabled: thinkingEnabled,
+                budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
+            )
+        }()
 
         let customFieldsDict: [String: String]? = customFields.isEmpty
             ? nil

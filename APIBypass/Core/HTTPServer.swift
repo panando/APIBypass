@@ -90,6 +90,12 @@ final class HTTPServer: ObservableObject {
         let body = try await request.body.collect(upTo: 10 * 1024 * 1024)
         let data = Data(body.readableBytesView)
 
+        // 日志: 原始请求
+        if let incomingBody = String(data: data, encoding: .utf8) {
+            print("[APIBypass] === 收到请求 (format: \(format)) ===")
+            print("[APIBypass] 原始请求体: \(incomingBody)")
+        }
+
         // 解析模型名称
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let model = json["model"] as? String,
@@ -148,6 +154,13 @@ final class HTTPServer: ObservableObject {
             provider: mapping.apiProvider,
             customHeaders: mapping.parameters.customHeaders
         )
+
+        // 日志: 转换后请求
+        if let transformedBody = String(data: transformedData, encoding: .utf8) {
+            print("[APIBypass] 转换后请求体: \(transformedBody)")
+            print("[APIBypass] 上游 URL: \(upstreamURL.absoluteString)")
+            print("[APIBypass] 实际模型: \(mapping.actualModel)")
+        }
 
         // 发送请求并返回响应
         do {

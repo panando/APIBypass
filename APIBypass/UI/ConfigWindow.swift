@@ -75,7 +75,7 @@ struct NewMappingView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
-    @State private var hasThinkingConfig = false
+    @State private var thinkingOverride = false
 
     // 自定义字段
     @State private var customFields: [CustomField] = []
@@ -194,22 +194,18 @@ struct NewMappingView: View {
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
-                    VStack(spacing: 8) {
-                        HStack {
-                            Toggle("启用思考模式", isOn: $thinkingEnabled)
-                                .onChange(of: thinkingEnabled) { _, _ in
-                                    hasThinkingConfig = true
-                                }
-                            Spacer()
-                        }
+                    Toggle("覆盖思考模式", isOn: $thinkingOverride)
+
+                    if thinkingOverride {
+                        Divider()
+
+                        Toggle("启用思考模式", isOn: $thinkingEnabled)
+
                         if thinkingEnabled && apiProvider == .anthropic {
                             HStack {
                                 Text("思考预算")
                                     .frame(width: 120, alignment: .trailing)
                                 TextField("tokens 数量", text: $thinkingBudget)
-                                    .onChange(of: thinkingBudget) { _, _ in
-                                        hasThinkingConfig = true
-                                    }
                                 Text("如 10000")
                                     .foregroundColor(.secondary)
                                     .font(.caption)
@@ -314,7 +310,7 @@ struct NewMappingView: View {
         let presPenalty = Double(presencePenalty)
 
         let thinking: ThinkingConfig? = {
-            guard hasThinkingConfig else { return nil }
+            guard thinkingOverride else { return nil }
             return ThinkingConfig(
                 enabled: thinkingEnabled,
                 budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil

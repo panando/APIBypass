@@ -26,7 +26,7 @@ struct MappingDetailView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
-    @State private var hasThinkingConfig = false
+    @State private var thinkingOverrideEnabled = false
     @State private var isEnabled = true
 
     // 自定义字段
@@ -139,30 +139,35 @@ struct MappingDetailView: View {
 
                 // 思考模式
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("思考模式")
-                        .font(.subheadline)
-                        .foregroundColor(.secondary)
+                    HStack {
+                        Text("思考模式")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $thinkingOverrideEnabled)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                    }
 
-                    Toggle("覆盖默认思考模式", isOn: $hasThinkingConfig)
-
-                    if hasThinkingConfig {
-                        VStack(spacing: 8) {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Toggle("启用思考模式", isOn: $thinkingEnabled)
+                                .disabled(!thinkingOverrideEnabled)
+                            Spacer()
+                        }
+                        if thinkingEnabled && apiProvider == .anthropic {
                             HStack {
-                                Toggle("启用思考模式", isOn: $thinkingEnabled)
-                                Spacer()
-                            }
-                            if thinkingEnabled && apiProvider == .anthropic {
-                                HStack {
-                                    Text("思考预算")
-                                        .frame(width: 120, alignment: .trailing)
-                                    TextField("tokens 数量", text: $thinkingBudget)
-                                    Text("如 10000")
-                                        .foregroundColor(.secondary)
-                                        .font(.caption)
-                                }
+                                Text("思考预算")
+                                    .frame(width: 120, alignment: .trailing)
+                                TextField("tokens 数量", text: $thinkingBudget)
+                                    .disabled(!thinkingOverrideEnabled)
+                                Text("如 10000")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
                             }
                         }
                     }
+                    .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
@@ -276,7 +281,7 @@ struct MappingDetailView: View {
             presencePenalty = String(pres)
         }
         if let thinking = mapping.parameters.thinking {
-            hasThinkingConfig = true
+            thinkingOverrideEnabled = true
             thinkingEnabled = thinking.enabled
             if let budget = thinking.budgetTokens {
                 thinkingBudget = String(budget)
@@ -323,7 +328,7 @@ struct MappingDetailView: View {
         let presPenalty = Double(presencePenalty)
 
         let thinking: ThinkingConfig? = {
-            guard hasThinkingConfig else { return nil }
+            guard thinkingOverrideEnabled else { return nil }
             return ThinkingConfig(
                 enabled: thinkingEnabled,
                 budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil

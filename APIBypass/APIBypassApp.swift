@@ -15,6 +15,11 @@ struct APIBypassApp: App {
             )
         }
         .menuBarExtraStyle(.menu)
+
+        // 使用 Settings 场景来支持配置窗口
+        Settings {
+            ConfigWindow()
+        }
     }
 
     private func startServer() {

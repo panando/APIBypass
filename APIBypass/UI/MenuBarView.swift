@@ -23,7 +23,8 @@ struct MenuBarView: View {
             Divider()
 
             Button("打开配置...") {
-                openConfigWindow()
+                NSApp.sendAction(Selector(("showSettingsWindow:")), to: nil, from: nil)
+                NSApplication.shared.activate(ignoringOtherApps: true)
             }
 
             Button(isRunning ? "停止服务" : "启动服务") {
@@ -40,23 +41,5 @@ struct MenuBarView: View {
                 NSApplication.shared.terminate(nil)
             }
         }
-    }
-
-    private func openConfigWindow() {
-        if let existingWindow = NSApplication.shared.windows.first(where: { $0.title == "APIBypass 配置" }) {
-            existingWindow.makeKeyAndOrderFront(nil)
-            return
-        }
-
-        let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 500),
-            styleMask: [.titled, .closable, .resizable, .miniaturizable],
-            backing: .buffered,
-            defer: false
-        )
-        window.title = "APIBypass 配置"
-        window.contentView = NSHostingView(rootView: ConfigWindow())
-        window.center()
-        window.makeKeyAndOrderFront(nil)
     }
 }

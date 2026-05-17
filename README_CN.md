@@ -55,18 +55,6 @@ swift build -c release
 ```bash
 swift build -c release
 
-# 从 icon.png 生成 .icns
-mkdir -p icon.iconset
-sips -z 16 16 icon.png --out icon.iconset/icon_16x16.png
-sips -z 32 32 icon.png --out icon.iconset/icon_32x32.png
-sips -z 64 64 icon.png --out icon.iconset/icon_64x64.png
-sips -z 128 128 icon.png --out icon.iconset/icon_128x128.png
-sips -z 256 256 icon.png --out icon.iconset/icon_256x256.png
-sips -z 512 512 icon.png --out icon.iconset/icon_512x512.png
-sips -z 1024 1024 icon.png --out icon.iconset/icon_512x512@2x.png
-iconutil -c icns icon.iconset -o icon.icns
-rm -rf icon.iconset
-
 # 创建 .app 包
 mkdir -p APIBypass.app/Contents/MacOS APIBypass.app/Contents/Resources
 cp .build/arm64-apple-macosx/release/APIBypass APIBypass.app/Contents/MacOS/
@@ -105,8 +93,6 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 </dict>
 </plist>
 PLIST
-
-open APIBypass.app
 ```
 
 ### DMG

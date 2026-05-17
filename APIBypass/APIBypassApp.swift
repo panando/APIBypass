@@ -5,9 +5,9 @@ struct APIBypassApp: App {
     @StateObject private var configManager = ConfigManager()
     @State private var server: HTTPServer?
     @State private var isRunning = false
+    @State private var errorMessage: String?
 
     init() {
-        // 设置应用为常规应用，这样窗口可以正常显示和接收输入
         NSApplication.shared.setActivationPolicy(.regular)
     }
 
@@ -27,10 +27,8 @@ struct APIBypassApp: App {
             let newServer = HTTPServer(configManager: configManager)
             do {
                 try await newServer.start()
-                await MainActor.run {
-                    server = newServer
-                    isRunning = true
-                }
+                server = newServer
+                isRunning = true
             } catch {
                 print("Failed to start server: \(error)")
             }
@@ -40,10 +38,8 @@ struct APIBypassApp: App {
     private func stopServer() {
         Task {
             await server?.stop()
-            await MainActor.run {
-                server = nil
-                isRunning = false
-            }
+            server = nil
+            isRunning = false
         }
     }
 }

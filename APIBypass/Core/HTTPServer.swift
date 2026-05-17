@@ -4,11 +4,13 @@ import HTTPTypes
 import NIOCore
 import ServiceLifecycle
 
-final class HTTPServer: @unchecked Sendable {
+@MainActor
+final class HTTPServer: ObservableObject {
     private let configManager: ConfigManager
     private let keychain: KeychainService
     private let proxyEngine: ProxyEngine
     private let networkService: NetworkService
+    private var app: Application<RouterResponder<BasicRequestContext>>?
     private var serviceGroup: ServiceGroup?
 
     let port: Int = 8390
@@ -24,18 +26,24 @@ final class HTTPServer: @unchecked Sendable {
         let router = Router()
 
         // OpenAI 兼容端点
-        router.post("/v1/chat/completions") { request, context in
+        router.post("/v1/chat/completions") { [weak self] request, context in
+            guard let self = self else {
+                return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
+            }
             return try await self.handleProxyRequest(request, context, format: .openai)
         }
 
         // Anthropic 端点
-        router.post("/v1/messages") { request, context in
+        router.post("/v1/messages") { [weak self] request, context in
+            guard let self = self else {
+                return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
+            }
             return try await self.handleProxyRequest(request, context, format: .anthropic)
         }
 
         // 模型列表端点
         router.get("/v1/models") { request, context in
-            let models = self.configManager.mappings.map { mapping in
+            let models = await self.configManager.mappings.map { mapping in
                 ["id": mapping.incomingModel, "object": "model"]
             }
             let response: [String: Any] = ["object": "list", "data": models]
@@ -46,21 +54,31 @@ final class HTTPServer: @unchecked Sendable {
             )
         }
 
-        let app = Application(
+        let newApp = Application(
             router: router,
             configuration: .init(address: .hostname("127.0.0.1", port: port))
         )
 
-        let group = ServiceGroup(
-            configuration: .init(services: [app], logger: app.logger)
-        )
-        self.serviceGroup = group
-        try await group.run()
+        self.app = newApp
+
+        // 在后台启动服务
+        Task { @MainActor in
+            do {
+                let group = ServiceGroup(
+                    configuration: .init(services: [newApp], logger: newApp.logger)
+                )
+                self.serviceGroup = group
+                try await group.run()
+            } catch {
+                print("Server error: \(error)")
+            }
+        }
     }
 
     func stop() async {
         await serviceGroup?.triggerGracefulShutdown()
         serviceGroup = nil
+        app = nil
     }
 
     private func handleProxyRequest(
@@ -69,7 +87,7 @@ final class HTTPServer: @unchecked Sendable {
         format: APIFormat
     ) async throws -> Response {
         // 读取请求体
-        let body = try await request.body.collect(upTo: 10 * 1024 * 1024) // 10MB limit
+        let body = try await request.body.collect(upTo: 10 * 1024 * 1024)
         let data = Data(body.readableBytesView)
 
         // 解析模型名称

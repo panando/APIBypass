@@ -67,38 +67,168 @@ struct NewMappingView: View {
     @State private var baseURL = ""
     @State private var apiKey = ""
 
+    // 参数设置
+    @State private var temperature = ""
+    @State private var maxTokens = ""
+    @State private var topP = ""
+    @State private var frequencyPenalty = ""
+    @State private var presencePenalty = ""
+    @State private var thinkingEnabled = false
+    @State private var thinkingBudget = ""
+
     var body: some View {
-        VStack(spacing: 20) {
-            Text("新建模型映射")
-                .font(.headline)
+        ScrollView {
+            VStack(spacing: 16) {
+                Text("新建模型映射")
+                    .font(.headline)
+                    .padding(.top, 8)
 
-            Form {
-                TextField("配置名称", text: $name)
-                TextField("客户端模型名", text: $incomingModel)
-                TextField("实际模型名", text: $actualModel)
-                Picker("API 提供商", selection: $apiProvider) {
-                    Text("OpenAI").tag(APIProvider.openai)
-                    Text("Anthropic").tag(APIProvider.anthropic)
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("基本信息")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("配置名称")
+                                .frame(width: 100, alignment: .trailing)
+                            TextField("名称", text: $name)
+                        }
+                        HStack {
+                            Text("客户端模型名")
+                                .frame(width: 100, alignment: .trailing)
+                            TextField("如 gpt-4", text: $incomingModel)
+                        }
+                        HStack {
+                            Text("实际模型名")
+                                .frame(width: 100, alignment: .trailing)
+                            TextField("如 claude-sonnet-4-6", text: $actualModel)
+                        }
+                        HStack {
+                            Text("API 提供商")
+                                .frame(width: 100, alignment: .trailing)
+                            Picker("", selection: $apiProvider) {
+                                Text("OpenAI").tag(APIProvider.openai)
+                                Text("Anthropic").tag(APIProvider.anthropic)
+                            }
+                            .pickerStyle(.menu)
+                            .onChange(of: apiProvider) { _, newValue in
+                                baseURL = newValue.defaultBaseURL.absoluteString
+                            }
+                        }
+                        HStack {
+                            Text("API 地址")
+                                .frame(width: 100, alignment: .trailing)
+                            TextField("Base URL", text: $baseURL)
+                        }
+                        HStack {
+                            Text("API Key")
+                                .frame(width: 100, alignment: .trailing)
+                            SecureField("sk-...", text: $apiKey)
+                        }
+                    }
                 }
-                TextField("API 地址", text: $baseURL)
-                SecureField("API Key", text: $apiKey)
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("参数注入")
+                        .font(.subheadline)
+                        .foregroundColor(.secondary)
+
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("Temperature")
+                                .frame(width: 120, alignment: .trailing)
+                            TextField("0.0 - 2.0", text: $temperature)
+                            Text("创造性程度")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        HStack {
+                            Text("Max Tokens")
+                                .frame(width: 120, alignment: .trailing)
+                            TextField("最大输出长度", text: $maxTokens)
+                            Text("最大输出")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        HStack {
+                            Text("Top P")
+                                .frame(width: 120, alignment: .trailing)
+                            TextField("0.0 - 1.0", text: $topP)
+                            Text("核采样")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        HStack {
+                            Text("Frequency Penalty")
+                                .frame(width: 120, alignment: .trailing)
+                            TextField("-2.0 - 2.0", text: $frequencyPenalty)
+                            Text("频率惩罚")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                        HStack {
+                            Text("Presence Penalty")
+                                .frame(width: 120, alignment: .trailing)
+                            TextField("-2.0 - 2.0", text: $presencePenalty)
+                            Text("存在惩罚")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+
+                if apiProvider == .anthropic {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("思考模式 (Anthropic)")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+
+                        VStack(spacing: 8) {
+                            HStack {
+                                Toggle("启用思考模式", isOn: $thinkingEnabled)
+                                Spacer()
+                            }
+                            if thinkingEnabled {
+                                HStack {
+                                    Text("思考预算")
+                                        .frame(width: 120, alignment: .trailing)
+                                    TextField("tokens 数量", text: $thinkingBudget)
+                                    Text("如 10000")
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                        }
+                    }
+                    .padding()
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+                }
+
+                HStack {
+                    Button("取消") {
+                        dismiss()
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                    Button("创建") {
+                        createMapping()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(incomingModel.isEmpty || actualModel.isEmpty || apiKey.isEmpty)
+                }
+                .padding(.bottom, 8)
             }
-            .formStyle(.grouped)
-
-            HStack {
-                Button("取消") {
-                    dismiss()
-                }
-                .keyboardShortcut(.cancelAction)
-
-                Button("创建") {
-                    createMapping()
-                }
-                .keyboardShortcut(.defaultAction)
-                .disabled(incomingModel.isEmpty || actualModel.isEmpty || apiKey.isEmpty)
-            }
+            .padding()
         }
-        .frame(width: 400, height: 350)
+        .frame(width: 500, height: 600)
         .onAppear {
             baseURL = apiProvider.defaultBaseURL.absoluteString
         }
@@ -111,11 +241,32 @@ struct NewMappingView: View {
             actualModel: actualModel,
             apiProvider: apiProvider,
             baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
-            parameters: .empty
+            parameters: buildParameters()
         )
 
         configManager.add(mapping)
         try? keychain.save(apiKey, forKey: mapping.id.uuidString)
         dismiss()
+    }
+
+    private func buildParameters() -> InjectedParameters {
+        let temp = Double(temperature)
+        let tokens = Int(maxTokens)
+        let topPValue = Double(topP)
+        let freqPenalty = Double(frequencyPenalty)
+        let presPenalty = Double(presencePenalty)
+
+        let thinking: ThinkingConfig? = thinkingEnabled
+            ? ThinkingConfig(enabled: true, budgetTokens: Int(thinkingBudget))
+            : nil
+
+        return InjectedParameters(
+            temperature: temp,
+            maxTokens: tokens,
+            topP: topPValue,
+            frequencyPenalty: freqPenalty,
+            presencePenalty: presPenalty,
+            thinking: thinking
+        )
     }
 }

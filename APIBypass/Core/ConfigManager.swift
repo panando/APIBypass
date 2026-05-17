@@ -21,6 +21,7 @@ final class ConfigManager: ObservableObject {
         if let index = mappings.firstIndex(where: { $0.id == mapping.id }) {
             mappings[index] = mapping
             save()
+            print("[ConfigManager] 已更新映射 '\(mapping.name)': incoming=\(mapping.incomingModel), actual=\(mapping.actualModel), thinking=\(String(describing: mapping.parameters.thinking)), customFields=\(mapping.parameters.customFields?.count ?? 0)个")
         }
     }
 

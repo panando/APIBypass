@@ -96,6 +96,13 @@ final class HTTPServer: ObservableObject {
             print("[APIBypass] 原始请求体: \(incomingBody)")
         }
 
+        // 日志: 当前所有映射
+        let allMappings = configManager.mappings
+        print("[APIBypass] 当前映射数: \(allMappings.count)")
+        for m in allMappings {
+            print("[APIBypass]   映射 '\(m.name)': incoming=\(m.incomingModel) thinking=\(String(describing: m.parameters.thinking))")
+        }
+
         // 解析模型名称
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let model = json["model"] as? String,

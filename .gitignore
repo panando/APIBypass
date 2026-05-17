@@ -1,0 +1,24 @@
+# Build artifacts
+.build/
+Packages/
+*.xcodeproj/
+DerivedData/
+
+# Swift Package Manager
+Package.resolved
+Package.pins
+
+# Xcode
+*.xcworkspace/
+xcuserdata/
+*.xcuserstate
+
+# macOS
+.DS_Store
+*.swp
+*~.nib
+
+# Secrets (never commit)
+*.env
+*.pem
+*.key

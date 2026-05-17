@@ -264,7 +264,7 @@ struct NewMappingView: View {
                         }
                     }
 
-                    Text("提示: 值支持 JSON 格式，如 \"low\"、123、true、{\"key\": \"value\"}")
+                    Text("提示: 值支持 JSON 格式，如 {\"enable_thinking\":true}")
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }

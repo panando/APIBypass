@@ -125,9 +125,20 @@ final class HTTPServer: ObservableObject {
             )
         }
 
-        // 构建上游请求
-        let endpoint = format == .openai ? "/v1/chat/completions" : "/v1/messages"
-        let upstreamURL = mapping.baseURL.appendingPathComponent(endpoint)
+        // 构建上游请求 URL
+        let upstreamURL: URL
+        let baseURLString = mapping.baseURL.absoluteString
+
+        // 智能处理 URL：如果 baseURL 已包含 /v1，不再重复添加
+        if baseURLString.hasSuffix("/v1") || baseURLString.hasSuffix("/v1/") {
+            // baseURL 已包含 /v1，直接拼接端点
+            let endpointPath = format == .openai ? "chat/completions" : "messages"
+            upstreamURL = mapping.baseURL.appendingPathComponent(endpointPath)
+        } else {
+            // baseURL 不包含 /v1，添加完整端点
+            let endpoint = format == .openai ? "/v1/chat/completions" : "/v1/messages"
+            upstreamURL = mapping.baseURL.appendingPathComponent(endpoint)
+        }
 
         let upstreamRequest = networkService.buildRequest(
             url: upstreamURL,

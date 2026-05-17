@@ -3,14 +3,14 @@ import SwiftUI
 @main
 struct APIBypassApp: App {
     @StateObject private var configManager = ConfigManager()
-    @State private var server: HTTPServer?
-    @State private var isRunning = false
-    @State private var errorMessage: String?
+    @State private var server = HTTPServer(configManager: ConfigManager())
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
-        DispatchQueue.main.async {
-            self.startServer()
+        let srv = HTTPServer(configManager: configManager)
+        _server = State(initialValue: srv)
+        Task {
+            try? await srv.start()
         }
     }
 
@@ -25,38 +25,17 @@ struct APIBypassApp: App {
         MenuBarExtra {
             MenuBarView(
                 configManager: configManager,
-                isRunning: $isRunning,
-                onStart: startServer,
-                onStop: stopServer
+                server: server
             )
         } label: {
             if let icon = menuBarImage {
                 Image(nsImage: icon)
+            } else if server.isRunning {
+                Image(systemName: "network")
             } else {
-                Image(systemName: isRunning ? "network" : "network.slash")
+                Image(systemName: "network.slash")
             }
         }
         .menuBarExtraStyle(.menu)
-    }
-
-    private func startServer() {
-        Task {
-            let newServer = HTTPServer(configManager: configManager)
-            do {
-                try await newServer.start()
-                server = newServer
-                isRunning = true
-            } catch {
-                print("Failed to start server: \(error)")
-            }
-        }
-    }
-
-    private func stopServer() {
-        Task {
-            await server?.stop()
-            server = nil
-            isRunning = false
-        }
     }
 }

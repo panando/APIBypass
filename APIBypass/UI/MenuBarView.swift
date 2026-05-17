@@ -2,21 +2,19 @@ import SwiftUI
 
 struct MenuBarView: View {
     let configManager: ConfigManager
-    @Binding var isRunning: Bool
-    let onStart: () -> Void
-    let onStop: () -> Void
+    @ObservedObject var server: HTTPServer
 
     var body: some View {
         VStack {
             HStack {
                 Circle()
-                    .fill(isRunning ? Color.green : Color.red)
+                    .fill(server.isRunning ? Color.green : Color.red)
                     .frame(width: 8, height: 8)
-                Text(isRunning ? "服务运行中" : "服务已停止")
+                Text(server.isRunning ? "服务运行中" : "服务已停止")
             }
 
-            if isRunning {
-                Text("端口: 8390")
+            if server.isRunning {
+                Text("端口: \(server.port)")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -27,11 +25,13 @@ struct MenuBarView: View {
                 openConfigWindow()
             }
 
-            Button(isRunning ? "停止服务" : "启动服务") {
-                if isRunning {
-                    onStop()
-                } else {
-                    onStart()
+            if server.isRunning {
+                Button("停止服务") {
+                    stopServer()
+                }
+            } else {
+                Button("启动服务") {
+                    startServer()
                 }
             }
 
@@ -43,11 +43,27 @@ struct MenuBarView: View {
         }
     }
 
+    private func startServer() {
+        Task {
+            let newServer = HTTPServer(configManager: configManager)
+            do {
+                try await newServer.start()
+                // server reference is managed by parent via @ObservedObject
+            } catch {
+                print("Failed to start server: \(error)")
+            }
+        }
+    }
+
+    private func stopServer() {
+        Task {
+            await server.stop()
+        }
+    }
+
     private func openConfigWindow() {
-        // 先激活应用
         NSApplication.shared.activate(ignoringOtherApps: true)
 
-        // 查找或创建配置窗口
         if let existingWindow = NSApplication.shared.windows.first(where: { $0.title == "APIBypass 配置" || $0.identifier?.rawValue == "config-window" }) {
             existingWindow.makeKeyAndOrderFront(nil)
             return

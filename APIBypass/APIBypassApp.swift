@@ -6,6 +6,11 @@ struct APIBypassApp: App {
     @State private var server: HTTPServer?
     @State private var isRunning = false
 
+    init() {
+        // 设置应用为常规应用，这样窗口可以正常显示和接收输入
+        NSApplication.shared.setActivationPolicy(.regular)
+    }
+
     var body: some Scene {
         MenuBarExtra("APIBypass", systemImage: isRunning ? "network" : "network.slash") {
             MenuBarView(
@@ -15,11 +20,6 @@ struct APIBypassApp: App {
             )
         }
         .menuBarExtraStyle(.menu)
-
-        // 使用 Settings 场景来支持配置窗口
-        Settings {
-            ConfigWindow()
-        }
     }
 
     private func startServer() {

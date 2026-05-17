@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct MenuBarView: View {
+    let configManager: ConfigManager
     @Binding var isRunning: Bool
     let onStart: () -> Void
     let onStop: () -> Void
@@ -60,7 +61,7 @@ struct MenuBarView: View {
         )
         window.title = "APIBypass 配置"
         window.identifier = NSUserInterfaceItemIdentifier("config-window")
-        window.contentView = NSHostingView(rootView: ConfigWindow())
+        window.contentView = NSHostingView(rootView: ConfigWindow(configManager: configManager))
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.becomeKey()

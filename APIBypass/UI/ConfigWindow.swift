@@ -1,7 +1,7 @@
 import SwiftUI
 
 struct ConfigWindow: View {
-    @StateObject private var configManager = ConfigManager()
+    @ObservedObject var configManager: ConfigManager
     @State private var selectedMappingId: UUID?
     @State private var showNewMappingSheet = false
 

@@ -14,6 +14,7 @@ struct APIBypassApp: App {
     var body: some Scene {
         MenuBarExtra("APIBypass", systemImage: isRunning ? "network" : "network.slash") {
             MenuBarView(
+                configManager: configManager,
                 isRunning: $isRunning,
                 onStart: startServer,
                 onStop: stopServer

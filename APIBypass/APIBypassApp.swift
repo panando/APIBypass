@@ -11,6 +11,7 @@ struct APIBypassApp: App {
         _server = State(initialValue: srv)
         Task {
             try? await srv.start()
+            print("[APIBypass] 服务启动完成, isRunning=\(srv.isRunning)")
         }
     }
 

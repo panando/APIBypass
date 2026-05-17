@@ -46,6 +46,7 @@ final class ProxyEngine {
 
         // 思考模式控制 (Anthropic + OpenAI 兼容)
         if let thinking = params.thinking {
+            print("[APIBypass] 思考模式覆盖: enabled=\(thinking.enabled), budgetTokens=\(thinking.budgetTokens ?? 0)")
             switch format {
             case .anthropic:
                 if thinking.enabled {
@@ -58,9 +59,10 @@ final class ProxyEngine {
                     json["thinking"] = ["type": "disabled"]
                 }
             case .openai:
-                // enable_thinking 用于 DeepSeek/Qwen3/GLM 等第三方 OpenAI 兼容 API
                 json["enable_thinking"] = thinking.enabled
             }
+        } else {
+            print("[APIBypass] 思考模式: 未配置 (使用 API 默认)")
         }
 
         // Custom fields - allow users to inject arbitrary JSON parameters

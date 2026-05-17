@@ -32,45 +32,32 @@
 - Swift 6.0+
 - Xcode 16.0+（或仅安装 Command Line Tools）
 
-## 编译
-
-### 方法一：命令行（推荐）
+## 编译和运行
 
 ```bash
 git clone https://github.com/panando/APIBypass.git
 cd APIBypass
-swift build -c release
-# 可执行文件位于: .build/arm64-apple-macosx/release/APIBypass
-```
 
-### 方法二：Xcode
-
-```bash
-swift package generate-xcodeproj
-# 用 Xcode 打开，按 ⌘B 编译
-```
-
-## 安装
-
-```bash
-# 直接运行（最简单）
+# 调试模式运行
 swift run
 
-# 或直接执行编译好的二进制文件
+# 或编译 release 版本
+swift build -c release
 .build/arm64-apple-macosx/release/APIBypass
 ```
 
-### 创建 .app 包
+首次运行时，系统会提示授予网络权限，请允许。
+
+## 打包
+
+### .app 包
 
 ```bash
-# 编译 release 版本
 swift build -c release
 
-# 创建 .app 包
 mkdir -p APIBypass.app/Contents/MacOS APIBypass.app/Contents/Resources
 cp .build/arm64-apple-macosx/release/APIBypass APIBypass.app/Contents/MacOS/
 
-# 创建 Info.plist
 cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -102,24 +89,24 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 </dict>
 </plist>
 PLIST
+
+open APIBypass.app
 ```
 
-通过 Finder 或 `open APIBypass.app` 运行。
-
-### 创建 DMG
+### DMG
 
 ```bash
 mkdir -p dmg_staging
 cp -R APIBypass.app dmg_staging/
 ln -s /Applications dmg_staging/Applications
+
 hdiutil create -volname "APIBypass" \
   -srcfolder dmg_staging \
   -ov -format UDZO \
   APIBypass-1.0.0.dmg
+
 rm -rf dmg_staging
 ```
-
-首次运行时，系统会提示授予网络权限，请允许。
 
 ## 使用说明
 

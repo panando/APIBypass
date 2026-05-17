@@ -32,47 +32,32 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 - Swift 6.0+
 - Xcode 16.0+ (or Command Line Tools only)
 
-## Build
-
-### Command Line (recommended)
+## Build & Run
 
 ```bash
 git clone https://github.com/panando/APIBypass.git
 cd APIBypass
-swift build -c release
-# Binary at: .build/arm64-apple-macosx/release/APIBypass
-```
 
-### Xcode
-
-```bash
-swift package generate-xcodeproj
-# Open in Xcode, press ⌘B
-```
-
-## Install
-
-```bash
-# Run directly (easiest)
+# Run in debug mode
 swift run
 
-# Or run the release binary directly
+# Or build release binary
+swift build -c release
 .build/arm64-apple-macosx/release/APIBypass
 ```
 
-### Create .app Bundle
+On first launch, allow network connections when prompted.
+
+## Package
+
+### .app Bundle
 
 ```bash
-# Build release binary
 swift build -c release
 
-# Create .app bundle
 mkdir -p APIBypass.app/Contents/MacOS APIBypass.app/Contents/Resources
-
-# Copy binary
 cp .build/arm64-apple-macosx/release/APIBypass APIBypass.app/Contents/MacOS/
 
-# Create Info.plist
 cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 <?xml version="1.0" encoding="UTF-8"?>
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -104,29 +89,24 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 </dict>
 </plist>
 PLIST
+
+open APIBypass.app
 ```
 
-Now you can run it via Finder or `open APIBypass.app`.
-
-### Create DMG
+### DMG
 
 ```bash
-# Prepare staging folder
 mkdir -p dmg_staging
 cp -R APIBypass.app dmg_staging/
 ln -s /Applications dmg_staging/Applications
 
-# Create DMG
 hdiutil create -volname "APIBypass" \
   -srcfolder dmg_staging \
   -ov -format UDZO \
   APIBypass-1.0.0.dmg
 
-# Clean up
 rm -rf dmg_staging
 ```
-
-On first launch, allow network connections when prompted.
 
 ## Usage
 

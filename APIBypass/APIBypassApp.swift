@@ -29,8 +29,11 @@ struct APIBypassApp: App {
         } label: {
             if let icon = menuBarImage {
                 Image(nsImage: icon)
-                    .renderingMode(.template)
-                    .foregroundColor(isRunning ? .green : .gray)
+                    .overlay(alignment: .bottomTrailing) {
+                        Circle()
+                            .fill(isRunning ? Color.green : Color.gray)
+                            .frame(width: 6, height: 6)
+                    }
             } else {
                 Image(systemName: isRunning ? "network" : "network.slash")
             }

@@ -5,13 +5,10 @@ struct APIBypassApp: App {
     @StateObject private var configManager = ConfigManager()
     @State private var server: HTTPServer?
     @State private var isRunning = false
-    @State private var errorMessage: String?
+    @State private var didAutoStart = false
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
-        DispatchQueue.main.async {
-            self.startServer()
-        }
     }
 
     private func menuBarIcon(running: Bool) -> NSImage? {
@@ -48,13 +45,25 @@ struct APIBypassApp: App {
                 onStop: stopServer
             )
         } label: {
+            labelView
+        }
+        .menuBarExtraStyle(.menu)
+    }
+
+    private var labelView: some View {
+        Group {
             if let icon = menuBarIcon(running: isRunning) {
                 Image(nsImage: icon)
             } else {
                 Image(systemName: isRunning ? "network" : "network.slash")
             }
         }
-        .menuBarExtraStyle(.menu)
+        .onAppear {
+            if !didAutoStart {
+                didAutoStart = true
+                startServer()
+            }
+        }
     }
 
     private func startServer() {

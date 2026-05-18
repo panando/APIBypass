@@ -26,3 +26,6 @@ xcuserdata/
 *.env
 *.pem
 *.key
+
+# Development documentation
+docs/superpowers/

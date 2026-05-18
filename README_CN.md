@@ -74,9 +74,9 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 	<key>CFBundleName</key>
 	<string>APIBypass</string>
 	<key>CFBundleVersion</key>
-	<string>1.0.0</string>
+	<string>0.1.0</string>
 	<key>CFBundleShortVersionString</key>
-	<string>1.0.0</string>
+	<string>0.1.0</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSMinimumSystemVersion</key>
@@ -105,7 +105,7 @@ ln -s /Applications dmg_staging/Applications
 hdiutil create -volname "APIBypass" \
   -srcfolder dmg_staging \
   -ov -format UDZO \
-  APIBypass-1.0.0.dmg
+  APIBypass-0.1.0.dmg
 
 rm -rf dmg_staging
 ```

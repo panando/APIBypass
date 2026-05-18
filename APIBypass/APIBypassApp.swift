@@ -9,7 +9,6 @@ struct APIBypassApp: App {
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
-        startServer()
     }
 
     private var menuBarImage: NSImage? {

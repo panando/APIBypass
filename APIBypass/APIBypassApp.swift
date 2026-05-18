@@ -1,7 +1,16 @@
 import SwiftUI
 
+final class AppDelegate: NSObject, NSApplicationDelegate {
+    var onFinishLaunching: (() -> Void)?
+
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        onFinishLaunching?()
+    }
+}
+
 @main
 struct APIBypassApp: App {
+    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var configManager = ConfigManager()
     @State private var server: HTTPServer?
     @State private var isRunning = false
@@ -9,7 +18,9 @@ struct APIBypassApp: App {
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
-        startServer()
+        appDelegate.onFinishLaunching = { [self] in
+            startServer()
+        }
     }
 
     private func menuBarIcon(running: Bool) -> NSImage? {

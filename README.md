@@ -1,5 +1,7 @@
 # APIBypass
 
+> [中文说明](README_CN.md)
+
 A lightweight macOS menu bar app that acts as a local LLM API proxy. Take control of model behavior even when your AI client doesn't expose those settings.
 
 ## Why APIBypass?

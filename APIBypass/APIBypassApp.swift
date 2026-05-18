@@ -11,6 +11,13 @@ struct APIBypassApp: App {
         NSApplication.shared.setActivationPolicy(.regular)
     }
 
+    private var menuBarImage: NSImage? {
+        guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
+              let image = NSImage(contentsOf: url) else { return nil }
+        image.size = NSSize(width: 18, height: 18)
+        return image
+    }
+
     var body: some Scene {
         MenuBarExtra {
             MenuBarView(
@@ -20,15 +27,10 @@ struct APIBypassApp: App {
                 onStop: stopServer
             )
         } label: {
-            if let nsImage = NSImage(contentsOf: Bundle.main.url(forResource: "AppIcon", withExtension: "icns") ?? URL(fileURLWithPath: "")) {
-                Image(nsImage: nsImage)
-                    .resizable()
-                    .frame(width: 18, height: 18)
-                    .overlay(alignment: .bottomTrailing) {
-                        Circle()
-                            .fill(isRunning ? Color.green : Color.red)
-                            .frame(width: 6, height: 6)
-                    }
+            if let icon = menuBarImage {
+                Image(nsImage: icon)
+                    .renderingMode(.template)
+                    .foregroundColor(isRunning ? .green : .gray)
             } else {
                 Image(systemName: isRunning ? "network" : "network.slash")
             }

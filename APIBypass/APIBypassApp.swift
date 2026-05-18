@@ -11,12 +11,29 @@ struct APIBypassApp: App {
         NSApplication.shared.setActivationPolicy(.regular)
     }
 
-    private var menuBarImage: NSImage? {
+    private func menuBarIcon(running: Bool) -> NSImage? {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
-              let image = NSImage(contentsOf: url) else { return nil }
-        image.size = NSSize(width: 18, height: 18)
-        image.isTemplate = false
-        return image
+              let baseImage = NSImage(contentsOf: url) else { return nil }
+
+        let size = NSSize(width: 18, height: 18)
+        let dotSize: CGFloat = 5
+        let dotColor = running ? NSColor.systemGreen : NSColor.systemGray
+
+        let composited = NSImage(size: size)
+        composited.lockFocus()
+        baseImage.draw(in: NSRect(origin: .zero, size: size),
+                       from: .zero, operation: .copy, fraction: 1.0)
+
+        let dotRect = NSRect(x: size.width - dotSize - 1,
+                             y: 1,
+                             width: dotSize,
+                             height: dotSize)
+        let path = NSBezierPath(ovalIn: dotRect)
+        dotColor.setFill()
+        path.fill()
+        composited.unlockFocus()
+        composited.isTemplate = false
+        return composited
     }
 
     var body: some Scene {
@@ -28,13 +45,8 @@ struct APIBypassApp: App {
                 onStop: stopServer
             )
         } label: {
-            if let icon = menuBarImage {
+            if let icon = menuBarIcon(running: isRunning) {
                 Image(nsImage: icon)
-                    .overlay(alignment: .bottomTrailing) {
-                        Circle()
-                            .fill(isRunning ? Color.green : Color.gray)
-                            .frame(width: 6, height: 6)
-                    }
             } else {
                 Image(systemName: isRunning ? "network" : "network.slash")
             }

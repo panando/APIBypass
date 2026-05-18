@@ -15,6 +15,7 @@ struct APIBypassApp: App {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
               let image = NSImage(contentsOf: url) else { return nil }
         image.size = NSSize(width: 18, height: 18)
+        image.isTemplate = false
         return image
     }
 

@@ -1,16 +1,7 @@
 import SwiftUI
 
-final class AppDelegate: NSObject, NSApplicationDelegate {
-    var onFinishLaunching: (() -> Void)?
-
-    func applicationDidFinishLaunching(_ notification: Notification) {
-        onFinishLaunching?()
-    }
-}
-
 @main
 struct APIBypassApp: App {
-    @NSApplicationDelegateAdaptor(AppDelegate.self) private var appDelegate
     @StateObject private var configManager = ConfigManager()
     @State private var server: HTTPServer?
     @State private var isRunning = false
@@ -18,8 +9,8 @@ struct APIBypassApp: App {
 
     init() {
         NSApplication.shared.setActivationPolicy(.regular)
-        appDelegate.onFinishLaunching = { [self] in
-            startServer()
+        DispatchQueue.main.async {
+            self.startServer()
         }
     }
 

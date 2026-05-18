@@ -52,7 +52,10 @@ swift build -c release
 
 ### .app 包
 
+> 将 `VERSION` 替换为当前版本号（如 `0.1.3`）。
+
 ```bash
+VERSION=0.1.3
 swift build -c release
 
 # 创建 .app 包
@@ -74,9 +77,9 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 	<key>CFBundleName</key>
 	<string>APIBypass</string>
 	<key>CFBundleVersion</key>
-	<string>0.1.0</string>
+	<string>${VERSION}</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>${VERSION}</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSMinimumSystemVersion</key>
@@ -105,7 +108,7 @@ ln -s /Applications dmg_staging/Applications
 hdiutil create -volname "APIBypass" \
   -srcfolder dmg_staging \
   -ov -format UDZO \
-  APIBypass-0.1.0.dmg
+  APIBypass-${VERSION}.dmg
 
 rm -rf dmg_staging
 ```

@@ -52,7 +52,10 @@ On first launch, allow network connections when prompted.
 
 ### .app Bundle
 
+> Replace `VERSION` below with the current version (e.g. `0.1.3`).
+
 ```bash
+VERSION=0.1.3
 swift build -c release
 
 # Create .app bundle
@@ -74,9 +77,9 @@ cat > APIBypass.app/Contents/Info.plist << 'PLIST'
 	<key>CFBundleName</key>
 	<string>APIBypass</string>
 	<key>CFBundleVersion</key>
-	<string>0.1.0</string>
+	<string>${VERSION}</string>
 	<key>CFBundleShortVersionString</key>
-	<string>0.1.0</string>
+	<string>${VERSION}</string>
 	<key>CFBundlePackageType</key>
 	<string>APPL</string>
 	<key>LSMinimumSystemVersion</key>
@@ -105,7 +108,7 @@ ln -s /Applications dmg_staging/Applications
 hdiutil create -volname "APIBypass" \
   -srcfolder dmg_staging \
   -ov -format UDZO \
-  APIBypass-0.1.0.dmg
+  APIBypass-${VERSION}.dmg
 
 rm -rf dmg_staging
 ```

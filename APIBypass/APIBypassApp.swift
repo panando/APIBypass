@@ -58,14 +58,17 @@ struct APIBypassApp: App {
     }
 
     private func startServer() {
+        print("[APIBypass] startServer() called")
         Task {
             let newServer = HTTPServer(configManager: configManager)
             do {
+                print("[APIBypass] calling newServer.start()...")
                 try await newServer.start()
                 server = newServer
                 isRunning = true
+                print("[APIBypass] server started, isRunning=true")
             } catch {
-                print("Failed to start server: \(error)")
+                print("[APIBypass] Failed to start server: \(error)")
             }
         }
     }

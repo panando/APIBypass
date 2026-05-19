@@ -66,12 +66,33 @@ final class ProxyEngine {
         // Custom fields - allow users to inject arbitrary JSON parameters
         if let customFields = params.customFields, params.customFieldsEnabled == true {
             for (key, valueString) in customFields {
-                // Try to parse value as JSON (supports numbers, booleans, objects, arrays)
-                if let data = valueString.data(using: .utf8),
+                let trimmed = valueString.trimmingCharacters(in: .whitespacesAndNewlines)
+
+                // 特殊处理布尔值
+                if trimmed == "true" {
+                    json[key] = true
+                    continue
+                } else if trimmed == "false" {
+                    json[key] = false
+                    continue
+                }
+
+                // 特殊处理数字
+                if let intValue = Int(trimmed) {
+                    json[key] = intValue
+                    continue
+                }
+                if let doubleValue = Double(trimmed) {
+                    json[key] = doubleValue
+                    continue
+                }
+
+                // 尝试解析为 JSON（对象、数组、带引号的字符串）
+                if let data = trimmed.data(using: .utf8),
                    let parsedValue = try? JSONSerialization.jsonObject(with: data) {
                     json[key] = parsedValue
                 } else {
-                    // If not valid JSON, use as plain string
+                    // 其他情况作为普通字符串
                     json[key] = valueString
                 }
             }

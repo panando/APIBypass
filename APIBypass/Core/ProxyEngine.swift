@@ -45,7 +45,7 @@ final class ProxyEngine {
         }
 
         // 思考模式控制 (Anthropic + OpenAI 兼容)
-        if let thinking = params.thinking {
+        if let thinking = params.thinking, params.thinkingOverrideEnabled == true {
             switch format {
             case .anthropic:
                 if thinking.enabled {
@@ -64,7 +64,7 @@ final class ProxyEngine {
         }
 
         // Custom fields - allow users to inject arbitrary JSON parameters
-        if let customFields = params.customFields {
+        if let customFields = params.customFields, params.customFieldsEnabled == true {
             for (key, valueString) in customFields {
                 // Try to parse value as JSON (supports numbers, booleans, objects, arrays)
                 if let data = valueString.data(using: .utf8),

@@ -31,6 +31,7 @@ struct MappingDetailView: View {
 
     // 自定义字段
     @State private var customFields: [CustomField] = []
+    @State private var customFieldsEnabled = false
 
     @State private var showSaveConfirmation = false
 
@@ -140,7 +141,7 @@ struct MappingDetailView: View {
                 // 思考模式
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("思考模式")
+                        Text("更改默认推理模式")
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -149,11 +150,18 @@ struct MappingDetailView: View {
                             .labelsHidden()
                     }
 
+                    Text("通过 enable_thinking 参数控制思考模式")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
                     VStack(spacing: 8) {
                         HStack {
-                            Toggle("启用思考模式", isOn: $thinkingEnabled)
-                                .disabled(!thinkingOverrideEnabled)
+                            Text("是否启用思考模式")
                             Spacer()
+                            Toggle("", isOn: $thinkingEnabled)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .disabled(!thinkingOverrideEnabled)
                         }
                         if thinkingEnabled && apiProvider == .anthropic {
                             HStack {
@@ -180,38 +188,55 @@ struct MappingDetailView: View {
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
-                        Button(action: {
-                            customFields.append(CustomField(key: "", value: ""))
-                        }) {
-                            Image(systemName: "plus.circle")
-                        }
-                        .buttonStyle(.plain)
+                        Toggle("", isOn: $customFieldsEnabled)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
                     }
 
-                    if customFields.isEmpty {
-                        Text("添加自定义 JSON 参数字段")
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 8)
-                    } else {
-                        VStack(spacing: 8) {
-                            ForEach(customFields.indices, id: \.self) { index in
-                                HStack {
-                                    TextField("字段名", text: $customFields[index].key)
-                                        .frame(width: 120)
-                                    TextField("值 (JSON格式)", text: $customFields[index].value)
-                                    Button(action: {
-                                        customFields.remove(at: index)
-                                    }) {
-                                        Image(systemName: "minus.circle")
-                                            .foregroundColor(.red)
+                    VStack(spacing: 8) {
+                        HStack {
+                            Button(action: {
+                                customFields.append(CustomField(key: "", value: ""))
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus.circle")
+                                    Text("添加字段")
+                                }
+                            }
+                            .buttonStyle(.plain)
+                            .disabled(!customFieldsEnabled)
+                            Spacer()
+                        }
+
+                        if customFields.isEmpty {
+                            Text("添加自定义 JSON 参数字段")
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 8)
+                        } else {
+                            VStack(spacing: 8) {
+                                ForEach(customFields.indices, id: \.self) { index in
+                                    HStack {
+                                        TextField("字段名", text: $customFields[index].key)
+                                            .frame(width: 120)
+                                            .disabled(!customFieldsEnabled)
+                                        TextField("值 (JSON格式)", text: $customFields[index].value)
+                                            .disabled(!customFieldsEnabled)
+                                        Button(action: {
+                                            customFields.remove(at: index)
+                                        }) {
+                                            Image(systemName: "minus.circle")
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(.plain)
+                                        .disabled(!customFieldsEnabled)
                                     }
-                                    .buttonStyle(.plain)
                                 }
                             }
                         }
                     }
+                    .opacity(customFieldsEnabled ? 1.0 : 0.4)
 
                     Text("提示: 值支持 JSON 格式，如 \"enable_thinking\":true, \"thinking\": {\"type\": \"disabled\"}")
                         .font(.caption)
@@ -281,15 +306,27 @@ struct MappingDetailView: View {
             presencePenalty = String(pres)
         }
         if let thinking = mapping.parameters.thinking {
-            thinkingOverrideEnabled = true
             thinkingEnabled = thinking.enabled
             if let budget = thinking.budgetTokens {
                 thinkingBudget = String(budget)
             }
         }
+        if let enabled = mapping.parameters.thinkingOverrideEnabled {
+            thinkingOverrideEnabled = enabled
+        }
+        // 兼容旧数据：没有 thinkingOverrideEnabled 字段但有 thinking 数据时，默认开启
+        if mapping.parameters.thinkingOverrideEnabled == nil && mapping.parameters.thinking != nil {
+            thinkingOverrideEnabled = true
+        }
 
-        if let fields = mapping.parameters.customFields {
+        if let fields = mapping.parameters.customFields, !fields.isEmpty {
             customFields = fields.map { CustomField(key: $0.key, value: $0.value) }
+        }
+        if let enabled = mapping.parameters.customFieldsEnabled {
+            customFieldsEnabled = enabled
+        } else if mapping.parameters.customFields != nil {
+            // 兼容旧数据：没有 customFieldsEnabled 字段但有数据时，默认开启
+            customFieldsEnabled = true
         }
 
         if let key = try? keychain.retrieve(forKey: mappingId.uuidString) {
@@ -327,13 +364,11 @@ struct MappingDetailView: View {
         let freqPenalty = Double(frequencyPenalty)
         let presPenalty = Double(presencePenalty)
 
-        let thinking: ThinkingConfig? = {
-            guard thinkingOverrideEnabled else { return nil }
-            return ThinkingConfig(
-                enabled: thinkingEnabled,
-                budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
-            )
-        }()
+        // 始终保存思考配置数据（即使开关关闭），以便下次开启时恢复
+        let thinking = ThinkingConfig(
+            enabled: thinkingEnabled,
+            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
+        )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty
             ? nil
@@ -346,7 +381,9 @@ struct MappingDetailView: View {
             frequencyPenalty: freqPenalty,
             presencePenalty: presPenalty,
             thinking: thinking,
-            customFields: customFieldsDict
+            thinkingOverrideEnabled: thinkingOverrideEnabled,
+            customFields: customFieldsDict,
+            customFieldsEnabled: customFields.isEmpty ? nil : customFieldsEnabled
         )
     }
 }

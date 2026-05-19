@@ -1,6 +1,12 @@
+<div align="center">
+
 # APIBypass
 
+<img src="APIBypass.png" alt="APIBypass" width="128">
+
 一个运行在 macOS 菜单栏的轻量级 LLM API 代理工具。让不支持自定义参数的 AI 客户端软件也能自由控制模型行为。
+
+</div>
 
 ## 为什么需要 APIBypass？
 
@@ -25,6 +31,8 @@
 - 自定义 JSON 参数注入，支持任意结构的参数值
 - API Key 安全存储在 macOS Keychain 中
 - 请求日志，便于调试
+
+![界面截图](screenshot.png)
 
 ## 系统要求
 

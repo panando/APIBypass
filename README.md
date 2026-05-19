@@ -1,8 +1,14 @@
+<div align="center">
+
 # APIBypass
 
-> [中文说明](README_CN.md)
+<img src="APIBypass.png" alt="APIBypass" width="128">
 
 A lightweight macOS menu bar app that acts as a local LLM API proxy. Take control of model behavior even when your AI client doesn't expose those settings.
+
+[中文说明](README_CN.md)
+
+</div>
 
 ## Why APIBypass?
 
@@ -27,6 +33,8 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 - Custom JSON fields — inject any parameter with any value type
 - API Key stored securely in macOS Keychain
 - Request logging for debugging
+
+![Screenshot](screenshot.png)
 
 ## Requirements
 

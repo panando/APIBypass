@@ -17,6 +17,8 @@ struct MappingDetailView: View {
     var forceResetTrigger: Int = 0
     var saveTrigger: Int = 0
 
+    @ObservedObject private var l10n = LocalizationManager.shared
+
     @State private var name: String = ""
     @State private var incomingModel: String = ""
     @State private var actualModel: String = ""
@@ -91,7 +93,7 @@ struct MappingDetailView: View {
                     HStack {
                         Image(systemName: "power")
                             .foregroundColor(isEnabled ? .green : .secondary)
-                        Text("配置状态")
+                        Text(L10n.t("config_status"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -99,7 +101,7 @@ struct MappingDetailView: View {
                             .toggleStyle(.switch)
                             .labelsHidden()
                     }
-                    Text(isEnabled ? "此配置已启用，请求将被代理转发" : "此配置已禁用，请求不会匹配此规则")
+                    Text(isEnabled ? L10n.t("config_enabled") : L10n.t("config_disabled"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -109,28 +111,28 @@ struct MappingDetailView: View {
 
                 // 基本信息
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("基本信息")
+                    Text(L10n.t("basic_info"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 8) {
                         HStack {
-                            Text("配置名称")
+                            Text(L10n.t("config_name"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("名称", text: $name)
+                            TextField(L10n.t("config_name_placeholder"), text: $name)
                         }
                         HStack {
-                            Text("客户端模型名")
+                            Text(L10n.t("incoming_model"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("请求的模型名", text: $incomingModel)
+                            TextField(L10n.t("config_name_field"), text: $incomingModel)
                         }
                         HStack {
-                            Text("实际模型名")
+                            Text(L10n.t("actual_model"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("实际调用的模型", text: $actualModel)
+                            TextField(L10n.t("actual_model_field"), text: $actualModel)
                         }
                         HStack {
-                            Text("API接口类型")
+                            Text(L10n.t("api_provider"))
                                 .frame(width: 100, alignment: .trailing)
                             Picker("", selection: $apiProvider) {
                                 Text("OpenAI").tag(APIProvider.openai)
@@ -139,14 +141,14 @@ struct MappingDetailView: View {
                             .pickerStyle(.menu)
                         }
                         HStack {
-                            Text("Base URL")
+                            Text(L10n.t("base_url"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("Base URL", text: $baseURL)
+                            TextField(L10n.t("base_url_placeholder"), text: $baseURL)
                         }
                         HStack {
-                            Text("API Key")
+                            Text(L10n.t("api_key"))
                                 .frame(width: 100, alignment: .trailing)
-                            SecureField("sk-...", text: $apiKey)
+                            SecureField(L10n.t("api_key_placeholder"), text: $apiKey)
                         }
                     }
                 }
@@ -157,7 +159,7 @@ struct MappingDetailView: View {
                 // 思考模式
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("更改默认推理模式")
+                        Text(L10n.t("reasoning_override"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -166,13 +168,13 @@ struct MappingDetailView: View {
                             .labelsHidden()
                     }
 
-                    Text("通过 enable_thinking 参数控制思考模式")
+                    Text(L10n.t("reasoning_hint"))
                         .font(.caption)
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 8) {
                         HStack {
-                            Text("是否启用思考模式")
+                            Text(L10n.t("enable_thinking"))
                             Spacer()
                             Toggle("", isOn: $thinkingEnabled)
                                 .toggleStyle(.switch)
@@ -181,11 +183,11 @@ struct MappingDetailView: View {
                         }
                         if thinkingEnabled && apiProvider == .anthropic {
                             HStack {
-                                Text("思考预算")
+                                Text(L10n.t("thinking_budget"))
                                     .frame(width: 120, alignment: .trailing)
-                                TextField("tokens 数量", text: $thinkingBudget)
+                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
                                     .disabled(!thinkingOverrideEnabled)
-                                Text("如 10000")
+                                Text(L10n.t("thinking_budget_eg"))
                                     .foregroundColor(.secondary)
                                     .font(.caption)
                             }
@@ -199,7 +201,7 @@ struct MappingDetailView: View {
 
                 // 参数注入
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("参数注入")
+                    Text(L10n.t("param_injection"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
@@ -207,27 +209,27 @@ struct MappingDetailView: View {
                         HStack {
                             Text("Temperature")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 2.0，创造性程度", text: $temperature)
+                            TextField(L10n.t("temp_placeholder"), text: $temperature)
                         }
                         HStack {
                             Text("Max Tokens")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("最大输出长度", text: $maxTokens)
+                            TextField(L10n.t("max_tokens_placeholder"), text: $maxTokens)
                         }
                         HStack {
                             Text("Top P")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 1.0，核采样", text: $topP)
+                            TextField(L10n.t("top_p_placeholder"), text: $topP)
                         }
                         HStack {
                             Text("Frequency Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0，频率惩罚", text: $frequencyPenalty)
+                            TextField(L10n.t("freq_penalty_placeholder"), text: $frequencyPenalty)
                         }
                         HStack {
                             Text("Presence Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0，存在惩罚", text: $presencePenalty)
+                            TextField(L10n.t("pres_penalty_placeholder"), text: $presencePenalty)
                         }
                     }
                 }
@@ -238,7 +240,7 @@ struct MappingDetailView: View {
                 // 自定义参数字段
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("自定义参数")
+                        Text(L10n.t("custom_params"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -254,7 +256,7 @@ struct MappingDetailView: View {
                             }) {
                                 HStack(spacing: 4) {
                                     Image(systemName: "plus.circle")
-                                    Text("添加字段")
+                                    Text(L10n.t("add_field"))
                                 }
                             }
                             .buttonStyle(.plain)
@@ -263,7 +265,7 @@ struct MappingDetailView: View {
                         }
 
                         if customFields.isEmpty {
-                            Text("添加自定义 JSON 参数字段")
+                            Text(L10n.t("add_custom_hint"))
                                 .foregroundColor(.secondary)
                                 .font(.caption)
                                 .frame(maxWidth: .infinity, alignment: .center)
@@ -272,10 +274,10 @@ struct MappingDetailView: View {
                             VStack(spacing: 8) {
                                 ForEach(customFields.indices, id: \.self) { index in
                                     HStack {
-                                        TextField("字段名", text: $customFields[index].key)
+                                        TextField(L10n.t("field_name_placeholder"), text: $customFields[index].key)
                                             .frame(idealWidth: 140, maxWidth: .infinity)
                                             .disabled(!customFieldsEnabled)
-                                        TextField("值 (JSON格式)", text: $customFields[index].value)
+                                        TextField(L10n.t("field_value_placeholder"), text: $customFields[index].value)
                                             .frame(idealWidth: 210, maxWidth: .infinity)
                                             .disabled(!customFieldsEnabled)
                                         Button(action: {
@@ -293,7 +295,7 @@ struct MappingDetailView: View {
                     }
                     .opacity(customFieldsEnabled ? 1.0 : 0.4)
 
-                    Text("提示: 值支持 JSON 格式，如 \"enable_thinking\":true, \"thinking\": {\"type\": \"disabled\"}")
+                    Text(L10n.t("custom_hint"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -309,7 +311,7 @@ struct MappingDetailView: View {
             Button(action: {
                 saveChanges()
             }) {
-                Text("保存")
+                Text(L10n.t("save"))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 6)
                     .background(
@@ -344,8 +346,8 @@ struct MappingDetailView: View {
                 saveChanges()
             }
         }
-        .alert("已保存", isPresented: $showSaveConfirmation) {
-            Button("好的", role: .cancel) {
+        .alert(L10n.t("saved"), isPresented: $showSaveConfirmation) {
+            Button(L10n.t("ok"), role: .cancel) {
                 // 保存后更新原始数据
                 loadOriginalData()
             }

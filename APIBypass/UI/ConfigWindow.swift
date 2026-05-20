@@ -12,9 +12,10 @@ struct ConfigWindow: View {
     @State private var pendingSelectionId: UUID?
     @State private var targetSelectionId: UUID?  // 保存后要切换的目标
     @State private var showSwitchConfirmation = false
-    @State private var forceResetTrigger = 0  // 用于触发重置（放弃更改）
-    @State private var saveAndSwitchTrigger = 0  // 用于触发保存并切换
+    @State private var forceResetTrigger = 0
+    @State private var saveAndSwitchTrigger = 0
 
+    @ObservedObject private var l10n = LocalizationManager.shared
     private let keychain = KeychainService.shared
 
     var body: some View {
@@ -48,7 +49,7 @@ struct ConfigWindow: View {
                     } label: {
                         Image(systemName: "plus")
                     }
-                    .help("添加映射")
+                    .help(L10n.t("add_mapping"))
 
                     Button {
                         guard let id = selectedMappingId,
@@ -58,18 +59,18 @@ struct ConfigWindow: View {
                     } label: {
                         Image(systemName: "minus")
                     }
-                    .help("删除映射")
+                    .help(L10n.t("delete_mapping"))
                     .disabled(selectedMappingId == nil)
                 }
                 .padding(.horizontal)
                 .padding(.bottom, 8)
             }
-            .navigationTitle("模型映射")
-            .alert("确认删除", isPresented: $showDeleteConfirmation) {
-                Button("取消", role: .cancel) {
+            .navigationTitle(L10n.t("model_mapping"))
+            .alert(L10n.t("confirm_delete"), isPresented: $showDeleteConfirmation) {
+                Button(L10n.t("cancel"), role: .cancel) {
                     mappingToDelete = nil
                 }
-                Button("删除", role: .destructive) {
+                Button(L10n.t("delete"), role: .destructive) {
                     if let mapping = mappingToDelete {
                         configManager.delete(mapping.id)
                         try? keychain.delete(forKey: mapping.id.uuidString)
@@ -81,16 +82,16 @@ struct ConfigWindow: View {
                 }
             } message: {
                 if let mapping = mappingToDelete {
-                    Text("确定要删除配置「\(mapping.name)」吗？此操作无法撤销。")
+                    Text("\(L10n.t("confirm_delete_msg"))「\(mapping.name)」\(L10n.t("confirm_delete_hint"))")
                 } else {
-                    Text("确定要删除此配置吗？")
+                    Text(L10n.t("confirm_delete_generic"))
                 }
             }
-            .alert("未保存的更改", isPresented: $showSwitchConfirmation) {
-                Button("取消", role: .cancel) {
+            .alert(L10n.t("unsaved_changes"), isPresented: $showSwitchConfirmation) {
+                Button(L10n.t("cancel"), role: .cancel) {
                     pendingSelectionId = nil
                 }
-                Button("放弃更改", role: .destructive) {
+                Button(L10n.t("discard_changes"), role: .destructive) {
                     if let newId = pendingSelectionId {
                         currentMappingHasChanges = false
                         selectedMappingId = newId
@@ -98,15 +99,15 @@ struct ConfigWindow: View {
                     }
                     pendingSelectionId = nil
                 }
-                Button("保存并切换") {
+                Button(L10n.t("save_and_switch")) {
                     if let newId = pendingSelectionId {
-                        targetSelectionId = newId  // 保存目标 ID
+                        targetSelectionId = newId
                         saveAndSwitchTrigger += 1
                     }
                     pendingSelectionId = nil
                 }
             } message: {
-                Text("当前配置有未保存的更改，是否保存？")
+                Text(L10n.t("unsaved_changes_msg"))
             }
         } detail: {
             if let mappingId = selectedMappingId {
@@ -119,7 +120,6 @@ struct ConfigWindow: View {
                     },
                     onSave: {
                         currentMappingHasChanges = false
-                        // 如果有待切换的配置，执行切换
                         if let newId = targetSelectionId {
                             selectedMappingId = newId
                             targetSelectionId = nil
@@ -134,17 +134,17 @@ struct ConfigWindow: View {
                     Image(systemName: "rectangle.stack")
                         .font(.system(size: 48))
                         .foregroundColor(.secondary)
-                    Text("选择或创建配置")
+                    Text(L10n.t("select_or_create"))
                         .font(.title2)
                         .foregroundColor(.secondary)
-                    Text("从左侧列表选择一个配置进行编辑，或点击 + 按钮创建新配置")
+                    Text(L10n.t("select_or_create_hint"))
                         .font(.body)
                         .foregroundColor(.secondary)
                         .multilineTextAlignment(.center)
                     Button {
                         showNewMappingSheet = true
                     } label: {
-                        Label("创建新配置", systemImage: "plus.circle")
+                        Label(L10n.t("create_new_config"), systemImage: "plus.circle")
                     }
                     .buttonStyle(.borderedProminent)
                 }
@@ -156,7 +156,6 @@ struct ConfigWindow: View {
             NewMappingView(configManager: configManager, keychain: keychain)
         }
         .onAppear {
-            // 预加载所有 API Keys 到缓存，避免后续授权提示
             let mappingIds = configManager.mappings.map { $0.id.uuidString }
             keychain.preloadKeys(for: mappingIds)
         }
@@ -191,8 +190,9 @@ struct NewMappingView: View {
     let configManager: ConfigManager
     let keychain: KeychainService
     @Environment(\.dismiss) var dismiss
+    @ObservedObject private var l10n = LocalizationManager.shared
 
-    @State private var name = "新配置"
+    @State private var name = "New Config"
     @State private var incomingModel = ""
     @State private var actualModel = ""
     @State private var apiProvider: APIProvider = .openai
@@ -215,33 +215,33 @@ struct NewMappingView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                Text("新建模型映射")
+                Text(L10n.t("new_model_mapping"))
                     .font(.headline)
                     .padding(.top, 8)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("基本信息")
+                    Text(L10n.t("basic_info"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
                     VStack(spacing: 8) {
                         HStack {
-                            Text("配置名称")
+                            Text(L10n.t("config_name"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("名称", text: $name)
+                            TextField(L10n.t("config_name_placeholder"), text: $name)
                         }
                         HStack {
-                            Text("客户端模型名")
+                            Text(L10n.t("incoming_model"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("如 gpt-4", text: $incomingModel)
+                            TextField(L10n.t("incoming_model_placeholder"), text: $incomingModel)
                         }
                         HStack {
-                            Text("实际模型名")
+                            Text(L10n.t("actual_model"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("如 claude-sonnet-4-6", text: $actualModel)
+                            TextField(L10n.t("actual_model_placeholder"), text: $actualModel)
                         }
                         HStack {
-                            Text("API接口类型")
+                            Text(L10n.t("api_provider"))
                                 .frame(width: 100, alignment: .trailing)
                             Picker("", selection: $apiProvider) {
                                 Text("OpenAI").tag(APIProvider.openai)
@@ -253,14 +253,14 @@ struct NewMappingView: View {
                             }
                         }
                         HStack {
-                            Text("Base URL")
+                            Text(L10n.t("base_url"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField("Base URL", text: $baseURL)
+                            TextField(L10n.t("base_url_placeholder"), text: $baseURL)
                         }
                         HStack {
-                            Text("API Key")
+                            Text(L10n.t("api_key"))
                                 .frame(width: 100, alignment: .trailing)
-                            SecureField("sk-...", text: $apiKey)
+                            SecureField(L10n.t("api_key_placeholder"), text: $apiKey)
                         }
                     }
                 }
@@ -269,7 +269,7 @@ struct NewMappingView: View {
                 .cornerRadius(8)
 
                 VStack(alignment: .leading, spacing: 12) {
-                    Text("参数注入")
+                    Text(L10n.t("param_injection"))
                         .font(.subheadline)
                         .foregroundColor(.secondary)
 
@@ -277,27 +277,27 @@ struct NewMappingView: View {
                         HStack {
                             Text("Temperature")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 2.0，创造性程度", text: $temperature)
+                            TextField(L10n.t("temp_placeholder"), text: $temperature)
                         }
                         HStack {
                             Text("Max Tokens")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("最大输出长度", text: $maxTokens)
+                            TextField(L10n.t("max_tokens_placeholder"), text: $maxTokens)
                         }
                         HStack {
                             Text("Top P")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 1.0，核采样", text: $topP)
+                            TextField(L10n.t("top_p_placeholder"), text: $topP)
                         }
                         HStack {
                             Text("Frequency Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0，频率惩罚", text: $frequencyPenalty)
+                            TextField(L10n.t("freq_penalty_placeholder"), text: $frequencyPenalty)
                         }
                         HStack {
                             Text("Presence Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0，存在惩罚", text: $presencePenalty)
+                            TextField(L10n.t("pres_penalty_placeholder"), text: $presencePenalty)
                         }
                     }
                 }
@@ -308,7 +308,7 @@ struct NewMappingView: View {
                 // 思考模式
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("思考模式")
+                        Text(L10n.t("reasoning_override"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -319,17 +319,17 @@ struct NewMappingView: View {
 
                     VStack(spacing: 8) {
                         HStack {
-                            Toggle("启用思考模式", isOn: $thinkingEnabled)
+                            Toggle(L10n.t("enable_thinking"), isOn: $thinkingEnabled)
                                 .disabled(!thinkingOverrideEnabled)
                             Spacer()
                         }
                         if thinkingEnabled && apiProvider == .anthropic {
                             HStack {
-                                Text("思考预算")
+                                Text(L10n.t("thinking_budget"))
                                     .frame(width: 120, alignment: .trailing)
-                                TextField("tokens 数量", text: $thinkingBudget)
+                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
                                     .disabled(!thinkingOverrideEnabled)
-                                Text("如 10000")
+                                Text(L10n.t("thinking_budget_eg"))
                                     .foregroundColor(.secondary)
                                     .font(.caption)
                             }
@@ -344,7 +344,7 @@ struct NewMappingView: View {
                 // 自定义参数字段
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
-                        Text("自定义参数")
+                        Text(L10n.t("custom_params"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -357,7 +357,7 @@ struct NewMappingView: View {
                     }
 
                     if customFields.isEmpty {
-                        Text("添加自定义 JSON 参数字段")
+                        Text(L10n.t("add_custom_hint"))
                             .foregroundColor(.secondary)
                             .font(.caption)
                             .frame(maxWidth: .infinity, alignment: .center)
@@ -366,9 +366,9 @@ struct NewMappingView: View {
                         VStack(spacing: 8) {
                             ForEach(customFields.indices, id: \.self) { index in
                                 HStack {
-                                    TextField("字段名", text: $customFields[index].key)
+                                    TextField(L10n.t("field_name_placeholder"), text: $customFields[index].key)
                                         .frame(width: 120)
-                                    TextField("值 (JSON格式)", text: $customFields[index].value)
+                                    TextField(L10n.t("field_value_placeholder"), text: $customFields[index].value)
                                     Button(action: {
                                         customFields.remove(at: index)
                                     }) {
@@ -381,7 +381,7 @@ struct NewMappingView: View {
                         }
                     }
 
-                    Text("提示: 值支持 JSON 格式，如 \"enable_thinking\":true, \"thinking\": {\"type\": \"disabled\"}")
+                    Text(L10n.t("custom_hint"))
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -390,12 +390,12 @@ struct NewMappingView: View {
                 .cornerRadius(8)
 
                 HStack {
-                    Button("取消") {
+                    Button(L10n.t("cancel")) {
                         dismiss()
                     }
                     .keyboardShortcut(.cancelAction)
 
-                    Button("创建") {
+                    Button(L10n.t("create")) {
                         createMapping()
                     }
                     .keyboardShortcut(.defaultAction)

@@ -6,13 +6,15 @@ struct MenuBarView: View {
     let onStart: () -> Void
     let onStop: () -> Void
 
+    @ObservedObject private var l10n = LocalizationManager.shared
+
     var body: some View {
         VStack {
             HStack {
                 Circle()
                     .fill(isRunning ? Color.green : Color.red)
                     .frame(width: 8, height: 8)
-                Text(isRunning ? "服务运行中" : "服务已停止")
+                Text(isRunning ? L10n.t("server_running") : L10n.t("server_stopped"))
             }
 
             if isRunning {
@@ -23,11 +25,15 @@ struct MenuBarView: View {
 
             Divider()
 
-            Button("打开配置...") {
+            Button(L10n.t("configure")) {
                 openConfigWindow()
             }
 
-            Button(isRunning ? "停止服务" : "启动服务") {
+            Button(L10n.t("settings")) {
+                openSettingsWindow()
+            }
+
+            Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
                 if isRunning {
                     onStop()
                 } else {
@@ -37,18 +43,16 @@ struct MenuBarView: View {
 
             Divider()
 
-            Button("退出") {
+            Button(L10n.t("quit")) {
                 NSApplication.shared.terminate(nil)
             }
         }
     }
 
     private func openConfigWindow() {
-        // 先激活应用
         NSApplication.shared.activate(ignoringOtherApps: true)
 
-        // 查找或创建配置窗口
-        if let existingWindow = NSApplication.shared.windows.first(where: { $0.title == "APIBypass 配置" || $0.identifier?.rawValue == "config-window" }) {
+        if let existingWindow = NSApplication.shared.windows.first(where: { $0.title == "APIBypass" || $0.identifier?.rawValue == "config-window" }) {
             existingWindow.makeKeyAndOrderFront(nil)
             return
         }
@@ -59,10 +63,33 @@ struct MenuBarView: View {
             backing: .buffered,
             defer: false
         )
-        window.title = "APIBypass 配置"
+        window.title = "APIBypass"
         window.identifier = NSUserInterfaceItemIdentifier("config-window")
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: ConfigWindow(configManager: configManager))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+        window.becomeKey()
+    }
+
+    private func openSettingsWindow() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
+        if let existingWindow = NSApplication.shared.windows.first(where: { $0.identifier?.rawValue == "settings-window" }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 520, height: 380),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("settings_title")
+        window.identifier = NSUserInterfaceItemIdentifier("settings-window")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: SettingsView())
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.becomeKey()

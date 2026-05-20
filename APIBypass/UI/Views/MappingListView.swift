@@ -3,6 +3,7 @@ import SwiftUI
 struct MappingListView: View {
     @ObservedObject var configManager: ConfigManager
     @Binding var selectedMappingId: UUID?
+    @ObservedObject private var l10n = LocalizationManager.shared
 
     var onCopy: ((ModelMapping) -> Void)?
     var onDelete: ((ModelMapping) -> Void)?
@@ -27,7 +28,7 @@ struct MappingListView: View {
                     Button {
                         onCopy?(mapping)
                     } label: {
-                        Label("复制配置", systemImage: "doc.on.doc")
+                        Label(L10n.t("copy_config"), systemImage: "doc.on.doc")
                     }
 
                     Divider()
@@ -35,7 +36,7 @@ struct MappingListView: View {
                     Button(role: .destructive) {
                         onDelete?(mapping)
                     } label: {
-                        Label("删除配置", systemImage: "trash")
+                        Label(L10n.t("delete_config"), systemImage: "trash")
                     }
                 }
             }

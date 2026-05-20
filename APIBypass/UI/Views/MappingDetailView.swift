@@ -86,6 +86,27 @@ struct MappingDetailView: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // 启用状态
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack {
+                        Image(systemName: "power")
+                            .foregroundColor(isEnabled ? .green : .secondary)
+                        Text("配置状态")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $isEnabled)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                    }
+                    Text(isEnabled ? "此配置已启用，请求将被代理转发" : "此配置已禁用，请求不会匹配此规则")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+
                 // 基本信息
                 VStack(alignment: .leading, spacing: 12) {
                     Text("基本信息")
@@ -275,17 +296,6 @@ struct MappingDetailView: View {
                     Text("提示: 值支持 JSON 格式，如 \"enable_thinking\":true, \"thinking\": {\"type\": \"disabled\"}")
                         .font(.caption)
                         .foregroundColor(.secondary)
-                }
-                .padding()
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
-
-                // 启用状态
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Toggle("启用此配置", isOn: $isEnabled)
-                        Spacer()
-                    }
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))

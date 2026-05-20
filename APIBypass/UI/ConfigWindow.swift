@@ -4,8 +4,10 @@ struct ConfigWindow: View {
     @ObservedObject var configManager: ConfigManager
     @State private var selectedMappingId: UUID?
     @State private var showNewMappingSheet = false
+    @State private var showDeleteConfirmation = false
+    @State private var mappingToDelete: ModelMapping?
 
-    private let keychain = KeychainService()
+    private let keychain = KeychainService.shared
 
     var body: some View {
         NavigationSplitView {
@@ -24,9 +26,10 @@ struct ConfigWindow: View {
                     .help("添加映射")
 
                     Button {
-                        guard let id = selectedMappingId else { return }
-                        configManager.delete(id)
-                        selectedMappingId = nil
+                        guard let id = selectedMappingId,
+                              let mapping = configManager.mappings.first(where: { $0.id == id }) else { return }
+                        mappingToDelete = mapping
+                        showDeleteConfirmation = true
                     } label: {
                         Image(systemName: "minus")
                     }
@@ -37,6 +40,25 @@ struct ConfigWindow: View {
                 .padding(.bottom, 8)
             }
             .navigationTitle("模型映射")
+            .alert("确认删除", isPresented: $showDeleteConfirmation) {
+                Button("取消", role: .cancel) {
+                    mappingToDelete = nil
+                }
+                Button("删除", role: .destructive) {
+                    if let mapping = mappingToDelete {
+                        configManager.delete(mapping.id)
+                        try? keychain.delete(forKey: mapping.id.uuidString)
+                        selectedMappingId = nil
+                    }
+                    mappingToDelete = nil
+                }
+            } message: {
+                if let mapping = mappingToDelete {
+                    Text("确定要删除配置「\(mapping.name)」吗？此操作无法撤销。")
+                } else {
+                    Text("确定要删除此配置吗？")
+                }
+            }
         } detail: {
             if let mappingId = selectedMappingId {
                 MappingDetailView(
@@ -46,12 +68,35 @@ struct ConfigWindow: View {
                 )
                 .id(mappingId)
             } else {
-                Text("选择一个映射配置")
-                    .foregroundColor(.secondary)
+                VStack(spacing: 16) {
+                    Image(systemName: "rectangle.stack")
+                        .font(.system(size: 48))
+                        .foregroundColor(.secondary)
+                    Text("选择或创建配置")
+                        .font(.title2)
+                        .foregroundColor(.secondary)
+                    Text("从左侧列表选择一个配置进行编辑，或点击 + 按钮创建新配置")
+                        .font(.body)
+                        .foregroundColor(.secondary)
+                        .multilineTextAlignment(.center)
+                    Button {
+                        showNewMappingSheet = true
+                    } label: {
+                        Label("创建新配置", systemImage: "plus.circle")
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
+                .frame(maxWidth: .infinity, maxHeight: .infinity)
+                .padding()
             }
         }
         .sheet(isPresented: $showNewMappingSheet) {
             NewMappingView(configManager: configManager, keychain: keychain)
+        }
+        .onAppear {
+            // 预加载所有 API Keys 到缓存，避免后续授权提示
+            let mappingIds = configManager.mappings.map { $0.id.uuidString }
+            keychain.preloadKeys(for: mappingIds)
         }
     }
 }
@@ -64,7 +109,7 @@ struct NewMappingView: View {
     @State private var name = "新配置"
     @State private var incomingModel = ""
     @State private var actualModel = ""
-    @State private var apiProvider: APIProvider = .anthropic
+    @State private var apiProvider: APIProvider = .openai
     @State private var baseURL = ""
     @State private var apiKey = ""
 
@@ -146,42 +191,27 @@ struct NewMappingView: View {
                         HStack {
                             Text("Temperature")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 2.0", text: $temperature)
-                            Text("创造性程度")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("0.0 - 2.0，创造性程度", text: $temperature)
                         }
                         HStack {
                             Text("Max Tokens")
                                 .frame(width: 120, alignment: .trailing)
                             TextField("最大输出长度", text: $maxTokens)
-                            Text("最大输出")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
                         }
                         HStack {
                             Text("Top P")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 1.0", text: $topP)
-                            Text("核采样")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("0.0 - 1.0，核采样", text: $topP)
                         }
                         HStack {
                             Text("Frequency Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0", text: $frequencyPenalty)
-                            Text("频率惩罚")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("-2.0 - 2.0，频率惩罚", text: $frequencyPenalty)
                         }
                         HStack {
                             Text("Presence Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0", text: $presencePenalty)
-                            Text("存在惩罚")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("-2.0 - 2.0，存在惩罚", text: $presencePenalty)
                         }
                     }
                 }

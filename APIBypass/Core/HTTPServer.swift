@@ -15,7 +15,7 @@ final class HTTPServer: ObservableObject {
 
     let port: Int = 8390
 
-    init(configManager: ConfigManager, keychain: KeychainService = KeychainService()) {
+    init(configManager: ConfigManager, keychain: KeychainService = .shared) {
         self.configManager = configManager
         self.keychain = keychain
         self.proxyEngine = ProxyEngine()

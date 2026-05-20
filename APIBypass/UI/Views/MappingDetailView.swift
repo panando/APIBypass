@@ -138,42 +138,27 @@ struct MappingDetailView: View {
                         HStack {
                             Text("Temperature")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 2.0", text: $temperature)
-                            Text("创造性程度")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("0.0 - 2.0，创造性程度", text: $temperature)
                         }
                         HStack {
                             Text("Max Tokens")
                                 .frame(width: 120, alignment: .trailing)
                             TextField("最大输出长度", text: $maxTokens)
-                            Text("最大输出")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
                         }
                         HStack {
                             Text("Top P")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("0.0 - 1.0", text: $topP)
-                            Text("核采样")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("0.0 - 1.0，核采样", text: $topP)
                         }
                         HStack {
                             Text("Frequency Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0", text: $frequencyPenalty)
-                            Text("频率惩罚")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("-2.0 - 2.0，频率惩罚", text: $frequencyPenalty)
                         }
                         HStack {
                             Text("Presence Penalty")
                                 .frame(width: 120, alignment: .trailing)
-                            TextField("-2.0 - 2.0", text: $presencePenalty)
-                            Text("存在惩罚")
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                            TextField("-2.0 - 2.0，存在惩罚", text: $presencePenalty)
                         }
                     }
                 }

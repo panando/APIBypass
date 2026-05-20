@@ -1,4 +1,57 @@
-# APIBypass v0.2.2
+# APIBypass v0.3.0
+
+## What's New
+
+### Internationalization (i18n)
+- Added bilingual support: Chinese (中文) and English
+- Language can be switched in the Settings panel
+- 60+ translated UI strings covering the entire interface
+- Language preference persists across app restarts
+
+### Settings Panel
+- New Settings panel accessible from the menu bar
+- Language switcher with segmented control
+- About section with project description
+- GitHub link with click-to-open functionality
+- License information (MIT License)
+
+### UI Improvements
+- Settings panel optimized layout, stable across language switches
+- Removed duplicate title text from settings panel (already in window title)
+- GitHub icon and link icon decorations
+
+## Changelog
+
+- 9cd7643: feat: 国际化支持和设置面板
+
+## Download
+
+- [APIBypass-0.3.0.dmg](https://github.com/panando/APIBypass/releases/tag/v0.3.0)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.3.0
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
+## Previous Releases
+
+- [v0.2.2](https://github.com/panando/APIBypass/releases/tag/v0.2.2) - Enable switch toggle at top, UI improvements
+- [v0.2.1](https://github.com/panando/APIBypass/releases/tag/v0.2.1) - Right-click context menu, save & switch fix
+- [v0.2.0](https://github.com/panando/APIBypass/releases/tag/v0.2.0) - SSE streaming, unified key storage, UI improvements
+- [v0.1.4](https://github.com/panando/APIBypass/releases/tag/v0.1.4) - Switch controls for override settings, bug fixes
+- [v0.1.3](https://github.com/panando/APIBypass/releases/tag/v0.1.3) - Auto-start server, status indicator, bug fixes
+- [v0.1.2](https://github.com/panando/APIBypass/releases/tag/v0.1.2) - Menu bar status indicator
+- [v0.1.0](https://github.com/panando/APIBypass/releases/tag/v0.1.0) - Initial release
+
+[Full commit history](https://github.com/panando/APIBypass/commits/main)
 
 ## What's New
 

@@ -15,22 +15,45 @@
 ### 典型场景
 
 - **闭源客户端**：某些软件调用 DeepSeek/Qwen3 等模型时无法关闭思考模式，通过 APIBypass 注入 `enable_thinking: false` 即可强制关闭
-- **参数注入**：为所有请求统一设置 temperature、top_p 等参数，无需修改客户端
-- **模型映射**：将客户端请求的模型名映射到实际模型名，方便切换模型而无需修改客户端配置
+- **参数注入**：为所有请求统一设置 temperature、top_p 等参数，无需修改每个客户端
+- **模型映射**：将客户端请求的模型名映射到实际模型名，方便切换模型而不修改客户端配置
 - **多 API 格式**：同时支持 OpenAI Chat Completions 和 Anthropic Messages 两种 API 格式
 
 ## 功能
 
+### 核心代理
 - 运行在 macOS 菜单栏，不占用 Dock 空间
-- 本地代理：监听 `127.0.0.1:8390`
+- 本地代理服务器，监听 `127.0.0.1:8390`
+- 应用启动自动开启服务
 - 支持 OpenAI Chat Completions API (`/v1/chat/completions`)
 - 支持 Anthropic Messages API (`/v1/messages`)
+- SSE 流式输出支持 — `stream: true` 时实时转发
+
+### 模型映射
 - 模型名称映射（客户端请求名 → 实际调用名）
-- 参数注入：temperature、max_tokens、top_p、frequency_penalty、presence_penalty
-- 思考模式控制：一键开启/关闭，兼容 Anthropic（`thinking` 参数）和 OpenAI 兼容 API（`enable_thinking` 参数）
-- 自定义 JSON 参数注入，支持任意结构的参数值
-- API Key 安全存储在 macOS Keychain 中
-- 请求日志，便于调试
+- 支持多组配置，每组可独立启停
+- 配置页面顶部独立启停开关
+- 右键菜单：复制配置（含 API Key）、删除配置
+- 删除确认对话框，防止误删
+- 未保存变更检测，切换配置时弹出警告
+
+### 参数注入
+- Temperature、Max Tokens、Top P、Frequency Penalty、Presence Penalty
+- 思考模式覆盖：一键开启/关闭，兼容 Anthropic（`thinking` 参数）和 OpenAI 兼容 API（`enable_thinking` 参数）
+- 思考预算设置（Anthropic 格式）
+- 自定义 JSON 参数注入 — 支持字符串、数字、布尔、对象、数组等任意类型
+
+### 安全与隐私
+- API Key 安全存储在 macOS Keychain 中（统一的合并存储）
+- 所有配置仅需一次 Keychain 授权
+- 所有流量在本地处理，不经过任何第三方服务器
+- 不收集任何遥测或使用数据
+
+### 界面与体验
+- 双语界面：中文 / English，在设置面板中即时切换
+- 保存按钮在检测到变更时绿色高亮
+- 终端实时显示格式化 JSON 请求日志
+- 设置面板包含关于信息、GitHub 链接（可点击打开）和许可证信息
 
 ![配置界面](screenshot_configure.png)
 
@@ -68,10 +91,10 @@ swift build -c release
 
 ### .app 包
 
-> 将 `VERSION` 替换为当前版本号（如 `0.1.3`）。
+> 将 `VERSION` 替换为当前版本号（如 `0.3.0`）。
 
 ```bash
-VERSION=0.1.3
+VERSION=0.3.0
 swift build -c release
 
 # 创建 .app 包
@@ -133,11 +156,11 @@ rm -rf dmg_staging
 
 ### 1. 启动服务
 
-点击菜单栏的 APIBypass 图标，选择「启动服务」。状态指示灯变绿即表示服务已启动，监听 `127.0.0.1:8390`。
+点击菜单栏的 APIBypass 图标。应用启动时服务会自动开启，状态指示灯变绿即表示正在运行，监听 `127.0.0.1:8390`。也可通过菜单栏手动启停。
 
 ### 2. 配置映射
 
-点击菜单栏「打开配置...」，在配置窗口中创建模型映射：
+点击菜单栏「配置...」，在配置窗口中创建模型映射：
 
 | 字段 | 说明 | 示例 |
 |------|------|------|
@@ -148,14 +171,16 @@ rm -rf dmg_staging
 | Base URL | 上游 API 地址 | `https://api.example.com/v1` |
 | API Key | 上游 API 密钥 | 存储在钥匙串中 |
 
+配置页面顶部的启停开关控制该映射是否生效。
+
 ### 3. 参数注入
 
-- **Temperature / Max Tokens / Top P / Frequency Penalty / Presence Penalty**：直接填入数值即可注入
-- **思考模式**：打开总开关后可配置
-  - 启用思考模式（勾选）→ 注入启用参数
-  - 关闭思考模式（取消勾选）→ 注入禁用参数
+- **更改默认推理模式**：打开总开关后可控制思考模式
+  - 启用 → 注入 `enable_thinking: true`（OpenAI）或 `thinking: {type: "enabled"}`（Anthropic）
+  - 禁用 → 注入 `enable_thinking: false` 或 `thinking: {type: "disabled"}`
   - 关闭总开关 → 不干预，使用 API 默认行为
-- **自定义参数**：可注入任意 JSON 字段，值支持字符串、数字、布尔、对象等格式
+- **标准参数**：填入 Temperature、Max Tokens、Top P、Frequency Penalty、Presence Penalty 即可注入
+- **自定义参数**：可注入任意 JSON 字段，值自动识别类型：`"true"/"false"` → 布尔值、`"42"` → 整数、`"3.14"` → 浮点数、`"{\"key\":\"val\"}"` → JSON 对象
 
 ### 4. 配置客户端
 
@@ -169,41 +194,51 @@ Anthropic Base URL: http://127.0.0.1:8390/v1
 
 ### 5. 验证生效
 
-运行时在终端查看 `[APIBypass]` 前缀的日志，可以看到：
+使用 `swift run` 运行时，在终端查看格式化请求日志：
 - 原始请求体
+- 上游 URL 和实际模型名
 - 转换后的请求体（含注入的参数）
-- 上游 API 地址
+
+## 设置面板
+
+通过菜单栏「设置...」打开。设置面板提供：
+
+- **语言**：切换中文 / English，修改后立即生效
+- **关于**：项目简介、GitHub 仓库链接（可点击跳转）、MIT 许可证信息
 
 ## 项目结构
 
 ```
 APIBypass/
-├── APIBypassApp.swift          # 应用入口
+├── APIBypassApp.swift          # 应用入口 + 菜单栏图标
 ├── Core/
 │   ├── ConfigManager.swift     # 配置管理（UserDefaults 持久化）
-│   ├── HTTPServer.swift        # Hummingbird HTTP 服务器
+│   ├── HTTPServer.swift        # Hummingbird HTTP 服务器 + SSE 流式
+│   ├── LocalizationManager.swift  # 国际化：中英文切换
 │   └── ProxyEngine.swift       # 请求转换引擎（参数注入）
 ├── Models/
 │   ├── APIProvider.swift       # API 提供商枚举
 │   └── ModelMapping.swift      # 数据模型
 ├── Services/
-│   ├── KeychainService.swift   # Keychain 安全存储
-│   └── NetworkService.swift    # 网络请求服务
+│   ├── KeychainService.swift   # Keychain 安全存储（带缓存）
+│   └── NetworkService.swift    # HTTP + 流式网络请求服务
 ├── UI/
-│   ├── ConfigWindow.swift      # 配置窗口 + 新建映射
-│   ├── MenuBarView.swift       # 菜单栏视图
+│   ├── ConfigWindow.swift      # 配置窗口 + 新建映射弹窗
+│   ├── MenuBarView.swift       # 菜单栏下拉视图
+│   ├── SettingsView.swift      # 设置面板（语言 + 关于）
 │   └── Views/
-│       └── MappingDetailView.swift  # 映射详情编辑
+│       ├── MappingDetailView.swift  # 配置详情编辑器
+│       └── MappingListView.swift    # 配置列表（右键菜单）
 └── Package.swift               # Swift Package 配置
 ```
 
 ## 技术栈
 
-- **SwiftUI** — macOS 菜单栏应用
+- **SwiftUI** — macOS 菜单栏应用 + 窗口管理
 - **Hummingbird 2.0** — HTTP 服务器框架
-- **Keychain Services** — API Key 安全存储
-- **UserDefaults** — 配置持久化
-- **async/await** — 异步网络操作
+- **Keychain Services** — API Key 安全存储（带内存缓存）
+- **UserDefaults** — 配置 + 语言偏好持久化
+- **async/await** — 异步网络操作（含 SSE 流式）
 - **ServiceLifecycle** — 服务生命周期管理
 
 ## 隐私

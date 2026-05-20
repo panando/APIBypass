@@ -23,16 +23,39 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 
 ## Features
 
+### Core Proxy
 - Runs in the macOS menu bar — stays out of your Dock
-- Local proxy on `127.0.0.1:8390`
+- Local proxy server on `127.0.0.1:8390`
+- Auto-start server on app launch
 - OpenAI Chat Completions API (`/v1/chat/completions`)
 - Anthropic Messages API (`/v1/messages`)
+- SSE streaming support — real-time forwarding when `stream: true`
+
+### Model Mapping
 - Model name mapping (client request name → actual model)
-- Parameter injection: temperature, max_tokens, top_p, frequency_penalty, presence_penalty
-- Thinking mode control: toggle on/off for Anthropic (`thinking` parameter) and OpenAI-compatible APIs (`enable_thinking` parameter)
-- Custom JSON fields — inject any parameter with any value type
-- API Key stored securely in macOS Keychain
-- Request logging for debugging
+- Multiple configurations, each independently switchable
+- Enable/disable individual configurations at the top of each config page
+- Right-click context menu: copy config (including API key), delete config
+- Delete confirmation dialog to prevent accidental deletion
+- Unsaved changes detection and warning when switching configs
+
+### Parameter Injection
+- Temperature, Max Tokens, Top P, Frequency Penalty, Presence Penalty
+- Thinking mode override: toggle on/off for Anthropic (`thinking` parameter) and OpenAI-compatible APIs (`enable_thinking` parameter)
+- Thinking budget control (Anthropic format)
+- Custom JSON fields — inject any parameter with any value type (supports strings, numbers, booleans, objects, arrays)
+
+### Security & Privacy
+- API Key stored securely in macOS Keychain (single unified storage)
+- Single Keychain authorization for all configurations
+- All traffic processed locally — no third-party servers involved
+- No telemetry or usage data collected
+
+### UI & UX
+- Bilingual interface: Chinese (中文) and English, switchable in Settings
+- Save button highlights green when changes detected
+- Formatted JSON request logging in terminal
+- Settings panel with about info, GitHub link (clickable), and License
 
 ![Screenshot](screenshot_configure.png)
 
@@ -70,10 +93,10 @@ On first launch, allow network connections when prompted.
 
 ### .app Bundle
 
-> Replace `VERSION` below with the current version (e.g. `0.1.3`).
+> Replace `VERSION` below with the current version (e.g. `0.3.0`).
 
 ```bash
-VERSION=0.1.3
+VERSION=0.3.0
 swift build -c release
 
 # Create .app bundle
@@ -135,29 +158,31 @@ rm -rf dmg_staging
 
 ### 1. Start the Server
 
-Click the APIBypass icon in the menu bar and select "启动服务" (Start Service). The indicator turns green when the server is running on `127.0.0.1:8390`.
+Click the APIBypass icon in the menu bar. The server starts automatically on launch, and the indicator turns green when running on `127.0.0.1:8390`. You can also manually start/stop via the menu.
 
 ### 2. Configure Mappings
 
-Click "打开配置..." (Open Config) in the menu bar. Create a model mapping:
+Click "配置..." (Configure) in the menu bar. Create a model mapping:
 
 | Field | Description | Example |
 |---|---|---|
-| 配置名称 (Name) | A label for this mapping | `Qwen3 no thinking` |
-| 客户端模型名 (Client Model) | The model name your client sends | `qwen3.6-plus` |
-| 实际模型名 (Actual Model) | The real model to call upstream | `qwen3.6-plus` |
-| API接口类型 (API Format) | OpenAI or Anthropic | `OpenAI` |
+| Config Name | A label for this mapping | `Qwen3 no thinking` |
+| Incoming Model | The model name your client sends | `qwen3.6-plus` |
+| Actual Model | The real model to call upstream | `qwen3.6-plus` |
+| API Provider | OpenAI or Anthropic | `OpenAI` |
 | Base URL | Upstream API endpoint | `https://api.example.com/v1` |
 | API Key | Your upstream API key | Stored in Keychain |
 
+The master enable switch at the top of each config page controls whether that mapping is active.
+
 ### 3. Parameter Injection
 
-- **Temperature / Max Tokens / Top P / Frequency Penalty / Presence Penalty**: Fill in a value to inject.
-- **Thinking Mode**: Enable the master switch to configure:
-  - Check "启用思考模式" → enable thinking
-  - Uncheck → disable thinking
-  - Turn off the master switch → don't touch, use API default
-- **Custom Fields**: Inject arbitrary JSON key-value pairs. Values support strings, numbers, booleans, and objects.
+- **Reasoning Mode Override**: Toggle the master switch to control thinking mode:
+  - Enable → inject `enable_thinking: true` (OpenAI) or `thinking: {type: "enabled"}` (Anthropic)
+  - Disable → inject `enable_thinking: false` or `thinking: {type: "disabled"}`
+  - Turn off → don't touch, use API default
+- **Standard Parameters**: Fill in Temperature, Max Tokens, Top P, Frequency Penalty, or Presence Penalty to inject.
+- **Custom Fields**: Inject arbitrary JSON key-value pairs. Values are auto-detected: `"true"/"false"` → boolean, `"42"` → integer, `"3.14"` → double, `"{\"key\":\"val\"}"` → JSON object.
 
 ### 4. Configure Your Client
 
@@ -171,49 +196,59 @@ Anthropic Base URL: http://127.0.0.1:8390/v1
 
 ### 5. Verify
 
-Watch the terminal for `[APIBypass]` prefixed logs:
-- Incoming request body
+When running with `swift run`, watch the terminal for formatted request logs:
+- Incoming request body (original)
+- Upstream URL and actual model name
 - Transformed request body (with injected parameters)
-- Upstream API URL
+
+## Settings
+
+Access via menu bar "设置..." (Settings). The settings panel provides:
+
+- **Language**: Switch between Chinese (中文) and English — takes effect immediately
+- **About**: Project description, GitHub repository link (clickable), and MIT License info
 
 ## Project Structure
 
 ```
 APIBypass/
-├── APIBypassApp.swift          # App entry point
+├── APIBypassApp.swift          # App entry point + menu bar icon
 ├── Core/
 │   ├── ConfigManager.swift     # Config management (UserDefaults)
-│   ├── HTTPServer.swift        # Hummingbird HTTP server
+│   ├── HTTPServer.swift        # Hummingbird HTTP server + SSE streaming
+│   ├── LocalizationManager.swift  # i18n: Chinese/English strings
 │   └── ProxyEngine.swift       # Request transform engine
 ├── Models/
 │   ├── APIProvider.swift       # API provider enum
 │   └── ModelMapping.swift      # Data models
 ├── Services/
-│   ├── KeychainService.swift   # Secure Keychain storage
-│   └── NetworkService.swift    # HTTP network service
+│   ├── KeychainService.swift   # Keychain storage with caching
+│   └── NetworkService.swift    # HTTP + streaming network service
 ├── UI/
-│   ├── ConfigWindow.swift      # Config window + new mapping
-│   ├── MenuBarView.swift       # Menu bar view
+│   ├── ConfigWindow.swift      # Config window + new mapping sheet
+│   ├── MenuBarView.swift       # Menu bar popup
+│   ├── SettingsView.swift      # Settings panel (language + about)
 │   └── Views/
-│       └── MappingDetailView.swift  # Mapping detail editor
+│       ├── MappingDetailView.swift  # Config detail editor
+│       └── MappingListView.swift    # Config list with context menu
 └── Package.swift               # Swift Package manifest
 ```
 
 ## Tech Stack
 
-- **SwiftUI** — macOS menu bar app
+- **SwiftUI** — macOS menu bar app + windows
 - **Hummingbird 2.0** — HTTP server framework
-- **Keychain Services** — API key secure storage
-- **UserDefaults** — Config persistence
-- **async/await** — Async networking
+- **Keychain Services** — API key secure storage with caching
+- **UserDefaults** — Config + language persistence
+- **async/await** — Async networking (including SSE streaming)
 - **ServiceLifecycle** — Service lifecycle management
 
 ## Privacy
 
-- API Keys are stored in the system Keychain and never sent anywhere
+- API Keys are stored in the system Keychain and never uploaded anywhere
 - All traffic is processed locally — no third-party servers involved
 - No telemetry or usage data collected
 
 ## License
 
-# MIT
+MIT

@@ -10,6 +10,7 @@ struct ConfigWindow: View {
     // 变更追踪
     @State private var currentMappingHasChanges = false
     @State private var pendingSelectionId: UUID?
+    @State private var targetSelectionId: UUID?  // 保存后要切换的目标
     @State private var showSwitchConfirmation = false
     @State private var forceResetTrigger = 0  // 用于触发重置（放弃更改）
     @State private var saveAndSwitchTrigger = 0  // 用于触发保存并切换
@@ -31,7 +32,14 @@ struct ConfigWindow: View {
                                 selectedMappingId = newId
                             }
                         }
-                    )
+                    ),
+                    onCopy: { mapping in
+                        copyMapping(mapping)
+                    },
+                    onDelete: { mapping in
+                        mappingToDelete = mapping
+                        showDeleteConfirmation = true
+                    }
                 )
 
                 HStack {
@@ -91,9 +99,9 @@ struct ConfigWindow: View {
                     pendingSelectionId = nil
                 }
                 Button("保存并切换") {
-                    if pendingSelectionId != nil {
+                    if let newId = pendingSelectionId {
+                        targetSelectionId = newId  // 保存目标 ID
                         saveAndSwitchTrigger += 1
-                        // 切换会在 onSave 回调中触发
                     }
                     pendingSelectionId = nil
                 }
@@ -112,8 +120,9 @@ struct ConfigWindow: View {
                     onSave: {
                         currentMappingHasChanges = false
                         // 如果有待切换的配置，执行切换
-                        if let newId = pendingSelectionId {
+                        if let newId = targetSelectionId {
                             selectedMappingId = newId
+                            targetSelectionId = nil
                         }
                     },
                     forceResetTrigger: forceResetTrigger,
@@ -151,6 +160,30 @@ struct ConfigWindow: View {
             let mappingIds = configManager.mappings.map { $0.id.uuidString }
             keychain.preloadKeys(for: mappingIds)
         }
+    }
+
+    private func copyMapping(_ mapping: ModelMapping) {
+        // 创建新配置，复制所有属性但使用新的 id
+        let newMapping = ModelMapping(
+            name: mapping.name + " 副本",
+            incomingModel: mapping.incomingModel,
+            actualModel: mapping.actualModel,
+            apiProvider: mapping.apiProvider,
+            baseURL: mapping.baseURL,
+            parameters: mapping.parameters,
+            isEnabled: mapping.isEnabled
+        )
+
+        // 添加新配置
+        configManager.add(newMapping)
+
+        // 复制 API Key
+        if let apiKey = try? keychain.retrieve(forKey: mapping.id.uuidString) {
+            try? keychain.save(apiKey, forKey: newMapping.id.uuidString)
+        }
+
+        // 选中新配置
+        selectedMappingId = newMapping.id
     }
 }
 

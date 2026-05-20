@@ -38,11 +38,15 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 
 ![Screenshot](screenshot_settings.png)
 
-## Requirements
+## System Requirements
 
-- macOS 14.0+
-- Swift 6.0+
-- Xcode 16.0+ (or Command Line Tools only)
+- macOS 14.0 or later
+
+## Build Requirements
+
+These are only needed if building from source:
+
+- Swift 6.0+ / Xcode 16.0+ (or Command Line Tools)
 
 ## Build & Run
 

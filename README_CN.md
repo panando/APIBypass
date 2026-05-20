@@ -36,9 +36,13 @@
 
 ## 系统要求
 
-- macOS 14.0+
-- Swift 6.0+
-- Xcode 16.0+（或仅安装 Command Line Tools）
+- macOS 14.0 或更高版本
+
+## 编译要求
+
+仅从源码编译时需要：
+
+- Swift 6.0+ / Xcode 16.0+（或仅安装 Command Line Tools）
 
 ## 编译和运行
 

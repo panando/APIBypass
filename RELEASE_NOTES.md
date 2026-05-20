@@ -1,4 +1,51 @@
-# APIBypass v0.2.0
+# APIBypass v0.2.1
+
+## What's New
+
+### Right-Click Context Menu
+Added right-click menu on configuration list items:
+- "复制配置" - Duplicate a configuration with all settings and API key
+- "删除配置" - Delete a configuration with confirmation dialog
+
+### Save & Switch Fix
+Fixed an issue where clicking "保存并切换" in the unsaved changes warning would save but not actually switch to the target configuration.
+
+### Save Button Improvements
+- Save button now uses system accent color when changes are detected
+- Button appears more subtle when no changes are present
+- Better visual feedback for dirty state detection
+
+## Changelog
+
+- 4be2945: feat: 右键菜单和保存切换修复
+- 344e8de: feat: 保存按钮变更检测和切换警告
+
+## Download
+
+- [APIBypass-0.2.1.dmg](https://github.com/panando/APIBypass/releases/tag/v0.2.1)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.2.1
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
+## Previous Releases
+
+- [v0.2.0](https://github.com/panando/APIBypass/releases/tag/v0.2.0) - SSE streaming, unified key storage, UI improvements
+- [v0.1.4](https://github.com/panando/APIBypass/releases/tag/v0.1.4) - Switch controls for override settings, bug fixes
+- [v0.1.3](https://github.com/panando/APIBypass/releases/tag/v0.1.3) - Auto-start server, status indicator, bug fixes
+- [v0.1.2](https://github.com/panando/APIBypass/releases/tag/v0.1.2) - Menu bar status indicator
+- [v0.1.0](https://github.com/panando/APIBypass/releases/tag/v0.1.0) - Initial release
+
+[Full commit history](https://github.com/panando/APIBypass/commits/main)
 
 ## What's New
 

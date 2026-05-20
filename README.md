@@ -16,7 +16,7 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 
 ### Use Cases
 
-- **Closed-source clients**: Some apps call DeepSeek/Qwen3 models without letting you disable thinking mode. APIBypass injects `enable_thinking: false` to force it off.
+- **Closed-source clients**: Some apps don't let you control thinking mode or other parameters. APIBypass injects custom parameters (e.g., `enable_thinking: false`) to override defaults. Works with any OpenAI/Anthropic-compatible API.
 - **Parameter injection**: Set temperature, top_p, and other parameters globally without modifying each client.
 - **Model name mapping**: Map the model name your client requests to a different actual model — switch models without changing client config.
 - **Multi-format support**: Works with both OpenAI Chat Completions and Anthropic Messages APIs.
@@ -166,7 +166,7 @@ Click "Configure..." in the menu bar. Create a model mapping:
 
 | Field | Description | Example |
 |---|---|---|
-| Config Name | A label for this mapping | `Qwen3 no thinking` |
+| Config Name | A label for this mapping | `My Custom Config` |
 | Incoming Model | The model name your client sends | `qwen3.6-plus` |
 | Actual Model | The real model to call upstream | `qwen3.6-plus` |
 | API Provider | OpenAI or Anthropic | `OpenAI` |

@@ -14,7 +14,7 @@
 
 ### 典型场景
 
-- **闭源客户端**：某些软件调用 DeepSeek/Qwen3 等模型时无法关闭思考模式，通过 APIBypass 注入 `enable_thinking: false` 即可强制关闭
+- **闭源客户端**：某些软件不支持控制思考模式等参数，通过 APIBypass 注入自定义参数（如 `enable_thinking: false`）即可覆盖默认值。适用于所有兼容 OpenAI/Anthropic 格式的 API
 - **参数注入**：为所有请求统一设置 temperature、top_p 等参数，无需修改每个客户端
 - **模型映射**：将客户端请求的模型名映射到实际模型名，方便切换模型而不修改客户端配置
 - **多 API 格式**：同时支持 OpenAI Chat Completions 和 Anthropic Messages 两种 API 格式
@@ -164,7 +164,7 @@ rm -rf dmg_staging
 
 | 字段 | 说明 | 示例 |
 |------|------|------|
-| 配置名称 | 便于识别的名称 | `Qwen3 关闭思考` |
+| 配置名称 | 便于识别的名称 | `我的自定义配置` |
 | 客户端模型名 | 客户端请求的模型名 | `qwen3.6-plus` |
 | 实际模型名 | 上游 API 的实际模型名 | `qwen3.6-plus` |
 | API接口类型 | OpenAI 或 Anthropic | `OpenAI` |

@@ -42,13 +42,15 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 
 - macOS 14.0 or later
 
-## Build Requirements
+## Installation
 
-These are only needed if building from source:
+### Download (Recommended)
 
-- Swift 6.0+ / Xcode 16.0+ (or Command Line Tools)
+Download the latest DMG from the [Releases](https://github.com/panando/APIBypass/releases) page. Mount the DMG and drag APIBypass to your Applications folder. On first launch, allow network connections when prompted.
 
-## Build & Run
+### Build from Source
+
+Build requirements: Swift 6.0+ / Xcode 16.0+ (or Command Line Tools only)
 
 ```bash
 git clone https://github.com/panando/APIBypass.git

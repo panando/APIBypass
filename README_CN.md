@@ -32,19 +32,23 @@
 - API Key 安全存储在 macOS Keychain 中
 - 请求日志，便于调试
 
-![界面截图](screenshot.png)
+![配置界面](screenshot_configure.png)
+
+![设置界面](screenshot_settings.png)
 
 ## 系统要求
 
 - macOS 14.0 或更高版本
 
-## 编译要求
+## 安装
 
-仅从源码编译时需要：
+### 直接下载（推荐）
 
-- Swift 6.0+ / Xcode 16.0+（或仅安装 Command Line Tools）
+从 [Releases](https://github.com/panando/APIBypass/releases) 页面下载最新的 DMG 安装包，双击挂载后将 APIBypass 拖入 Applications 文件夹即可。首次打开时系统会提示授予网络权限，请允许。
 
-## 编译和运行
+### 从源码编译
+
+编译要求：Swift 6.0+ / Xcode 16.0+（或仅安装 Command Line Tools）
 
 ```bash
 git clone https://github.com/panando/APIBypass.git

@@ -11,6 +11,12 @@ struct MappingDetailView: View {
     let mappingId: UUID
     let keychain: KeychainService
 
+    // 变更回调
+    var onHasChangesChange: ((Bool) -> Void)?
+    var onSave: (() -> Void)?
+    var forceResetTrigger: Int = 0
+    var saveTrigger: Int = 0
+
     @State private var name: String = ""
     @State private var incomingModel: String = ""
     @State private var actualModel: String = ""
@@ -34,6 +40,48 @@ struct MappingDetailView: View {
     @State private var customFieldsEnabled = false
 
     @State private var showSaveConfirmation = false
+
+    // 存储原始数据用于变更检测
+    @State private var originalMapping: ModelMapping?
+    @State private var originalApiKey: String = ""
+    @State private var lastResetTrigger = 0
+    @State private var lastSaveTrigger = 0
+
+    // 变更检测
+    private var hasChanges: Bool {
+        guard let original = originalMapping else { return false }
+
+        // 检查基本字段
+        if name != original.name { return true }
+        if incomingModel != original.incomingModel { return true }
+        if actualModel != original.actualModel { return true }
+        if apiProvider != original.apiProvider { return true }
+        if baseURL != original.baseURL.absoluteString { return true }
+        if isEnabled != original.isEnabled { return true }
+        if apiKey != originalApiKey { return true }
+
+        // 检查参数
+        let currentParams = buildParameters()
+        if currentParams.temperature != original.parameters.temperature { return true }
+        if currentParams.maxTokens != original.parameters.maxTokens { return true }
+        if currentParams.topP != original.parameters.topP { return true }
+        if currentParams.frequencyPenalty != original.parameters.frequencyPenalty { return true }
+        if currentParams.presencePenalty != original.parameters.presencePenalty { return true }
+        if currentParams.thinkingOverrideEnabled != original.parameters.thinkingOverrideEnabled { return true }
+        if currentParams.customFieldsEnabled != original.parameters.customFieldsEnabled { return true }
+        if currentParams.customFields != original.parameters.customFields { return true }
+
+        // 检查 thinking
+        if let currentThinking = currentParams.thinking,
+           let originalThinking = original.parameters.thinking {
+            if currentThinking.enabled != originalThinking.enabled { return true }
+            if currentThinking.budgetTokens != originalThinking.budgetTokens { return true }
+        } else if currentParams.thinking != nil || original.parameters.thinking != nil {
+            return true
+        }
+
+        return false
+    }
 
     var body: some View {
         ScrollView {
@@ -247,16 +295,50 @@ struct MappingDetailView: View {
             .padding()
         }
         .toolbar {
-            Button("保存") {
+            Spacer()
+            Button(action: {
                 saveChanges()
+            }) {
+                Text("保存")
+                    .padding(.horizontal, 16)
+                    .padding(.vertical, 6)
+                    .background(
+                        RoundedRectangle(cornerRadius: 6)
+                            .fill(hasChanges ? Color.accentColor : Color.clear)
+                    )
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 6)
+                            .stroke(hasChanges ? Color.clear : Color.secondary.opacity(0.3), lineWidth: 1)
+                    )
+                    .foregroundColor(hasChanges ? .white : .secondary)
             }
+            .buttonStyle(.plain)
             .keyboardShortcut(.defaultAction)
+            .disabled(!hasChanges)
         }
         .onAppear {
             loadMappingData()
         }
+        .onChange(of: hasChanges) { _, newValue in
+            onHasChangesChange?(newValue)
+        }
+        .onChange(of: forceResetTrigger) { _, newValue in
+            if newValue != lastResetTrigger {
+                lastResetTrigger = newValue
+                loadMappingData()
+            }
+        }
+        .onChange(of: saveTrigger) { _, newValue in
+            if newValue != lastSaveTrigger && hasChanges {
+                lastSaveTrigger = newValue
+                saveChanges()
+            }
+        }
         .alert("已保存", isPresented: $showSaveConfirmation) {
-            Button("好的", role: .cancel) { }
+            Button("好的", role: .cancel) {
+                // 保存后更新原始数据
+                loadOriginalData()
+            }
         }
     }
 
@@ -312,6 +394,15 @@ struct MappingDetailView: View {
         if let key = try? keychain.retrieve(forKey: mappingId.uuidString) {
             apiKey = key
         }
+
+        // 加载原始数据
+        loadOriginalData()
+    }
+
+    private func loadOriginalData() {
+        originalMapping = configManager.mappings.first(where: { $0.id == mappingId })
+        originalApiKey = apiKey
+        onHasChangesChange?(false)
     }
 
     private func saveChanges() {
@@ -334,6 +425,7 @@ struct MappingDetailView: View {
             try? keychain.save(apiKey, forKey: mappingId.uuidString)
         }
 
+        onSave?()
         showSaveConfirmation = true
     }
 
@@ -365,5 +457,10 @@ struct MappingDetailView: View {
             customFields: customFieldsDict,
             customFieldsEnabled: customFields.isEmpty ? nil : customFieldsEnabled
         )
+    }
+
+    /// 重置为原始数据（放弃变更）
+    func discardChanges() {
+        loadMappingData()
     }
 }

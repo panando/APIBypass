@@ -7,6 +7,13 @@ struct ConfigWindow: View {
     @State private var showDeleteConfirmation = false
     @State private var mappingToDelete: ModelMapping?
 
+    // 变更追踪
+    @State private var currentMappingHasChanges = false
+    @State private var pendingSelectionId: UUID?
+    @State private var showSwitchConfirmation = false
+    @State private var forceResetTrigger = 0  // 用于触发重置（放弃更改）
+    @State private var saveAndSwitchTrigger = 0  // 用于触发保存并切换
+
     private let keychain = KeychainService.shared
 
     var body: some View {
@@ -14,7 +21,17 @@ struct ConfigWindow: View {
             VStack {
                 MappingListView(
                     configManager: configManager,
-                    selectedMappingId: $selectedMappingId
+                    selectedMappingId: Binding(
+                        get: { selectedMappingId },
+                        set: { newId in
+                            if currentMappingHasChanges && newId != selectedMappingId {
+                                pendingSelectionId = newId
+                                showSwitchConfirmation = true
+                            } else {
+                                selectedMappingId = newId
+                            }
+                        }
+                    )
                 )
 
                 HStack {
@@ -48,7 +65,9 @@ struct ConfigWindow: View {
                     if let mapping = mappingToDelete {
                         configManager.delete(mapping.id)
                         try? keychain.delete(forKey: mapping.id.uuidString)
-                        selectedMappingId = nil
+                        if selectedMappingId == mapping.id {
+                            selectedMappingId = nil
+                        }
                     }
                     mappingToDelete = nil
                 }
@@ -59,12 +78,46 @@ struct ConfigWindow: View {
                     Text("确定要删除此配置吗？")
                 }
             }
+            .alert("未保存的更改", isPresented: $showSwitchConfirmation) {
+                Button("取消", role: .cancel) {
+                    pendingSelectionId = nil
+                }
+                Button("放弃更改", role: .destructive) {
+                    if let newId = pendingSelectionId {
+                        currentMappingHasChanges = false
+                        selectedMappingId = newId
+                        forceResetTrigger += 1
+                    }
+                    pendingSelectionId = nil
+                }
+                Button("保存并切换") {
+                    if pendingSelectionId != nil {
+                        saveAndSwitchTrigger += 1
+                        // 切换会在 onSave 回调中触发
+                    }
+                    pendingSelectionId = nil
+                }
+            } message: {
+                Text("当前配置有未保存的更改，是否保存？")
+            }
         } detail: {
             if let mappingId = selectedMappingId {
                 MappingDetailView(
                     configManager: configManager,
                     mappingId: mappingId,
-                    keychain: keychain
+                    keychain: keychain,
+                    onHasChangesChange: { hasChanges in
+                        currentMappingHasChanges = hasChanges
+                    },
+                    onSave: {
+                        currentMappingHasChanges = false
+                        // 如果有待切换的配置，执行切换
+                        if let newId = pendingSelectionId {
+                            selectedMappingId = newId
+                        }
+                    },
+                    forceResetTrigger: forceResetTrigger,
+                    saveTrigger: saveAndSwitchTrigger
                 )
                 .id(mappingId)
             } else {

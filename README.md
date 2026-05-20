@@ -162,7 +162,7 @@ Click the APIBypass icon in the menu bar. The server starts automatically on lau
 
 ### 2. Configure Mappings
 
-Click "配置..." (Configure) in the menu bar. Create a model mapping:
+Click "Configure..." in the menu bar. Create a model mapping:
 
 | Field | Description | Example |
 |---|---|---|
@@ -203,7 +203,7 @@ When running with `swift run`, watch the terminal for formatted request logs:
 
 ## Settings
 
-Access via menu bar "设置..." (Settings). The settings panel provides:
+Access via menu bar "Settings...". The settings panel provides:
 
 - **Language**: Switch between Chinese (中文) and English — takes effect immediately
 - **About**: Project description, GitHub repository link (clickable), and MIT License info

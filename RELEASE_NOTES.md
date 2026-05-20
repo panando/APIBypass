@@ -1,8 +1,44 @@
-# APIBypass v0.2.1
+# APIBypass v0.2.2
 
 ## What's New
 
-### Right-Click Context Menu
+### Enable/Disable Switch at Top
+- Moved configuration enable toggle from bottom checkbox to top switch
+- Now uses a natural switch toggle with status icon
+- Green indicator when enabled, gray when disabled
+- Status description text for clarity
+
+## Changelog
+
+- 1f69320: feat: 启用开关移至顶部并使用 Switch Toggle
+
+## Download
+
+- [APIBypass-0.2.2.dmg](https://github.com/panando/APIBypass/releases/tag/v0.2.2)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.2.2
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
+## Previous Releases
+
+- [v0.2.1](https://github.com/panando/APIBypass/releases/tag/v0.2.1) - Right-click context menu, save & switch fix
+- [v0.2.0](https://github.com/panando/APIBypass/releases/tag/v0.2.0) - SSE streaming, unified key storage, UI improvements
+- [v0.1.4](https://github.com/panando/APIBypass/releases/tag/v0.1.4) - Switch controls for override settings, bug fixes
+- [v0.1.3](https://github.com/panando/APIBypass/releases/tag/v0.1.3) - Auto-start server, status indicator, bug fixes
+- [v0.1.2](https://github.com/panando/APIBypass/releases/tag/v0.1.2) - Menu bar status indicator
+- [v0.1.0](https://github.com/panando/APIBypass/releases/tag/v0.1.0) - Initial release
+
+[Full commit history](https://github.com/panando/APIBypass/commits/main)
 Added right-click menu on configuration list items:
 - "复制配置" - Duplicate a configuration with all settings and API key
 - "删除配置" - Delete a configuration with confirmation dialog

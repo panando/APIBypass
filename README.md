@@ -34,7 +34,9 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 - API Key stored securely in macOS Keychain
 - Request logging for debugging
 
-![Screenshot](screenshot.png)
+![Screenshot](screenshot_configure.png)
+
+![Screenshot](screenshot_settings.png)
 
 ## Requirements
 

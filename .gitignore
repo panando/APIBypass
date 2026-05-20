@@ -1,31 +1,19 @@
-# Build artifacts
+# Swift
 .build/
-Packages/
-*.xcodeproj/
-DerivedData/
-*.app/
-*.dmg
-icon.iconset/
-dmg_staging/
-
-# Swift Package Manager
-Package.resolved
-Package.pins
+*.o
+*.d
+*.swiftdeps
+*.swiftmodule
+*.swiftsourceinfo
+*.dSYM/
 
 # Xcode
-*.xcworkspace/
-xcuserdata/
-*.xcuserstate
+*.xcuserdata/
+*.xcworkspace/xcuserdata/
+DerivedData/
 
 # macOS
 .DS_Store
-*.swp
-*~.nib
 
-# Secrets (never commit)
-*.env
-*.pem
-*.key
-
-# Development documentation
-docs/superpowers/
+# Package
+Package.resolved

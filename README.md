@@ -194,12 +194,14 @@ OpenAI Base URL: http://127.0.0.1:8390/v1
 Anthropic Base URL: http://127.0.0.1:8390/v1
 ```
 
-### 5. Verify
+### 5. Verify (Developers)
 
 When running with `swift run`, watch the terminal for formatted request logs:
 - Incoming request body (original)
 - Upstream URL and actual model name
 - Transformed request body (with injected parameters)
+
+> This step is for developers. Downloaded DMG users do not see terminal output.
 
 ## Settings
 

@@ -1,5 +1,10 @@
 import Foundation
 
+struct StreamingResult: Sendable {
+    let response: URLResponse
+    let bytes: URLSession.AsyncBytes
+}
+
 final class NetworkService {
     private let session: URLSession
 
@@ -39,5 +44,26 @@ final class NetworkService {
 
     func send(request: URLRequest) async throws -> (Data, URLResponse) {
         try await session.data(for: request)
+    }
+
+    /// 发送请求并返回流式响应
+    func sendStream(request: URLRequest) async throws -> StreamingResult {
+        let (bytes, response) = try await session.bytes(for: request)
+
+        // 检查 HTTP 状态码
+        guard let httpResponse = response as? HTTPURLResponse,
+              (200..<300).contains(httpResponse.statusCode) else {
+            // 非 2xx 响应，读取错误信息
+            var errorData = Data()
+            for try await byte in bytes {
+                errorData.append(byte)
+            }
+            throw ProxyError.upstreamError(
+                (response as? HTTPURLResponse)?.statusCode ?? 500,
+                errorData
+            )
+        }
+
+        return StreamingResult(response: response, bytes: bytes)
     }
 }

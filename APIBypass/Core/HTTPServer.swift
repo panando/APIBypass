@@ -91,9 +91,13 @@ final class HTTPServer: ObservableObject {
         let data = Data(body.readableBytesView)
 
         // 日志: 原始请求
+        print("\n")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
+        print("📥 收到客户端请求 [\(format == .openai ? "OpenAI" : "Anthropic") 格式]")
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━")
         if let incomingBody = String(data: data, encoding: .utf8) {
-            print("[APIBypass] === 收到请求 (format: \(format)) ===")
-            print("[APIBypass] 原始请求体: \(incomingBody)")
+            print("请求体 (原始):")
+            print(prettyJSON(incomingBody) ?? incomingBody)
         }
 
         // 解析模型名称
@@ -106,6 +110,9 @@ final class HTTPServer: ObservableObject {
                 body: .init(byteBuffer: ByteBuffer(data: errorData))
             )
         }
+
+        // 检测是否为流式请求
+        let isStreaming = (json["stream"] as? Bool) ?? false
 
         // 转换请求
         let transformedData: Data
@@ -156,10 +163,19 @@ final class HTTPServer: ObservableObject {
         )
 
         // 日志: 转换后请求
+        print("\n📤 转发到上游 API\(isStreaming ? " [流式模式]" : "")")
+        print("────────────────────────────────────────────────────────────")
+        print("上游 URL: \(upstreamURL.absoluteString)")
+        print("实际模型: \(mapping.actualModel)")
         if let transformedBody = String(data: transformedData, encoding: .utf8) {
-            print("[APIBypass] 转换后请求体: \(transformedBody)")
-            print("[APIBypass] 上游 URL: \(upstreamURL.absoluteString)")
-            print("[APIBypass] 实际模型: \(mapping.actualModel)")
+            print("请求体 (转换后):")
+            print(prettyJSON(transformedBody) ?? transformedBody)
+        }
+        print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
+
+        // 根据是否流式选择处理路径
+        if isStreaming {
+            return try await handleStreamingRequest(upstreamRequest: upstreamRequest)
         }
 
         // 发送请求并返回响应
@@ -186,5 +202,60 @@ final class HTTPServer: ObservableObject {
                 body: .init(byteBuffer: ByteBuffer(data: errorData))
             )
         }
+    }
+
+    /// 处理流式请求
+    private func handleStreamingRequest(upstreamRequest: URLRequest) async throws -> Response {
+        let streamResult = try await networkService.sendStream(request: upstreamRequest)
+
+        var headers = HTTPFields()
+        headers[.contentType] = "text/event-stream"
+        headers[.cacheControl] = "no-cache"
+        headers[.connection] = "keep-alive"
+
+        // 转发上游的相关 header
+        if let httpResponse = streamResult.response as? HTTPURLResponse {
+            for (key, value) in httpResponse.allHeaderFields {
+                let keyString = (key as? String ?? "").lowercased()
+                if keyString.hasPrefix("x-") || keyString == "request-id" {
+                    if let name = HTTPField.Name(String(describing: key)) {
+                        headers[name] = String(describing: value)
+                    }
+                }
+            }
+        }
+
+        let body = ResponseBody(contentLength: nil) { writer in
+            var buffer = ByteBuffer()
+            buffer.reserveCapacity(8192)
+
+            do {
+                for try await chunk in streamResult.bytes.chunks(ofCount: 8192) {
+                    buffer.clear()
+                    buffer.writeBytes(chunk)
+                    try await writer.write(buffer)
+                }
+                try await writer.finish(nil)
+            } catch {
+                print("[SSE] 流传输错误: \(error)")
+                try await writer.finish(nil)
+            }
+        }
+
+        return Response(status: .ok, headers: headers, body: body)
+    }
+
+    /// 格式化 JSON 字符串
+    private func prettyJSON(_ jsonString: String) -> String? {
+        guard let data = jsonString.data(using: .utf8),
+              let jsonObject = try? JSONSerialization.jsonObject(with: data),
+              let prettyData = try? JSONSerialization.data(
+                  withJSONObject: jsonObject,
+                  options: [.prettyPrinted, .sortedKeys]
+              ),
+              let prettyString = String(data: prettyData, encoding: .utf8) else {
+            return nil
+        }
+        return prettyString
     }
 }

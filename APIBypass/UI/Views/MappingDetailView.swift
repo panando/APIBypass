@@ -85,6 +85,49 @@ struct MappingDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
+                // 思考模式
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
+                        Text("更改默认推理模式")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Toggle("", isOn: $thinkingOverrideEnabled)
+                            .toggleStyle(.switch)
+                            .labelsHidden()
+                    }
+
+                    Text("通过 enable_thinking 参数控制思考模式")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+
+                    VStack(spacing: 8) {
+                        HStack {
+                            Text("是否启用思考模式")
+                            Spacer()
+                            Toggle("", isOn: $thinkingEnabled)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .disabled(!thinkingOverrideEnabled)
+                        }
+                        if thinkingEnabled && apiProvider == .anthropic {
+                            HStack {
+                                Text("思考预算")
+                                    .frame(width: 120, alignment: .trailing)
+                                TextField("tokens 数量", text: $thinkingBudget)
+                                    .disabled(!thinkingOverrideEnabled)
+                                Text("如 10000")
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    }
+                    .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+
                 // 参数注入
                 VStack(alignment: .leading, spacing: 12) {
                     Text("参数注入")
@@ -138,49 +181,6 @@ struct MappingDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                // 思考模式
-                VStack(alignment: .leading, spacing: 12) {
-                    HStack {
-                        Text("更改默认推理模式")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-                        Spacer()
-                        Toggle("", isOn: $thinkingOverrideEnabled)
-                            .toggleStyle(.switch)
-                            .labelsHidden()
-                    }
-
-                    Text("通过 enable_thinking 参数控制思考模式")
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text("是否启用思考模式")
-                            Spacer()
-                            Toggle("", isOn: $thinkingEnabled)
-                                .toggleStyle(.switch)
-                                .labelsHidden()
-                                .disabled(!thinkingOverrideEnabled)
-                        }
-                        if thinkingEnabled && apiProvider == .anthropic {
-                            HStack {
-                                Text("思考预算")
-                                    .frame(width: 120, alignment: .trailing)
-                                TextField("tokens 数量", text: $thinkingBudget)
-                                    .disabled(!thinkingOverrideEnabled)
-                                Text("如 10000")
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            }
-                        }
-                    }
-                    .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)
-                }
-                .padding()
-                .background(Color(NSColor.controlBackgroundColor))
-                .cornerRadius(8)
-
                 // 自定义参数字段
                 VStack(alignment: .leading, spacing: 12) {
                     HStack {
@@ -219,9 +219,10 @@ struct MappingDetailView: View {
                                 ForEach(customFields.indices, id: \.self) { index in
                                     HStack {
                                         TextField("字段名", text: $customFields[index].key)
-                                            .frame(width: 120)
+                                            .frame(idealWidth: 140, maxWidth: .infinity)
                                             .disabled(!customFieldsEnabled)
                                         TextField("值 (JSON格式)", text: $customFields[index].value)
+                                            .frame(idealWidth: 210, maxWidth: .infinity)
                                             .disabled(!customFieldsEnabled)
                                         Button(action: {
                                             customFields.remove(at: index)
@@ -257,12 +258,6 @@ struct MappingDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                // 保存按钮
-                Button("保存配置") {
-                    saveChanges()
-                }
-                .buttonStyle(.borderedProminent)
-                .frame(maxWidth: .infinity)
             }
             .padding()
         }

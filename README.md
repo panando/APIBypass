@@ -25,7 +25,7 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 
 ### Core Proxy
 - Runs in the macOS menu bar — stays out of your Dock
-- Local proxy server on `127.0.0.1:8390`
+- Local proxy server on `127.0.0.1:8390` (configurable)
 - Auto-start server on app launch
 - OpenAI Chat Completions API (`/v1/chat/completions`)
 - Anthropic Messages API (`/v1/messages`)
@@ -55,7 +55,7 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 - Bilingual interface: Chinese (中文) and English, switchable in Settings
 - Save button highlights green when changes detected
 - Formatted JSON request logging in terminal
-- Settings panel with about info, GitHub link (clickable), and License
+- Settings panel with about info, version number, GitHub link (clickable), and License
 
 ![Screenshot](screenshot_configure.png)
 
@@ -93,10 +93,10 @@ On first launch, allow network connections when prompted.
 
 ### .app Bundle
 
-> Replace `VERSION` below with the current version (e.g. `0.3.0`).
+> Replace `VERSION` below with the current version (e.g. `0.3.1`).
 
 ```bash
-VERSION=0.3.0
+VERSION=0.3.1
 swift build -c release
 
 # Create .app bundle
@@ -158,7 +158,7 @@ rm -rf dmg_staging
 
 ### 1. Start the Server
 
-Click the APIBypass icon in the menu bar. The server starts automatically on launch, and the indicator turns green when running on `127.0.0.1:8390`. You can also manually start/stop via the menu.
+Click the APIBypass icon in the menu bar. The server starts automatically on launch, and the indicator turns green when running on `127.0.0.1:8390` (default port, configurable in Settings). You can also manually start/stop via the menu.
 
 ### 2. Configure Mappings
 
@@ -208,7 +208,8 @@ When running with `swift run`, watch the terminal for formatted request logs:
 Access via menu bar "Settings...". The settings panel provides:
 
 - **Language**: Switch between Chinese (中文) and English — takes effect immediately
-- **About**: Project description, GitHub repository link (clickable), and MIT License info
+- **Server Port**: Configure the local proxy port (default 8390, restart required to apply)
+- **About**: Version number, project description, GitHub repository link (clickable), and MIT License info
 
 ## Project Structure
 
@@ -229,7 +230,7 @@ APIBypass/
 ├── UI/
 │   ├── ConfigWindow.swift      # Config window + new mapping sheet
 │   ├── MenuBarView.swift       # Menu bar popup
-│   ├── SettingsView.swift      # Settings panel (language + about)
+│   ├── SettingsView.swift      # Settings panel (language + port + about)
 │   └── Views/
 │       ├── MappingDetailView.swift  # Config detail editor
 │       └── MappingListView.swift    # Config list with context menu

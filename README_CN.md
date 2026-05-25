@@ -23,7 +23,7 @@
 
 ### 核心代理
 - 运行在 macOS 菜单栏，不占用 Dock 空间
-- 本地代理服务器，监听 `127.0.0.1:8390`
+- 本地代理服务器，监听 `127.0.0.1:8390`（可自定义）
 - 应用启动自动开启服务
 - 支持 OpenAI Chat Completions API (`/v1/chat/completions`)
 - 支持 Anthropic Messages API (`/v1/messages`)
@@ -53,7 +53,7 @@
 - 双语界面：中文 / English，在设置面板中即时切换
 - 保存按钮在检测到变更时绿色高亮
 - 终端实时显示格式化 JSON 请求日志
-- 设置面板包含关于信息、GitHub 链接（可点击打开）和许可证信息
+- 设置面板包含关于信息、版本号、GitHub 链接（可点击打开）和许可证信息
 
 ![配置界面](screenshot_configure.png)
 
@@ -91,10 +91,10 @@ swift build -c release
 
 ### .app 包
 
-> 将 `VERSION` 替换为当前版本号（如 `0.3.0`）。
+> 将 `VERSION` 替换为当前版本号（如 `0.3.1`）。
 
 ```bash
-VERSION=0.3.0
+VERSION=0.3.1
 swift build -c release
 
 # 创建 .app 包
@@ -156,7 +156,7 @@ rm -rf dmg_staging
 
 ### 1. 启动服务
 
-点击菜单栏的 APIBypass 图标。应用启动时服务会自动开启，状态指示灯变绿即表示正在运行，监听 `127.0.0.1:8390`。也可通过菜单栏手动启停。
+点击菜单栏的 APIBypass 图标。应用启动时服务会自动开启，状态指示灯变绿即表示正在运行，监听 `127.0.0.1:8390`（默认端口，可在设置中修改）。也可通过菜单栏手动启停。
 
 ### 2. 配置映射
 
@@ -206,7 +206,8 @@ Anthropic Base URL: http://127.0.0.1:8390/v1
 通过菜单栏「设置...」打开。设置面板提供：
 
 - **语言**：切换中文 / English，修改后立即生效
-- **关于**：项目简介、GitHub 仓库链接（可点击跳转）、MIT 许可证信息
+- **服务端口**：配置本地代理端口（默认 8390，修改后需重启服务生效）
+- **关于**：版本号、项目简介、GitHub 仓库链接（可点击跳转）、MIT 许可证信息
 
 ## 项目结构
 
@@ -227,7 +228,7 @@ APIBypass/
 ├── UI/
 │   ├── ConfigWindow.swift      # 配置窗口 + 新建映射弹窗
 │   ├── MenuBarView.swift       # 菜单栏下拉视图
-│   ├── SettingsView.swift      # 设置面板（语言 + 关于）
+│   ├── SettingsView.swift      # 设置面板（语言 + 端口 + 关于）
 │   └── Views/
 │       ├── MappingDetailView.swift  # 配置详情编辑器
 │       └── MappingListView.swift    # 配置列表（右键菜单）

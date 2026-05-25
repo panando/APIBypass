@@ -48,11 +48,15 @@ struct L10n {
         "configure": [.chinese: "配置...", .english: "Configure..."],
         "settings": [.chinese: "设置...", .english: "Settings..."],
         "quit": [.chinese: "退出", .english: "Quit"],
+        "port": [.chinese: "端口", .english: "Port"],
+        "version": [.chinese: "版本", .english: "Version"],
 
         // 设置面板
         "settings_title": [.chinese: "设置", .english: "Settings"],
         "language": [.chinese: "语言", .english: "Language"],
         "language_hint": [.chinese: "切换语言后立即生效", .english: "Changes take effect immediately"],
+        "server_port": [.chinese: "服务端口", .english: "Server Port"],
+        "port_hint": [.chinese: "修改端口后需重启服务生效", .english: "Restart the server to apply port changes"],
         "about": [.chinese: "关于", .english: "About"],
         "about_description": [.chinese: "APIBypass 是一款 API 模型映射代理工具，可拦截客户端请求并注入自定义参数，无缝切换模型提供商。", .english: "APIBypass is an API model mapping proxy that intercepts client requests and injects custom parameters for seamless model provider switching."],
         "license": [.chinese: "许可证: MIT License", .english: "License: MIT License"],

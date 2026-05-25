@@ -3,6 +3,7 @@ import SwiftUI
 struct MenuBarView: View {
     let configManager: ConfigManager
     @Binding var isRunning: Bool
+    let port: Int
     let onStart: () -> Void
     let onStop: () -> Void
 
@@ -18,7 +19,7 @@ struct MenuBarView: View {
             }
 
             if isRunning {
-                Text("端口: 8390")
+                Text("\(L10n.t("port")): \(String(port))")
                     .font(.caption)
                     .foregroundColor(.secondary)
             }
@@ -80,8 +81,11 @@ struct MenuBarView: View {
             return
         }
 
+        let hostingView = NSHostingView(rootView: SettingsView())
+        hostingView.sizingOptions = [.minSize, .intrinsicContentSize]
+
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 520, height: 380),
+            contentRect: NSRect(x: 0, y: 0, width: 540, height: 480),
             styleMask: [.titled, .closable],
             backing: .buffered,
             defer: false
@@ -89,7 +93,7 @@ struct MenuBarView: View {
         window.title = L10n.t("settings_title")
         window.identifier = NSUserInterfaceItemIdentifier("settings-window")
         window.isReleasedWhenClosed = false
-        window.contentView = NSHostingView(rootView: SettingsView())
+        window.contentView = hostingView
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.becomeKey()

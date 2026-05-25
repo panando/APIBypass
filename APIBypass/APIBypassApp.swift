@@ -41,6 +41,7 @@ struct APIBypassApp: App {
             MenuBarView(
                 configManager: configManager,
                 isRunning: $isRunning,
+                port: server?.port ?? (UserDefaults.standard.integer(forKey: "serverPort") > 0 ? UserDefaults.standard.integer(forKey: "serverPort") : 8390),
                 onStart: startServer,
                 onStop: stopServer
             )

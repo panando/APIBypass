@@ -2,6 +2,14 @@ import SwiftUI
 
 struct SettingsView: View {
     @ObservedObject var l10n = LocalizationManager.shared
+    @AppStorage("serverPort") private var serverPort: Int = 8390
+
+    private var portString: Binding<String> {
+        Binding<String>(
+            get: { String(serverPort) },
+            set: { if let v = Int($0) { serverPort = v } }
+        )
+    }
 
     var body: some View {
         VStack(spacing: 20) {
@@ -29,6 +37,31 @@ struct SettingsView: View {
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(8)
 
+            // 服务端口
+            VStack(alignment: .leading, spacing: 12) {
+                Text(L10n.t("server_port"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+
+                HStack(spacing: 12) {
+                    TextField("", text: portString)
+                        .textFieldStyle(.roundedBorder)
+                        .frame(width: 100)
+                    Text("127.0.0.1:\(String(serverPort))")
+                        .font(.callout.monospacedDigit())
+                        .foregroundColor(.secondary)
+                }
+
+                Text(L10n.t("port_hint"))
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+
             // 关于
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.t("about"))
@@ -39,6 +72,14 @@ struct SettingsView: View {
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    Image(systemName: "info.circle")
+                        .foregroundColor(.secondary)
+                    Text("\(L10n.t("version")): 0.3.1")
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                }
 
                 Divider()
 
@@ -72,7 +113,6 @@ struct SettingsView: View {
             Spacer()
         }
         .padding()
-        .frame(minWidth: 460, minHeight: 300)
-        .frame(width: 500)
+        .frame(minWidth: 460, idealWidth: 500, minHeight: 300)
     }
 }

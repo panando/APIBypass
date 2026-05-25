@@ -13,13 +13,20 @@ final class HTTPServer: ObservableObject {
     private var app: Application<RouterResponder<BasicRequestContext>>?
     private var serviceGroup: ServiceGroup?
 
-    let port: Int = 8390
+    let port: Int
+
+    static var storedPort: Int {
+        get { UserDefaults.standard.integer(forKey: "serverPort") }
+        set { UserDefaults.standard.set(newValue, forKey: "serverPort") }
+    }
 
     init(configManager: ConfigManager, keychain: KeychainService = .shared) {
         self.configManager = configManager
         self.keychain = keychain
         self.proxyEngine = ProxyEngine()
         self.networkService = NetworkService()
+        let saved = UserDefaults.standard.integer(forKey: "serverPort")
+        self.port = saved > 0 ? saved : 8390
     }
 
     func start() async throws {

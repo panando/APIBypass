@@ -190,19 +190,34 @@ final class HTTPServer: ObservableObject {
             let (responseData, response) = try await networkService.send(request: upstreamRequest)
             let httpResponse = response as! HTTPURLResponse
 
+            print("📥 上游响应: \(httpResponse.statusCode)")
+            if httpResponse.statusCode >= 300, let bodyStr = String(data: responseData, encoding: .utf8) {
+                print("📥 响应体: \(bodyStr)")
+            }
+
             var headers = HTTPFields()
             for (key, value) in httpResponse.allHeaderFields {
+                let keyString = (key as? String ?? "").lowercased()
+                // 跳过 hop-by-hop 和可能导致冲突的 header
+                guard !["transfer-encoding", "connection", "content-length", "content-encoding", "keep-alive"].contains(keyString) else { continue }
                 if let name = HTTPField.Name(String(describing: key)) {
                     headers[name] = String(describing: value)
                 }
             }
 
+            let statusCode = httpResponse.statusCode
+            print("📤 返回客户端: \(statusCode), body 大小: \(responseData.count) bytes")
+            if let bodyStr = String(data: responseData, encoding: .utf8) {
+                print("📤 响应体: \(bodyStr.prefix(500))")
+            }
+
             return Response(
-                status: HTTPResponse.Status(code: httpResponse.statusCode),
+                status: HTTPResponse.Status(code: statusCode),
                 headers: headers,
                 body: .init(byteBuffer: ByteBuffer(data: responseData))
             )
         } catch {
+            print("❌ 上游请求失败: \(error)")
             let errorData = #"{"error": "Upstream API request failed"}"#.data(using: .utf8)!
             return Response(
                 status: .badGateway,

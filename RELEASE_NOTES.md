@@ -1,32 +1,32 @@
-# APIBypass v0.3.1
+# APIBypass v0.3.2
 
 ## What's New
 
-### Custom Server Port
-- Server port is now configurable in the Settings panel (default: 8390)
-- Port preference persists across app restarts
-- Restart the server to apply port changes
+### Proxy Header Fix
+- Fixed a bug where `content-encoding: gzip` was forwarded to clients after URLSession had already decompressed the response body, causing connection errors with some API providers (e.g., DashScope)
+- Now properly filters hop-by-hop headers (`transfer-encoding`, `connection`, `content-length`, `content-encoding`, `keep-alive`) per HTTP specification
 
-### Version Info
-- Version number now displayed in the Settings "About" section
+### SSE Streaming Improvement
+- SSE events are now forwarded line-by-line in real time instead of in 8KB chunks, enabling character-by-character streaming output as expected
 
-### Localization Fix
-- Port display text in the menu bar is now properly localized (previously hardcoded in Chinese)
+### Debug Logging
+- Added upstream response status and error body logging for easier troubleshooting
 
 ## Changelog
 
-- 230d575: feat: 自定义服务端口、汉化端口文字、关于添加版本号
+- 80b01fc: fix: 过滤代理转发中的 hop-by-hop 和 content-encoding header
+- (this commit): fix: SSE 流式输出改为逐行实时转发，修复批量输出问题
 
 ## Download
 
-- [APIBypass-0.3.1.dmg](https://github.com/panando/APIBypass/releases/tag/v0.3.1)
+- [APIBypass-0.3.2.dmg](https://github.com/panando/APIBypass/releases/tag/v0.3.2)
 
 ## Build from Source
 
 ```bash
 git clone https://github.com/panando/APIBypass.git
 cd APIBypass
-git checkout v0.3.1
+git checkout v0.3.2
 swift build -c release
 ```
 
@@ -36,6 +36,7 @@ swift build -c release
 
 ## Previous Releases
 
+- [v0.3.1](https://github.com/panando/APIBypass/releases/tag/v0.3.1) - Custom server port, version info, localization fix
 - [v0.3.0](https://github.com/panando/APIBypass/releases/tag/v0.3.0) - i18n, Settings panel
 - [v0.2.2](https://github.com/panando/APIBypass/releases/tag/v0.2.2) - Enable switch toggle at top, UI improvements
 - [v0.2.1](https://github.com/panando/APIBypass/releases/tag/v0.2.1) - Right-click context menu, save & switch fix

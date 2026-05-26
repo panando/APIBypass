@@ -249,12 +249,17 @@ final class HTTPServer: ObservableObject {
 
         let body = ResponseBody(contentLength: nil) { writer in
             var buffer = ByteBuffer()
-            buffer.reserveCapacity(8192)
+            buffer.reserveCapacity(1024)
 
             do {
-                for try await chunk in streamResult.bytes.chunks(ofCount: 8192) {
-                    buffer.clear()
-                    buffer.writeBytes(chunk)
+                for try await byte in streamResult.bytes {
+                    buffer.writeInteger(byte)
+                    if byte == UInt8(ascii: "\n") {
+                        try await writer.write(buffer)
+                        buffer.clear()
+                    }
+                }
+                if buffer.readableBytes > 0 {
                     try await writer.write(buffer)
                 }
                 try await writer.finish(nil)

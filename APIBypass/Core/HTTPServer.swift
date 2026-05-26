@@ -118,6 +118,15 @@ final class HTTPServer: ObservableObject {
             )
         }
 
+        // 获取提供商配置
+        guard let provider = configManager.findProvider(for: mapping.providerConfigId) else {
+            let errorData = #"{"error": "Provider not found for this mapping"}"#.data(using: .utf8)!
+            return Response(
+                status: .badRequest,
+                body: .init(byteBuffer: ByteBuffer(data: errorData))
+            )
+        }
+
         // 检测是否为流式请求
         let isStreaming = (json["stream"] as? Bool) ?? false
 
@@ -136,7 +145,7 @@ final class HTTPServer: ObservableObject {
         // 获取 API Key
         let apiKey: String
         do {
-            apiKey = try keychain.retrieve(forKey: mapping.id.uuidString)
+            apiKey = try keychain.retrieve(forKey: mapping.providerConfigId.uuidString)
         } catch {
             let errorData = #"{"error": "API key not configured"}"#.data(using: .utf8)!
             return Response(
@@ -147,17 +156,17 @@ final class HTTPServer: ObservableObject {
 
         // 构建上游请求 URL
         let upstreamURL: URL
-        let baseURLString = mapping.baseURL.absoluteString
+        let baseURLString = provider.baseURL.absoluteString
 
         // 智能处理 URL：如果 baseURL 已包含 /v1，不再重复添加
         if baseURLString.hasSuffix("/v1") || baseURLString.hasSuffix("/v1/") {
             // baseURL 已包含 /v1，直接拼接端点
             let endpointPath = format == .openai ? "chat/completions" : "messages"
-            upstreamURL = mapping.baseURL.appendingPathComponent(endpointPath)
+            upstreamURL = provider.baseURL.appendingPathComponent(endpointPath)
         } else {
             // baseURL 不包含 /v1，添加完整端点
             let endpoint = format == .openai ? "/v1/chat/completions" : "/v1/messages"
-            upstreamURL = mapping.baseURL.appendingPathComponent(endpoint)
+            upstreamURL = provider.baseURL.appendingPathComponent(endpoint)
         }
 
         let upstreamRequest = networkService.buildRequest(
@@ -165,7 +174,7 @@ final class HTTPServer: ObservableObject {
             method: "POST",
             body: transformedData,
             apiKey: apiKey,
-            provider: mapping.apiProvider,
+            provider: provider.apiProvider,
             customHeaders: mapping.parameters.customHeaders
         )
 

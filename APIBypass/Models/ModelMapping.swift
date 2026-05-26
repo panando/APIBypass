@@ -60,8 +60,7 @@ struct ModelMapping: Codable, Identifiable, Equatable {
     var name: String
     var incomingModel: String
     var actualModel: String
-    var apiProvider: APIProvider
-    var baseURL: URL
+    var providerConfigId: UUID
     var parameters: InjectedParameters
     var isEnabled: Bool
 
@@ -70,8 +69,7 @@ struct ModelMapping: Codable, Identifiable, Equatable {
         name: String,
         incomingModel: String,
         actualModel: String,
-        apiProvider: APIProvider,
-        baseURL: URL,
+        providerConfigId: UUID,
         parameters: InjectedParameters,
         isEnabled: Bool = true
     ) {
@@ -79,8 +77,7 @@ struct ModelMapping: Codable, Identifiable, Equatable {
         self.name = name
         self.incomingModel = incomingModel
         self.actualModel = actualModel
-        self.apiProvider = apiProvider
-        self.baseURL = baseURL
+        self.providerConfigId = providerConfigId
         self.parameters = parameters
         self.isEnabled = isEnabled
     }

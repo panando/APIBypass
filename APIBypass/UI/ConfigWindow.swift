@@ -185,9 +185,10 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private func providerRow(_ provider: ProviderConfig) -> some View {
+        let isSelected = selectedProviderId == provider.id
         HStack(spacing: 10) {
             Image(systemName: provider.apiProvider == .openai ? "building.2" : "brain")
-                .foregroundColor(.accentColor)
+                .foregroundColor(isSelected ? .white : .accentColor)
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
                 Text(provider.name)
@@ -285,7 +286,8 @@ struct ConfigWindow: View {
             Text("映射状态")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
-                .padding(.vertical, 10)
+                .padding(.vertical, 6)
+                .background(Color(NSColor.windowBackgroundColor).opacity(0.6))
 
             Divider()
 

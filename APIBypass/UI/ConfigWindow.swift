@@ -35,7 +35,7 @@ struct ConfigWindow: View {
                 .frame(minWidth: 400)
 
             if mappingPanelVisible {
-                draggableDivider(width: $mappingPanelWidth, range: 120...400, visible: mappingPanelVisible)
+                draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible)
                 mappingListPanel
                     .frame(width: mappingPanelWidth)
             }
@@ -385,30 +385,23 @@ struct ConfigWindow: View {
 struct DraggableDivider: View {
     @Binding var width: CGFloat
     let range: ClosedRange<CGFloat>
-    @State private var initialWidth: CGFloat = 0
-    @State private var dragging = false
 
     var body: some View {
         Rectangle()
             .fill(Color.secondary.opacity(0.3))
             .frame(width: 4)
-            .contentShape(Rectangle().inset(by: -4))
+            .contentShape(Rectangle())
             .gesture(
-                DragGesture(minimumDistance: 1)
+                DragGesture(minimumDistance: 4, coordinateSpace: .local)
                     .onChanged { value in
-                        if !dragging {
-                            initialWidth = width
-                            dragging = true
-                        }
-                        let newWidth = initialWidth + value.translation.width
+                        let delta = value.translation.width
+                        let newWidth = width + delta
                         width = min(max(newWidth, range.lowerBound), range.upperBound)
                     }
-                    .onEnded { _ in
-                        dragging = false
-                    }
+                    .onEnded { _ in }
             )
             .onHover { hovering in
-                if hovering || dragging {
+                if hovering {
                     NSCursor.resizeLeftRight.push()
                 } else {
                     NSCursor.resizeLeftRight.pop()

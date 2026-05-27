@@ -76,7 +76,19 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private var mainList: some View {
-        List {
+        List(selection: Binding(
+            get: { currentSelection },
+            set: { newSelection in
+                if currentHasChanges && newSelection != currentSelection {
+                    pendingSelection = newSelection
+                    showSwitchConfirmation = true
+                } else {
+                    if let newSelection = newSelection {
+                        applySelection(newSelection)
+                    }
+                }
+            }
+        )) {
             providerSection
             mappingSection
         }

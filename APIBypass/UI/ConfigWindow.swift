@@ -23,6 +23,17 @@ struct ConfigWindow: View {
         } detail: {
             detailView
         }
+        .toolbar(removing: .sidebarToggle)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                }
+                .help("切换边栏")
+            }
+        }
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id
@@ -166,6 +177,8 @@ struct ConfigWindow: View {
                 }
             }
 
+            Spacer()
+
             Button {
                 deleteSelected()
             } label: {
@@ -175,8 +188,6 @@ struct ConfigWindow: View {
                 }
             }
             .disabled(selectedProviderId == nil)
-
-            Spacer()
         }
         .padding(.horizontal, 12)
         .padding(.vertical, 8)

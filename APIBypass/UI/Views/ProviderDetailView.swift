@@ -143,11 +143,43 @@ struct ProviderDetailView: View {
                                     configManager: configManager,
                                     keychain: keychain,
                                     mapping: mapping,
+                                    isExpanded: Binding(
+                                        get: { expandedMappingId == mapping.id },
+                                        set: { newValue in
+                                            if newValue {
+                                                if let currentId = expandedMappingId,
+                                                   currentId != mapping.id,
+                                                   mappingWithChanges != nil {
+                                                    pendingMappingId = mapping.id
+                                                    showMappingSwitchAlert = true
+                                                } else {
+                                                    expandedMappingId = mapping.id
+                                                }
+                                            } else {
+                                                if mappingWithChanges != mapping.id {
+                                                    expandedMappingId = nil
+                                                }
+                                            }
+                                        }
+                                    ),
                                     onSave: {
+                                        expandedMappingId = nil
+                                        mappingWithChanges = nil
                                         onSave?()
                                     },
                                     onDelete: {
+                                        if expandedMappingId == mapping.id {
+                                            expandedMappingId = nil
+                                            mappingWithChanges = nil
+                                        }
                                         configManager.delete(mapping.id)
+                                    },
+                                    onHasChangesChange: { hasChanges in
+                                        if hasChanges {
+                                            mappingWithChanges = mapping.id
+                                        } else if mappingWithChanges == mapping.id {
+                                            mappingWithChanges = nil
+                                        }
                                     }
                                 )
                             }
@@ -187,6 +219,23 @@ struct ProviderDetailView: View {
             Button(L10n.t("ok"), role: .cancel) {
                 loadOriginalData()
             }
+        }
+        .alert(L10n.t("unsaved_changes"), isPresented: $showMappingSwitchAlert) {
+            Button(L10n.t("cancel"), role: .cancel) {
+                pendingMappingId = nil
+            }
+            Button(L10n.t("discard_changes"), role: .destructive) {
+                if let id = pendingMappingId {
+                    expandedMappingId = id
+                }
+                mappingWithChanges = nil
+                pendingMappingId = nil
+            }
+            Button(L10n.t("save_and_switch")) {
+                pendingMappingId = nil
+            }
+        } message: {
+            Text(L10n.t("unsaved_changes_msg"))
         }
         .sheet(isPresented: $showNewMappingSheet) {
             NewMappingView(configManager: configManager, keychain: keychain, defaultProviderId: providerId)

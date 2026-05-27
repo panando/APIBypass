@@ -5,13 +5,13 @@ struct MappingCardView: View {
     let keychain: KeychainService
     let mapping: ModelMapping
 
+    @Binding var isExpanded: Bool
     var onSave: (() -> Void)?
     var onDelete: (() -> Void)?
     var onHasChangesChange: ((Bool) -> Void)?
 
     @ObservedObject private var l10n = LocalizationManager.shared
 
-    @State private var isExpanded = false
     @State private var showUnsavedAlert = false
     @State private var showDeleteConfirmation = false
     @State private var showDuplicateModelAlert = false
@@ -74,10 +74,11 @@ struct MappingCardView: View {
                 if isExpanded && hasChanges {
                     showUnsavedAlert = true
                 } else {
-                    isExpanded.toggle()
-                    if isExpanded {
+                    let newValue = !isExpanded
+                    if newValue {
                         loadMappingData()
                     }
+                    isExpanded = newValue
                 }
             }) {
                 HStack(spacing: 12) {
@@ -203,6 +204,10 @@ struct MappingCardView: View {
         }
         .onAppear {
             loadMappingData()
+            onHasChangesChange?(false)
+        }
+        .onChange(of: hasChanges) { _, newValue in
+            onHasChangesChange?(newValue)
         }
     }
 

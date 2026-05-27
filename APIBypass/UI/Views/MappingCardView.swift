@@ -1,0 +1,277 @@
+import SwiftUI
+
+struct MappingCardView: View {
+    @ObservedObject var configManager: ConfigManager
+    let keychain: KeychainService
+    let mapping: ModelMapping
+
+    var onSave: (() -> Void)?
+    var onDelete: (() -> Void)?
+
+    @ObservedObject private var l10n = LocalizationManager.shared
+
+    @State private var isExpanded = false
+    @State private var showUnsavedAlert = false
+
+    // Form state
+    @State private var name: String = ""
+    @State private var incomingModel: String = ""
+    @State private var actualModel: String = ""
+    @State private var selectedProviderId: UUID?
+    @State private var isEnabled = true
+
+    @State private var temperature = ""
+    @State private var maxTokens = ""
+    @State private var topP = ""
+    @State private var frequencyPenalty = ""
+    @State private var presencePenalty = ""
+    @State private var thinkingEnabled = false
+    @State private var thinkingBudget = ""
+    @State private var thinkingOverrideEnabled = false
+
+    @State private var customFields: [CustomField] = []
+    @State private var customFieldsEnabled = false
+
+    // Original state for change detection
+    @State private var originalMapping: ModelMapping?
+
+    private var hasChanges: Bool {
+        guard let original = originalMapping else { return false }
+        if name != original.name { return true }
+        if incomingModel != original.incomingModel { return true }
+        if actualModel != original.actualModel { return true }
+        if selectedProviderId != original.providerConfigId { return true }
+        if isEnabled != original.isEnabled { return true }
+
+        let currentParams = buildParameters()
+        if currentParams.temperature != original.parameters.temperature { return true }
+        if currentParams.maxTokens != original.parameters.maxTokens { return true }
+        if currentParams.topP != original.parameters.topP { return true }
+        if currentParams.frequencyPenalty != original.parameters.frequencyPenalty { return true }
+        if currentParams.presencePenalty != original.parameters.presencePenalty { return true }
+        if currentParams.thinkingOverrideEnabled != original.parameters.thinkingOverrideEnabled { return true }
+        if currentParams.customFieldsEnabled != original.parameters.customFieldsEnabled { return true }
+        if currentParams.customFields != original.parameters.customFields { return true }
+
+        if let currentThinking = currentParams.thinking,
+           let originalThinking = original.parameters.thinking {
+            if currentThinking.enabled != originalThinking.enabled { return true }
+            if currentThinking.budgetTokens != originalThinking.budgetTokens { return true }
+        } else if currentParams.thinking != nil || original.parameters.thinking != nil {
+            return true
+        }
+
+        return false
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            // Card header
+            Button(action: {
+                if isExpanded && hasChanges {
+                    showUnsavedAlert = true
+                } else {
+                    isExpanded.toggle()
+                    if isExpanded {
+                        loadMappingData()
+                    }
+                }
+            }) {
+                HStack(spacing: 12) {
+                    Toggle("", isOn: $isEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .onChange(of: isEnabled) { _, newValue in
+                            if originalMapping != nil {
+                                quickSaveEnabled(newValue)
+                            }
+                        }
+
+                    Circle()
+                        .fill(mapping.isEnabled ? Color.green : Color.gray)
+                        .frame(width: 8, height: 8)
+
+                    VStack(alignment: .leading, spacing: 2) {
+                        Text(mapping.name)
+                            .font(.body)
+                        Text("\(mapping.incomingModel) → \(mapping.actualModel)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
+
+                    Spacer()
+
+                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
+                        .foregroundColor(.secondary)
+                        .font(.caption)
+                }
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+                .contentShape(Rectangle())
+            }
+            .buttonStyle(.plain)
+
+            // Expanded content
+            if isExpanded {
+                Divider()
+                    .padding(.horizontal, 12)
+
+                MappingEditForm(
+                    configManager: configManager,
+                    keychain: keychain,
+                    name: $name,
+                    incomingModel: $incomingModel,
+                    actualModel: $actualModel,
+                    selectedProviderId: $selectedProviderId,
+                    isEnabled: $isEnabled,
+                    temperature: $temperature,
+                    maxTokens: $maxTokens,
+                    topP: $topP,
+                    frequencyPenalty: $frequencyPenalty,
+                    presencePenalty: $presencePenalty,
+                    thinkingOverrideEnabled: $thinkingOverrideEnabled,
+                    thinkingEnabled: $thinkingEnabled,
+                    thinkingBudget: $thinkingBudget,
+                    customFields: $customFields,
+                    customFieldsEnabled: $customFieldsEnabled
+                )
+                .padding(12)
+
+                HStack {
+                    Button(L10n.t("save")) {
+                        saveChanges()
+                    }
+                    .keyboardShortcut(.defaultAction)
+                    .disabled(!hasChanges)
+
+                    Button(L10n.t("cancel")) {
+                        if hasChanges {
+                            showUnsavedAlert = true
+                        } else {
+                            isExpanded = false
+                        }
+                    }
+                    .keyboardShortcut(.cancelAction)
+
+                    Spacer()
+
+                    Button(role: .destructive) {
+                        onDelete?()
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.plain)
+                }
+                .padding(.horizontal, 12)
+                .padding(.bottom, 12)
+            }
+        }
+        .background(Color(NSColor.controlBackgroundColor))
+        .cornerRadius(8)
+        .alert(L10n.t("unsaved_changes"), isPresented: $showUnsavedAlert) {
+            Button(L10n.t("save"), role: .none) {
+                saveChanges()
+                isExpanded = false
+            }
+            Button(L10n.t("discard_changes"), role: .destructive) {
+                loadMappingData()
+                isExpanded = false
+            }
+            Button(L10n.t("cancel"), role: .cancel) { }
+        } message: {
+            Text(L10n.t("unsaved_changes_msg"))
+        }
+        .onAppear {
+            loadMappingData()
+        }
+    }
+
+    private func loadMappingData() {
+        guard let current = configManager.mappings.first(where: { $0.id == mapping.id }) else { return }
+
+        name = current.name
+        incomingModel = current.incomingModel
+        actualModel = current.actualModel
+        selectedProviderId = current.providerConfigId
+        isEnabled = current.isEnabled
+
+        temperature = current.parameters.temperature.map { String($0) } ?? ""
+        maxTokens = current.parameters.maxTokens.map { String($0) } ?? ""
+        topP = current.parameters.topP.map { String($0) } ?? ""
+        frequencyPenalty = current.parameters.frequencyPenalty.map { String($0) } ?? ""
+        presencePenalty = current.parameters.presencePenalty.map { String($0) } ?? ""
+
+        if let thinking = current.parameters.thinking {
+            thinkingEnabled = thinking.enabled
+            thinkingBudget = thinking.budgetTokens.map { String($0) } ?? ""
+        }
+        thinkingOverrideEnabled = current.parameters.thinkingOverrideEnabled ?? false
+        if current.parameters.thinkingOverrideEnabled == nil && current.parameters.thinking != nil {
+            thinkingOverrideEnabled = true
+        }
+
+        if let fields = current.parameters.customFields, !fields.isEmpty {
+            customFields = fields.map { CustomField(key: $0.key, value: $0.value) }
+        } else {
+            customFields = []
+        }
+        customFieldsEnabled = current.parameters.customFieldsEnabled ?? false
+        if current.parameters.customFieldsEnabled == nil && current.parameters.customFields != nil {
+            customFieldsEnabled = true
+        }
+
+        originalMapping = current
+    }
+
+    private func quickSaveEnabled(_ enabled: Bool) {
+        guard var current = configManager.mappings.first(where: { $0.id == mapping.id }) else { return }
+        current.isEnabled = enabled
+        configManager.update(current)
+        onSave?()
+    }
+
+    private func saveChanges() {
+        guard var current = configManager.mappings.first(where: { $0.id == mapping.id }),
+              let providerId = selectedProviderId else { return }
+
+        current.name = name
+        current.incomingModel = incomingModel
+        current.actualModel = actualModel
+        current.providerConfigId = providerId
+        current.isEnabled = isEnabled
+        current.parameters = buildParameters()
+
+        configManager.update(current)
+        originalMapping = current
+        onSave?()
+    }
+
+    private func buildParameters() -> InjectedParameters {
+        let temp = Double(temperature)
+        let tokens = Int(maxTokens)
+        let topPValue = Double(topP)
+        let freqPenalty = Double(frequencyPenalty)
+        let presPenalty = Double(presencePenalty)
+
+        let thinking = ThinkingConfig(
+            enabled: thinkingEnabled,
+            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
+        )
+
+        let customFieldsDict: [String: String]? = customFields.isEmpty
+            ? nil
+            : Dictionary(uniqueKeysWithValues: customFields.filter { !$0.key.isEmpty }.map { ($0.key, $0.value) })
+
+        return InjectedParameters(
+            temperature: temp,
+            maxTokens: tokens,
+            topP: topPValue,
+            frequencyPenalty: freqPenalty,
+            presencePenalty: presPenalty,
+            thinking: thinking,
+            thinkingOverrideEnabled: thinkingOverrideEnabled,
+            customFields: customFieldsDict,
+            customFieldsEnabled: customFields.isEmpty ? nil : customFieldsEnabled
+        )
+    }
+}

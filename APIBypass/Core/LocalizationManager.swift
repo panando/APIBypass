@@ -129,6 +129,7 @@ struct L10n {
 
         // 右键菜单
         "copy_config": [.chinese: "复制配置", .english: "Copy Config"],
+        "copy_provider": [.chinese: "复制提供商", .english: "Copy Provider"],
         "delete_config": [.chinese: "删除配置", .english: "Delete Config"],
 
         // 列表

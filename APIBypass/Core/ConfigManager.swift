@@ -71,6 +71,38 @@ final class ConfigManager: ObservableObject {
         providers.contains { $0.id == mapping.providerConfigId }
     }
 
+    // MARK: - Reordering
+
+    func moveProvider(from source: IndexSet, to destination: Int) {
+        providers.move(fromOffsets: source, toOffset: destination)
+        saveProviders()
+    }
+
+    func moveMapping(providerId: UUID, from source: IndexSet, to destination: Int) {
+        let providerMappingIndices = mappings.enumerated()
+            .filter { $0.element.providerConfigId == providerId }
+            .map { $0.offset }
+
+        guard !providerMappingIndices.isEmpty else { return }
+
+        var globalSource = IndexSet()
+        for localIndex in source {
+            if localIndex < providerMappingIndices.count {
+                globalSource.insert(providerMappingIndices[localIndex])
+            }
+        }
+
+        let globalDestination: Int
+        if destination < providerMappingIndices.count {
+            globalDestination = providerMappingIndices[destination]
+        } else {
+            globalDestination = providerMappingIndices.last! + 1
+        }
+
+        mappings.move(fromOffsets: globalSource, toOffset: globalDestination)
+        save()
+    }
+
     // MARK: - Persistence
 
     private func save() {

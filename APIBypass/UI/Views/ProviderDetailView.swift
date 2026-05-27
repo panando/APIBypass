@@ -25,6 +25,9 @@ struct ProviderDetailView: View {
     @State private var lastResetTrigger = 0
     @State private var lastSaveTrigger = 0
 
+    // Mapping creation sheet
+    @State private var showNewMappingSheet = false
+
     private var hasChanges: Bool {
         name != originalName
             || apiProvider != originalApiProvider
@@ -32,9 +35,20 @@ struct ProviderDetailView: View {
             || apiKey != originalApiKey
     }
 
+    private var relatedMappings: [ModelMapping] {
+        configManager.mappingsForProvider(providerId)
+    }
+
+    private var orphanMappings: [ModelMapping] {
+        configManager.mappings.filter {
+            configManager.findProvider(for: $0.providerConfigId) == nil
+        }
+    }
+
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Provider Info Section
                 VStack(alignment: .leading, spacing: 12) {
                     Text(L10n.t("provider_info"))
                         .font(.subheadline)
@@ -76,26 +90,74 @@ struct ProviderDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                // 关联的模型映射
-                let relatedMappings = configManager.mappingsForProvider(providerId)
-                if !relatedMappings.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
+                // Model Mappings Section
+                VStack(alignment: .leading, spacing: 12) {
+                    HStack {
                         Text(L10n.t("related_mappings"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
+                        Spacer()
+                        Button {
+                            showNewMappingSheet = true
+                        } label: {
+                            HStack(spacing: 4) {
+                                Image(systemName: "plus")
+                                Text(L10n.t("add_mapping"))
+                            }
+                        }
+                        .buttonStyle(.plain)
+                    }
 
-                        ForEach(relatedMappings) { mapping in
+                    if relatedMappings.isEmpty {
+                        Text(L10n.t("select_or_create_hint"))
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                            .frame(maxWidth: .infinity, alignment: .center)
+                            .padding(.vertical, 20)
+                    } else {
+                        VStack(spacing: 8) {
+                            ForEach(relatedMappings) { mapping in
+                                MappingCardView(
+                                    configManager: configManager,
+                                    keychain: keychain,
+                                    mapping: mapping,
+                                    onSave: {
+                                        onSave?()
+                                    },
+                                    onDelete: {
+                                        configManager.delete(mapping.id)
+                                    }
+                                )
+                            }
+                            .onMove { source, destination in
+                                configManager.moveMapping(providerId: providerId, from: source, to: destination)
+                            }
+                        }
+                    }
+                }
+                .padding()
+                .background(Color(NSColor.controlBackgroundColor))
+                .cornerRadius(8)
+
+                // Orphan mappings
+                if !orphanMappings.isEmpty {
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("未分类映射")
+                            .font(.subheadline)
+                            .foregroundColor(.secondary)
+
+                        ForEach(orphanMappings) { mapping in
                             HStack {
-                                Circle()
-                                    .fill(mapping.isEnabled ? Color.green : Color.gray)
-                                    .frame(width: 8, height: 8)
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
                                 Text(mapping.name)
                                     .font(.body)
-                                Text(mapping.actualModel)
+                                Text("\(mapping.incomingModel) -> \(mapping.actualModel)")
                                     .font(.caption)
                                     .foregroundColor(.secondary)
                                 Spacer()
                             }
+                            .padding(.vertical, 4)
                         }
                     }
                     .padding()
@@ -151,6 +213,9 @@ struct ProviderDetailView: View {
             Button(L10n.t("ok"), role: .cancel) {
                 loadOriginalData()
             }
+        }
+        .sheet(isPresented: $showNewMappingSheet) {
+            NewMappingView(configManager: configManager, keychain: keychain)
         }
     }
 

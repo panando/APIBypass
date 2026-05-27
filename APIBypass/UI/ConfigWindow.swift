@@ -41,6 +41,7 @@ struct ConfigWindow: View {
             }
         }
         .frame(minWidth: 900, minHeight: 500)
+        .navigationTitle("APIBypass")
         .toolbar {
             ToolbarItem(placement: .navigation) {
                 Button {
@@ -48,11 +49,7 @@ struct ConfigWindow: View {
                 } label: {
                     Image(systemName: sidebarVisible ? "sidebar.left" : "sidebar.right")
                 }
-                .help(sidebarVisible ? "隐藏提供商边栏" : "显示提供商边栏")
-            }
-            ToolbarItem(placement: .principal) {
-                Text("APIBypass")
-                    .font(.headline)
+                .help(sidebarVisible ? L10n.t("hide_provider_sidebar") : L10n.t("show_provider_sidebar"))
             }
             if !configManager.mappings.isEmpty {
                 ToolbarItem(placement: .primaryAction) {
@@ -61,10 +58,10 @@ struct ConfigWindow: View {
                     } label: {
                         HStack(spacing: 4) {
                             Image(systemName: mappingPanelVisible ? "sidebar.right" : "sidebar.right")
-                            Text("映射状态")
+                            Text(L10n.t("mapping_status"))
                         }
                     }
-                    .help("显示/隐藏模型映射总览")
+                    .help(L10n.t("toggle_mapping_panel"))
                 }
             }
         }
@@ -229,7 +226,7 @@ struct ConfigWindow: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
-                    Text("添加")
+                    Text(L10n.t("add_short"))
                 }
             }
 
@@ -240,7 +237,7 @@ struct ConfigWindow: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "minus")
-                    Text("删除")
+                    Text(L10n.t("delete_short"))
                 }
             }
             .disabled(selectedProviderId == nil)
@@ -286,7 +283,7 @@ struct ConfigWindow: View {
     @ViewBuilder
     private var mappingListPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text("映射状态")
+            Text(L10n.t("mapping_status"))
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 6)
@@ -295,7 +292,7 @@ struct ConfigWindow: View {
             Divider()
 
             if configManager.mappings.isEmpty {
-                Text("暂无映射")
+                Text(L10n.t("no_mappings"))
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, maxHeight: .infinity)

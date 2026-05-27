@@ -147,6 +147,8 @@ struct L10n {
         "new_provider": [.chinese: "新建提供商", .english: "New Provider"],
         "add_provider": [.chinese: "添加提供商", .english: "Add Provider"],
         "delete_provider": [.chinese: "删除提供商", .english: "Delete Provider"],
+        "add_short": [.chinese: "添加", .english: "Add"],
+        "delete_short": [.chinese: "删除", .english: "Delete"],
         "create_provider": [.chinese: "新建提供商", .english: "Create Provider"],
         "provider": [.chinese: "提供商", .english: "Provider"],
         "provider_missing": [.chinese: "提供商缺失", .english: "Provider Missing"],
@@ -155,6 +157,13 @@ struct L10n {
         // 映射分组
         "model_mappings": [.chinese: "模型映射", .english: "Model Mappings"],
         "related_mappings": [.chinese: "模型映射", .english: "Model Mappings"],
+        "mapping_status": [.chinese: "映射状态", .english: "Mapping Status"],
+        "no_mappings": [.chinese: "暂无映射", .english: "No Mappings"],
+
+        // 边栏
+        "hide_provider_sidebar": [.chinese: "隐藏提供商边栏", .english: "Hide Provider Sidebar"],
+        "show_provider_sidebar": [.chinese: "显示提供商边栏", .english: "Show Provider Sidebar"],
+        "toggle_mapping_panel": [.chinese: "显示/隐藏模型映射总览", .english: "Show/Hide Mapping Panel"],
 
         // 删除确认
         "confirm_delete_mapping": [.chinese: "确认删除映射", .english: "Confirm Delete Mapping"],

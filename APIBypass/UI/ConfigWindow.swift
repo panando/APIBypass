@@ -42,10 +42,6 @@ struct ConfigWindow: View {
         }
         .frame(minWidth: 900, minHeight: 500)
         .toolbar {
-            ToolbarItem(placement: .principal) {
-                Text("APIBypass")
-                    .font(.headline)
-            }
             ToolbarItem(placement: .navigation) {
                 Button {
                     sidebarVisible.toggle()
@@ -53,6 +49,10 @@ struct ConfigWindow: View {
                     Image(systemName: sidebarVisible ? "sidebar.left" : "sidebar.right")
                 }
                 .help(sidebarVisible ? "隐藏提供商边栏" : "显示提供商边栏")
+            }
+            ToolbarItem(placement: .principal) {
+                Text("APIBypass")
+                    .font(.headline)
             }
             if !configManager.mappings.isEmpty {
                 ToolbarItem(placement: .primaryAction) {

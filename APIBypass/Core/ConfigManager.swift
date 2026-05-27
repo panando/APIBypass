@@ -15,6 +15,19 @@ final class ConfigManager: ObservableObject {
         loadProviders()
         load()
         migrateIfNeeded()
+        cleanupOrphanMappings()
+    }
+
+    // MARK: - Orphan Cleanup
+
+    private func cleanupOrphanMappings() {
+        let validIds = Set(providers.map { $0.id })
+        let orphans = mappings.filter { !validIds.contains($0.providerConfigId) }
+        if !orphans.isEmpty {
+            mappings.removeAll { !validIds.contains($0.providerConfigId) }
+            save()
+            print("[Cleanup] Removed \(orphans.count) orphan mapping(s) with invalid provider")
+        }
     }
 
     // MARK: - Mapping CRUD

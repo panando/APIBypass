@@ -18,16 +18,11 @@ struct ConfigWindow: View {
     private let keychain = KeychainService.shared
 
     var body: some View {
-        ThreeColumnSplitView(
-            leftDefaultWidth: 220,
-            rightDefaultWidth: 220,
-            leftMinWidth: 160,
-            rightMinWidth: 160
-        ) {
+        SplitView(leadingDefaultWidth: 200, trailingDefaultWidth: 200) {
             sidebarContent
         } center: {
-            detailView
-        } right: {
+            centerContent
+        } trailing: {
             mappingListPanel
         }
         .sheet(isPresented: $showNewProviderSheet) {
@@ -42,11 +37,35 @@ struct ConfigWindow: View {
     }
 
     @ViewBuilder
+    private var centerContent: some View {
+        if let pid = selectedProviderId,
+           configManager.findProvider(for: pid) != nil {
+            ProviderDetailView(
+                configManager: configManager,
+                providerId: pid,
+                keychain: keychain,
+                onHasChangesChange: { hasChanges in
+                    currentHasChanges = hasChanges
+                },
+                onSave: {
+                    currentHasChanges = false
+                },
+                forceResetTrigger: forceResetTrigger,
+                saveTrigger: saveAndSwitchTrigger
+            )
+            .id(pid)
+        } else {
+            emptyStateView
+        }
+    }
+
+    @ViewBuilder
     private var sidebarContent: some View {
         providerList
             .safeAreaInset(edge: .bottom) {
                 bottomToolbar
             }
+            .navigationTitle("APIBypass")
         .alert(L10n.t("confirm_delete_provider"), isPresented: $showDeleteProviderConfirmation) {
             Button(L10n.t("cancel"), role: .cancel) {
                 providerToDelete = nil
@@ -194,29 +213,6 @@ struct ConfigWindow: View {
            let provider = configManager.findProvider(for: pid) {
             providerToDelete = provider
             showDeleteProviderConfirmation = true
-        }
-    }
-
-    @ViewBuilder
-    private var detailView: some View {
-        if let pid = selectedProviderId,
-           configManager.findProvider(for: pid) != nil {
-            ProviderDetailView(
-                configManager: configManager,
-                providerId: pid,
-                keychain: keychain,
-                onHasChangesChange: { hasChanges in
-                    currentHasChanges = hasChanges
-                },
-                onSave: {
-                    currentHasChanges = false
-                },
-                forceResetTrigger: forceResetTrigger,
-                saveTrigger: saveAndSwitchTrigger
-            )
-            .id(pid)
-        } else {
-            emptyStateView
         }
     }
 

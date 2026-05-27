@@ -18,12 +18,20 @@ struct ConfigWindow: View {
     private let keychain = KeychainService.shared
 
     var body: some View {
-        SplitView(leadingDefaultWidth: 200, trailingDefaultWidth: 200) {
+        NavigationSplitView {
             sidebarContent
-        } center: {
-            centerContent
-        } trailing: {
-            mappingListPanel
+        } detail: {
+            detailView
+        }
+        .toolbar(removing: .sidebarToggle)
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                }
+            }
         }
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
@@ -33,29 +41,8 @@ struct ConfigWindow: View {
         .onAppear {
             let providerIds = configManager.providers.map { $0.id.uuidString }
             keychain.preloadKeys(for: providerIds)
-        }
-    }
-
-    @ViewBuilder
-    private var centerContent: some View {
-        if let pid = selectedProviderId,
-           configManager.findProvider(for: pid) != nil {
-            ProviderDetailView(
-                configManager: configManager,
-                providerId: pid,
-                keychain: keychain,
-                onHasChangesChange: { hasChanges in
-                    currentHasChanges = hasChanges
-                },
-                onSave: {
-                    currentHasChanges = false
-                },
-                forceResetTrigger: forceResetTrigger,
-                saveTrigger: saveAndSwitchTrigger
-            )
-            .id(pid)
-        } else {
-            emptyStateView
+            // Remove any lingering system sidebar toggle from the toolbar
+            configureWindowToolbar()
         }
     }
 
@@ -217,6 +204,35 @@ struct ConfigWindow: View {
     }
 
     @ViewBuilder
+    private var detailView: some View {
+        if let pid = selectedProviderId,
+           configManager.findProvider(for: pid) != nil {
+            HStack(spacing: 0) {
+                ProviderDetailView(
+                    configManager: configManager,
+                    providerId: pid,
+                    keychain: keychain,
+                    onHasChangesChange: { hasChanges in
+                        currentHasChanges = hasChanges
+                    },
+                    onSave: {
+                        currentHasChanges = false
+                    },
+                    forceResetTrigger: forceResetTrigger,
+                    saveTrigger: saveAndSwitchTrigger
+                )
+                .id(pid)
+
+                Divider()
+
+                mappingListPanel
+            }
+        } else {
+            emptyStateView
+        }
+    }
+
+    @ViewBuilder
     private var mappingListPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
             Text(L10n.t("model_mappings"))
@@ -286,6 +302,21 @@ struct ConfigWindow: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+
+    private func configureWindowToolbar() {
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
+            for window in NSApp.windows {
+                guard let toolbar = window.toolbar else { continue }
+                let indices = toolbar.items.enumerated().compactMap { (i, item) -> Int? in
+                    let raw = item.itemIdentifier.rawValue
+                    return (raw.lowercased().contains("toggle") && raw.lowercased().contains("sidebar")) ? i : nil
+                }
+                for i in indices.reversed() {
+                    toolbar.removeItem(at: i)
+                }
+            }
+        }
     }
 
     private func copyProvider(_ provider: ProviderConfig) {

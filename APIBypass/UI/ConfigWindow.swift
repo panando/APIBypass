@@ -24,16 +24,6 @@ struct ConfigWindow: View {
             detailView
         }
         .toolbar(removing: .sidebarToggle)
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
-                } label: {
-                    Image(systemName: "sidebar.leading")
-                }
-                .help("切换边栏")
-            }
-        }
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id
@@ -51,7 +41,7 @@ struct ConfigWindow: View {
             .safeAreaInset(edge: .bottom) {
                 bottomToolbar
             }
-            .navigationTitle("APIBypass")
+            .listStyle(.sidebar)
         .alert(L10n.t("confirm_delete_provider"), isPresented: $showDeleteProviderConfirmation) {
             Button(L10n.t("cancel"), role: .cancel) {
                 providerToDelete = nil

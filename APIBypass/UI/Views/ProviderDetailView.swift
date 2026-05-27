@@ -28,6 +28,12 @@ struct ProviderDetailView: View {
     // Mapping creation sheet
     @State private var showNewMappingSheet = false
 
+    // Track expanded mapping and unsaved changes
+    @State private var expandedMappingId: UUID?
+    @State private var mappingWithChanges: UUID?
+    @State private var showMappingSwitchAlert = false
+    @State private var pendingMappingId: UUID?
+
     private var hasChanges: Bool {
         name != originalName
             || apiProvider != originalApiProvider
@@ -79,33 +85,32 @@ struct ProviderDetailView: View {
                             SecureField(L10n.t("api_key_placeholder"), text: $apiKey)
                         }
                     }
+
+                    // Save button inside provider card
+                    if hasChanges {
+                        HStack {
+                            Spacer()
+                            Button(action: {
+                                saveChanges()
+                            }) {
+                                Text(L10n.t("save"))
+                                    .padding(.horizontal, 16)
+                                    .padding(.vertical, 6)
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 6)
+                                            .fill(Color.accentColor)
+                                    )
+                                    .foregroundColor(.white)
+                            }
+                            .buttonStyle(.plain)
+                            .keyboardShortcut(.defaultAction)
+                        }
+                        .padding(.top, 8)
+                    }
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
-
-                // Save button for provider info
-                if hasChanges {
-                    HStack {
-                        Spacer()
-                        Button(action: {
-                            saveChanges()
-                        }) {
-                            Text(L10n.t("save"))
-                                .padding(.horizontal, 16)
-                                .padding(.vertical, 6)
-                                .background(
-                                    RoundedRectangle(cornerRadius: 6)
-                                        .fill(Color.accentColor)
-                                )
-                                .foregroundColor(.white)
-                        }
-                        .buttonStyle(.plain)
-                        .keyboardShortcut(.defaultAction)
-                    }
-                    .padding(.horizontal)
-                    .padding(.bottom, 8)
-                }
 
                 // Model Mappings Section
                 VStack(alignment: .leading, spacing: 16) {

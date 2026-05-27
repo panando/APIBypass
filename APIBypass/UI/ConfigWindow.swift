@@ -47,6 +47,11 @@ struct ConfigWindow: View {
             }
             Button(L10n.t("delete"), role: .destructive) {
                 if let provider = providerToDelete {
+                    // Cascade delete all related mappings first
+                    let relatedMappings = configManager.mappingsForProvider(provider.id)
+                    for mapping in relatedMappings {
+                        configManager.delete(mapping.id)
+                    }
                     configManager.deleteProvider(provider.id)
                     try? keychain.delete(forKey: provider.id.uuidString)
                     if selectedProviderId == provider.id {
@@ -151,22 +156,24 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private var bottomToolbar: some View {
-        HStack {
+        HStack(spacing: 12) {
             Button {
                 showNewProviderSheet = true
             } label: {
-                Image(systemName: "plus")
+                HStack(spacing: 4) {
+                    Image(systemName: "plus")
+                    Text(L10n.t("add_provider"))
+                }
             }
-            .help(L10n.t("add_provider"))
-
-            Spacer()
 
             Button {
                 deleteSelected()
             } label: {
-                Image(systemName: "minus")
+                HStack(spacing: 4) {
+                    Image(systemName: "minus")
+                    Text(L10n.t("delete_provider"))
+                }
             }
-            .help(L10n.t("delete_selected"))
             .disabled(selectedProviderId == nil)
         }
         .padding(.horizontal)

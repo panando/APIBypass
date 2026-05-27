@@ -7,6 +7,7 @@ struct MappingCardView: View {
 
     var onSave: (() -> Void)?
     var onDelete: (() -> Void)?
+    var onHasChangesChange: ((Bool) -> Void)?
 
     @ObservedObject private var l10n = LocalizationManager.shared
 
@@ -176,11 +177,11 @@ struct MappingCardView: View {
                 .padding(.bottom, 12)
             }
         }
-        .background(Color(NSColor.controlBackgroundColor))
+        .background(Color(NSColor.textBackgroundColor))
         .cornerRadius(8)
         .overlay(
             RoundedRectangle(cornerRadius: 8)
-                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+                .stroke(Color.secondary.opacity(0.2), lineWidth: 1)
         )
         .alert(L10n.t("unsaved_changes"), isPresented: $showUnsavedAlert) {
             Button(L10n.t("save"), role: .none) {

@@ -9,6 +9,7 @@ struct ConfigWindow: View {
 
     // Sidebar state
     @State private var sidebarVisible = true
+    @State private var mappingPanelVisible = true
 
     // Change tracking
     @State private var currentHasChanges = false
@@ -22,31 +23,35 @@ struct ConfigWindow: View {
 
     var body: some View {
         HStack(spacing: 0) {
-            // Custom sidebar
             if sidebarVisible {
                 sidebarContent
                     .frame(minWidth: 220, idealWidth: 240, maxWidth: 280)
                 Divider()
             }
 
-            // Toggle button (always visible at left edge)
-            Button {
-                sidebarVisible.toggle()
-            } label: {
-                Image(systemName: sidebarVisible ? "sidebar.left" : "sidebar.right")
-                    .font(.body)
-            }
-            .buttonStyle(.plain)
-            .padding(.horizontal, 6)
-            .padding(.vertical, 8)
-            .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-            .help(sidebarVisible ? "隐藏边栏" : "显示边栏")
-
-            // Detail area
             detailView
                 .frame(minWidth: 400)
         }
         .navigationTitle("APIBypass")
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    sidebarVisible.toggle()
+                } label: {
+                    Image(systemName: sidebarVisible ? "sidebar.left" : "sidebar.right")
+                }
+                .help(sidebarVisible ? "隐藏提供商边栏" : "显示提供商边栏")
+            }
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    mappingPanelVisible.toggle()
+                } label: {
+                    Image(systemName: "sidebar.right")
+                        .opacity(mappingPanelVisible ? 1.0 : 0.4)
+                }
+                .help(mappingPanelVisible ? "隐藏映射总览" : "显示映射总览")
+            }
+        }
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id
@@ -232,9 +237,10 @@ struct ConfigWindow: View {
                 )
                 .id(pid)
 
-                Divider()
-
-                mappingListPanel
+                if mappingPanelVisible {
+                    Divider()
+                    mappingListPanel
+                }
             }
         } else {
             emptyStateView

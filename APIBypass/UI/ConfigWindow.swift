@@ -56,8 +56,10 @@ struct ConfigWindow: View {
                     Button {
                         mappingPanelVisible.toggle()
                     } label: {
-                        Text("模型映射状态")
-                            .opacity(mappingPanelVisible ? 1.0 : 0.5)
+                        HStack(spacing: 4) {
+                            Image(systemName: mappingPanelVisible ? "sidebar.right" : "sidebar.right")
+                            Text("映射状态")
+                        }
                     }
                     .help("显示/隐藏模型映射总览")
                 }
@@ -187,23 +189,15 @@ struct ConfigWindow: View {
             Image(systemName: provider.apiProvider == .openai ? "building.2" : "brain")
                 .foregroundColor(.accentColor)
                 .frame(width: 16)
-            VStack(alignment: .leading, spacing: 3) {
+            VStack(alignment: .leading, spacing: 2) {
                 Text(provider.name)
-                    .font(.system(size: 13, weight: .semibold))
+                    .font(.system(size: 13, weight: .medium))
                 Text(provider.baseURL.host ?? provider.baseURL.absoluteString)
                     .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
         }
-        .padding(.vertical, 6)
-        .padding(.horizontal, 10)
-        .background(
-            RoundedRectangle(cornerRadius: 6)
-                .fill(Color(NSColor.controlBackgroundColor))
-                .shadow(color: Color.black.opacity(0.06), radius: 1, x: 0, y: 1)
-        )
-        .padding(.vertical, 2)
         .tag(provider.id)
         .contextMenu {
             Button {

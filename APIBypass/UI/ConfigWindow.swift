@@ -10,7 +10,7 @@ struct ConfigWindow: View {
     // Sidebar state
     @State private var sidebarVisible = true
     @State private var mappingPanelVisible = false  // Default hidden
-    @State private var sidebarWidth: CGFloat = 240
+    @State private var sidebarWidth: CGFloat = 200
     @State private var mappingPanelWidth: CGFloat = 220
 
     // Change tracking
@@ -40,7 +40,7 @@ struct ConfigWindow: View {
                     .frame(width: mappingPanelWidth)
             }
         }
-        .frame(minWidth: 600, minHeight: 500)
+        .frame(minWidth: 900, minHeight: 500)
         .navigationTitle("APIBypass")
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -56,10 +56,10 @@ struct ConfigWindow: View {
                     Button {
                         mappingPanelVisible.toggle()
                     } label: {
-                        Image(systemName: "sidebar.right")
-                            .opacity(mappingPanelVisible ? 1.0 : 0.4)
+                        Text("模型映射状态")
+                            .opacity(mappingPanelVisible ? 1.0 : 0.5)
                     }
-                    .help(mappingPanelVisible ? "隐藏映射总览" : "显示映射总览")
+                    .help("显示/隐藏模型映射总览")
                 }
             }
         }
@@ -148,15 +148,12 @@ struct ConfigWindow: View {
     private var providerList: some View {
         VStack(spacing: 0) {
             // Custom section header
-            HStack {
-                Text(L10n.t("providers"))
-                    .font(.headline)
-                    .foregroundColor(.primary)
-                Spacer()
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 6)
-            .background(Color(NSColor.windowBackgroundColor).opacity(0.6))
+            Text(L10n.t("providers"))
+                .font(.headline)
+                .foregroundColor(.primary)
+                .frame(maxWidth: .infinity)
+                .padding(.vertical, 6)
+                .background(Color(NSColor.windowBackgroundColor).opacity(0.6))
 
             List(selection: Binding<UUID?>(
                 get: { selectedProviderId },
@@ -186,19 +183,27 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private func providerRow(_ provider: ProviderConfig) -> some View {
-        HStack {
+        HStack(spacing: 10) {
             Image(systemName: provider.apiProvider == .openai ? "building.2" : "brain")
                 .foregroundColor(.accentColor)
                 .frame(width: 16)
-            VStack(alignment: .leading) {
+            VStack(alignment: .leading, spacing: 3) {
                 Text(provider.name)
-                    .font(.headline)
+                    .font(.system(size: 13, weight: .semibold))
                 Text(provider.baseURL.host ?? provider.baseURL.absoluteString)
-                    .font(.caption)
+                    .font(.system(size: 11))
                     .foregroundColor(.secondary)
                     .lineLimit(1)
             }
         }
+        .padding(.vertical, 6)
+        .padding(.horizontal, 10)
+        .background(
+            RoundedRectangle(cornerRadius: 6)
+                .fill(Color(NSColor.controlBackgroundColor))
+                .shadow(color: Color.black.opacity(0.06), radius: 1, x: 0, y: 1)
+        )
+        .padding(.vertical, 2)
         .tag(provider.id)
         .contextMenu {
             Button {

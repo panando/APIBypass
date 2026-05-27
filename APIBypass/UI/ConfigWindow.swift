@@ -41,8 +41,11 @@ struct ConfigWindow: View {
             }
         }
         .frame(minWidth: 900, minHeight: 500)
-        .navigationTitle("APIBypass")
         .toolbar {
+            ToolbarItem(placement: .principal) {
+                Text("APIBypass")
+                    .font(.headline)
+            }
             ToolbarItem(placement: .navigation) {
                 Button {
                     sidebarVisible.toggle()

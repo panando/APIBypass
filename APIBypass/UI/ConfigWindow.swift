@@ -11,7 +11,7 @@ struct ConfigWindow: View {
     @State private var sidebarVisible = true
     @State private var mappingPanelVisible = false  // Default hidden
     @State private var sidebarWidth: CGFloat = 200
-    @State private var mappingPanelWidth: CGFloat = 220
+    @State private var mappingPanelWidth: CGFloat = 180
 
     // Change tracking
     @State private var currentHasChanges = false
@@ -35,7 +35,7 @@ struct ConfigWindow: View {
                 .frame(minWidth: 400)
 
             if mappingPanelVisible {
-                draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible)
+                draggableDivider(width: $mappingPanelWidth, range: 120...400, visible: mappingPanelVisible)
                 mappingListPanel
                     .frame(width: mappingPanelWidth)
             }
@@ -385,7 +385,8 @@ struct ConfigWindow: View {
 struct DraggableDivider: View {
     @Binding var width: CGFloat
     let range: ClosedRange<CGFloat>
-    @State private var dragStartWidth: CGFloat = 0
+    @State private var initialWidth: CGFloat = 0
+    @State private var dragging = false
 
     var body: some View {
         Rectangle()
@@ -393,20 +394,21 @@ struct DraggableDivider: View {
             .frame(width: 4)
             .contentShape(Rectangle().inset(by: -4))
             .gesture(
-                DragGesture()
+                DragGesture(minimumDistance: 1)
                     .onChanged { value in
-                        if dragStartWidth == 0 {
-                            dragStartWidth = width
+                        if !dragging {
+                            initialWidth = width
+                            dragging = true
                         }
-                        let newWidth = dragStartWidth + value.translation.width
+                        let newWidth = initialWidth + value.translation.width
                         width = min(max(newWidth, range.lowerBound), range.upperBound)
                     }
                     .onEnded { _ in
-                        dragStartWidth = 0
+                        dragging = false
                     }
             )
             .onHover { hovering in
-                if hovering {
+                if hovering || dragging {
                     NSCursor.resizeLeftRight.push()
                 } else {
                     NSCursor.resizeLeftRight.pop()

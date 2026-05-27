@@ -3,30 +3,48 @@
 ## What's New
 
 ### Provider Configuration Management
-- New "Providers" section in the sidebar for managing API provider configurations
-- Each provider configuration includes: name, API type (OpenAI/Anthropic), base URL, and API key
-- Model mappings now reference provider configurations instead of storing duplicate baseURL/API key
-- Easier management when using the same provider across multiple model mappings
+- Providers section for managing API provider configurations (name, API type, base URL, API key)
+- Model mappings reference provider configurations — no more duplicate baseURL/API key entries
+- Auto-migration from old format to new provider-based structure with API key preservation
 
-### Improved UI Organization
-- Sidebar now shows "Providers" and "Model Mappings" as separate sections
-- Add new providers directly from the mapping creation dialog
-- Delete provider warning shows how many mappings will be affected
-- Invalid mappings (missing provider) display a warning indicator
+### Hierarchical UI Layout
+- Sidebar shows only providers; model mappings are nested inside each provider's detail page
+- Expandable mapping cards with inline editing (toggle, parameters, thinking mode, custom fields)
+- Right-side mapping overview panel with independent toggle
+- Custom sidebar toggle button (fixed position, never moves)
+- Draggable dividers for resizable sidebar and mapping panel widths
+- Drag-and-drop sorting for providers and mappings
 
-### Automatic Data Migration
-- Existing configurations automatically migrated to the new provider-based structure
-- API keys preserved during migration
-- Old mappings grouped by (provider type, base URL) to create provider configurations
+### Quality of Life Improvements
+- Copy provider via context menu (duplicates API key + all mappings)
+- Provider deletion cascade-deletes all related mappings
+- Duplicate incoming model name detection with auto-focus on input field
+- Switch toggle on each mapping card for instant enable/disable
+- Unsaved changes detection when switching between mapping cards
+- Auto-cleanup of orphan mappings on app launch
+- Icon color adapts to selection state for visibility
 
 ## Changelog
 
-- f69588f: feat: add ProviderConfig data model
-- 16f484d: feat: update ModelMapping to use providerConfigId
-- 391f08a: feat: extend ConfigManager with providers management and data migration
-- 5552444: feat: update HTTPServer to use provider from ConfigManager
-- 7e94008: feat: add ProviderDetailView and NewProviderView
-- 89de8c1: feat: restructure UI with provider/mapping split layout
+- 46cfc7c: fix: bind List selection to enable item selection
+- e0a3dce: docs: add provider config UI improvements design
+- a803a22: feat: provider config UI improvements
+- 2c10264: feat: UI improvements - save button placement and model name validation
+- a5be160: feat: UI improvements for provider detail and sidebar
+- 4829004: feat: add unsaved changes detection when switching mapping cards
+- b4dc7db: feat: UI fixes - sidebar, focus, mapping panel
+- f51698e: fix: sidebar toggle button and bottom toolbar alignment
+- e550910: fix: replace NavigationSplitView with custom HStack sidebar
+- 8368731: feat: move sidebar toggles to window toolbar, add right panel toggle
+- 6fdc545: feat: draggable dividers, toolbar alignment, conditional toggle
+- 3a1cad5: fix: mapping panel independent of provider selection, section header style
+- d2aed6a: feat: window size, sidebar header, row polish, toolbar text
+- 1470a73: fix: simplify toolbar button and provider row design
+- 090ad7a: fix: simplify draggable divider, reduce mapping panel default width
+- 39098a6: fix: reverse drag direction for mapping panel, update header style
+- 6a85ca4: feat: auto-cleanup orphan mappings on app launch
+- 515111e: fix: icon color on selection, mapping panel header background
+- ccf196b: feat: add i18n keys for new UI elements
 
 ## Download
 

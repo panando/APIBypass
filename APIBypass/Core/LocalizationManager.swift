@@ -126,6 +126,8 @@ struct L10n {
         "discard_changes": [.chinese: "放弃更改", .english: "Discard Changes"],
         "save_and_switch": [.chinese: "保存并切换", .english: "Save & Switch"],
         "create": [.chinese: "创建", .english: "Create"],
+        "duplicate_model_title": [.chinese: "模型名重复", .english: "Duplicate Model Name"],
+        "duplicate_model_msg": [.chinese: "客户端模型名已存在，请使用其他名称", .english: "This client model name already exists. Please use a different name."],
 
         // 右键菜单
         "copy_config": [.chinese: "复制配置", .english: "Copy Config"],
@@ -152,7 +154,7 @@ struct L10n {
 
         // 映射分组
         "model_mappings": [.chinese: "模型映射", .english: "Model Mappings"],
-        "related_mappings": [.chinese: "关联的模型映射", .english: "Related Model Mappings"],
+        "related_mappings": [.chinese: "模型映射", .english: "Model Mappings"],
 
         // 删除确认
         "confirm_delete_mapping": [.chinese: "确认删除映射", .english: "Confirm Delete Mapping"],

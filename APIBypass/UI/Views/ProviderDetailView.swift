@@ -39,12 +39,6 @@ struct ProviderDetailView: View {
         configManager.mappingsForProvider(providerId)
     }
 
-    private var orphanMappings: [ModelMapping] {
-        configManager.mappings.filter {
-            configManager.findProvider(for: $0.providerConfigId) == nil
-        }
-    }
-
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
@@ -90,10 +84,33 @@ struct ProviderDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                // Model Mappings Section
-                VStack(alignment: .leading, spacing: 12) {
+                // Save button for provider info
+                if hasChanges {
                     HStack {
-                        Text(L10n.t("related_mappings"))
+                        Spacer()
+                        Button(action: {
+                            saveChanges()
+                        }) {
+                            Text(L10n.t("save"))
+                                .padding(.horizontal, 16)
+                                .padding(.vertical, 6)
+                                .background(
+                                    RoundedRectangle(cornerRadius: 6)
+                                        .fill(Color.accentColor)
+                                )
+                                .foregroundColor(.white)
+                        }
+                        .buttonStyle(.plain)
+                        .keyboardShortcut(.defaultAction)
+                    }
+                    .padding(.horizontal)
+                    .padding(.bottom, 8)
+                }
+
+                // Model Mappings Section
+                VStack(alignment: .leading, spacing: 16) {
+                    HStack {
+                        Text(L10n.t("model_mappings"))
                             .font(.subheadline)
                             .foregroundColor(.secondary)
                         Spacer()
@@ -115,7 +132,7 @@ struct ProviderDetailView: View {
                             .frame(maxWidth: .infinity, alignment: .center)
                             .padding(.vertical, 20)
                     } else {
-                        VStack(spacing: 8) {
+                        VStack(spacing: 12) {
                             ForEach(relatedMappings) { mapping in
                                 MappingCardView(
                                     configManager: configManager,
@@ -139,57 +156,9 @@ struct ProviderDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
-                // Orphan mappings
-                if !orphanMappings.isEmpty {
-                    VStack(alignment: .leading, spacing: 12) {
-                        Text("未分类映射")
-                            .font(.subheadline)
-                            .foregroundColor(.secondary)
-
-                        ForEach(orphanMappings) { mapping in
-                            HStack {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.orange)
-                                Text(mapping.name)
-                                    .font(.body)
-                                Text("\(mapping.incomingModel) -> \(mapping.actualModel)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                                Spacer()
-                            }
-                            .padding(.vertical, 4)
-                        }
-                    }
-                    .padding()
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(8)
-                }
-
                 Spacer()
             }
             .padding()
-        }
-        .toolbar {
-            Spacer()
-            Button(action: {
-                saveChanges()
-            }) {
-                Text(L10n.t("save"))
-                    .padding(.horizontal, 16)
-                    .padding(.vertical, 6)
-                    .background(
-                        RoundedRectangle(cornerRadius: 6)
-                            .fill(hasChanges ? Color.accentColor : Color.clear)
-                    )
-                    .overlay(
-                        RoundedRectangle(cornerRadius: 6)
-                            .stroke(hasChanges ? Color.clear : Color.secondary.opacity(0.3), lineWidth: 1)
-                    )
-                    .foregroundColor(hasChanges ? .white : .secondary)
-            }
-            .buttonStyle(.plain)
-            .keyboardShortcut(.defaultAction)
-            .disabled(!hasChanges)
         }
         .onAppear {
             loadProviderData()
@@ -215,7 +184,7 @@ struct ProviderDetailView: View {
             }
         }
         .sheet(isPresented: $showNewMappingSheet) {
-            NewMappingView(configManager: configManager, keychain: keychain)
+            NewMappingView(configManager: configManager, keychain: keychain, defaultProviderId: providerId)
         }
     }
 

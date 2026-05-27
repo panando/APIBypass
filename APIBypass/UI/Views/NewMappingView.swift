@@ -3,6 +3,7 @@ import SwiftUI
 struct NewMappingView: View {
     let configManager: ConfigManager
     let keychain: KeychainService
+    var defaultProviderId: UUID?
     @Environment(\.dismiss) var dismiss
     @ObservedObject private var l10n = LocalizationManager.shared
 
@@ -24,6 +25,7 @@ struct NewMappingView: View {
 
     // Custom fields
     @State private var customFields: [CustomField] = []
+    @State private var showDuplicateModelAlert = false
 
     var body: some View {
         ScrollView {
@@ -45,6 +47,16 @@ struct NewMappingView: View {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id
             }
+        }
+        .onAppear {
+            if selectedProviderId == nil {
+                selectedProviderId = defaultProviderId
+            }
+        }
+        .alert(L10n.t("duplicate_model_title"), isPresented: $showDuplicateModelAlert) {
+            Button(L10n.t("ok"), role: .cancel) { }
+        } message: {
+            Text(L10n.t("duplicate_model_msg"))
         }
     }
 
@@ -256,6 +268,13 @@ struct NewMappingView: View {
 
     private func createMapping() {
         guard let providerId = selectedProviderId else { return }
+
+        // Check for duplicate incoming model name
+        let duplicateExists = configManager.mappings.contains { $0.incomingModel.lowercased() == incomingModel.lowercased() }
+        if duplicateExists {
+            showDuplicateModelAlert = true
+            return
+        }
 
         let mapping = ModelMapping(
             name: name,

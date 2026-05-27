@@ -12,6 +12,8 @@ struct MappingCardView: View {
 
     @State private var isExpanded = false
     @State private var showUnsavedAlert = false
+    @State private var showDeleteConfirmation = false
+    @State private var showDuplicateModelAlert = false
 
     // Form state
     @State private var name: String = ""
@@ -156,11 +158,19 @@ struct MappingCardView: View {
                     Spacer()
 
                     Button(role: .destructive) {
-                        onDelete?()
+                        showDeleteConfirmation = true
                     } label: {
                         Image(systemName: "trash")
                     }
                     .buttonStyle(.plain)
+                    .alert(L10n.t("confirm_delete_mapping"), isPresented: $showDeleteConfirmation) {
+                        Button(L10n.t("cancel"), role: .cancel) { }
+                        Button(L10n.t("delete"), role: .destructive) {
+                            onDelete?()
+                        }
+                    } message: {
+                        Text(L10n.t("confirm_delete_generic"))
+                    }
                 }
                 .padding(.horizontal, 12)
                 .padding(.bottom, 12)
@@ -168,6 +178,10 @@ struct MappingCardView: View {
         }
         .background(Color(NSColor.controlBackgroundColor))
         .cornerRadius(8)
+        .overlay(
+            RoundedRectangle(cornerRadius: 8)
+                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+        )
         .alert(L10n.t("unsaved_changes"), isPresented: $showUnsavedAlert) {
             Button(L10n.t("save"), role: .none) {
                 saveChanges()
@@ -180,6 +194,11 @@ struct MappingCardView: View {
             Button(L10n.t("cancel"), role: .cancel) { }
         } message: {
             Text(L10n.t("unsaved_changes_msg"))
+        }
+        .alert(L10n.t("duplicate_model_title"), isPresented: $showDuplicateModelAlert) {
+            Button(L10n.t("ok"), role: .cancel) { }
+        } message: {
+            Text(L10n.t("duplicate_model_msg"))
         }
         .onAppear {
             loadMappingData()
@@ -233,6 +252,16 @@ struct MappingCardView: View {
     private func saveChanges() {
         guard var current = configManager.mappings.first(where: { $0.id == mapping.id }),
               let providerId = selectedProviderId else { return }
+
+        // Check for duplicate incoming model name (excluding current mapping)
+        let duplicateExists = configManager.mappings.contains { other in
+            other.id != mapping.id &&
+            other.incomingModel.lowercased() == incomingModel.lowercased()
+        }
+        if duplicateExists {
+            showDuplicateModelAlert = true
+            return
+        }
 
         current.name = name
         current.incomingModel = incomingModel

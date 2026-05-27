@@ -22,9 +22,8 @@ struct MappingDetailView: View {
     @State private var name: String = ""
     @State private var incomingModel: String = ""
     @State private var actualModel: String = ""
-    @State private var apiProvider: APIProvider = .openai
-    @State private var baseURL: String = ""
-    @State private var apiKey: String = ""
+    @State private var selectedProviderId: UUID?
+    @State private var showNewProviderSheet = false
 
     // 参数设置
     @State private var temperature = ""
@@ -45,7 +44,7 @@ struct MappingDetailView: View {
 
     // 存储原始数据用于变更检测
     @State private var originalMapping: ModelMapping?
-    @State private var originalApiKey: String = ""
+    @State private var originalProviderId: UUID?
     @State private var lastResetTrigger = 0
     @State private var lastSaveTrigger = 0
 
@@ -57,10 +56,8 @@ struct MappingDetailView: View {
         if name != original.name { return true }
         if incomingModel != original.incomingModel { return true }
         if actualModel != original.actualModel { return true }
-        if apiProvider != original.apiProvider { return true }
-        if baseURL != original.baseURL.absoluteString { return true }
+        if selectedProviderId != original.providerConfigId { return true }
         if isEnabled != original.isEnabled { return true }
-        if apiKey != originalApiKey { return true }
 
         // 检查参数
         let currentParams = buildParameters()
@@ -124,7 +121,7 @@ struct MappingDetailView: View {
                         HStack {
                             Text(L10n.t("incoming_model"))
                                 .frame(width: 100, alignment: .trailing)
-                            TextField(L10n.t("config_name_field"), text: $incomingModel)
+                            TextField(L10n.t("incoming_model_field"), text: $incomingModel)
                         }
                         HStack {
                             Text(L10n.t("actual_model"))
@@ -132,23 +129,46 @@ struct MappingDetailView: View {
                             TextField(L10n.t("actual_model_field"), text: $actualModel)
                         }
                         HStack {
-                            Text(L10n.t("api_provider"))
+                            Text(L10n.t("provider"))
                                 .frame(width: 100, alignment: .trailing)
-                            Picker("", selection: $apiProvider) {
-                                Text("OpenAI").tag(APIProvider.openai)
-                                Text("Anthropic").tag(APIProvider.anthropic)
+                            Picker("", selection: $selectedProviderId) {
+                                ForEach(configManager.providers) { provider in
+                                    Text(provider.name).tag(provider.id as UUID?)
+                                }
                             }
                             .pickerStyle(.menu)
+
+                            Button {
+                                showNewProviderSheet = true
+                            } label: {
+                                Image(systemName: "plus.circle")
+                            }
+                            .buttonStyle(.plain)
                         }
-                        HStack {
-                            Text(L10n.t("base_url"))
-                                .frame(width: 100, alignment: .trailing)
-                            TextField(L10n.t("base_url_placeholder"), text: $baseURL)
+
+                        // 提供商无效警告
+                        if let pid = selectedProviderId,
+                           configManager.findProvider(for: pid) == nil {
+                            HStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .foregroundColor(.red)
+                                Text(L10n.t("provider_deleted_warning"))
+                                    .font(.caption)
+                                    .foregroundColor(.red)
+                            }
+                            .padding(.leading, 108)
                         }
-                        HStack {
-                            Text(L10n.t("api_key"))
-                                .frame(width: 100, alignment: .trailing)
-                            SecureField(L10n.t("api_key_placeholder"), text: $apiKey)
+
+                        // 显示当前提供商信息（只读）
+                        if let pid = selectedProviderId,
+                           let provider = configManager.findProvider(for: pid) {
+                            HStack {
+                                Text("")
+                                    .frame(width: 100, alignment: .trailing)
+                                Text("\(provider.apiProvider.rawValue) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                            }
                         }
                     }
                 }
@@ -181,7 +201,10 @@ struct MappingDetailView: View {
                                 .labelsHidden()
                                 .disabled(!thinkingOverrideEnabled)
                         }
-                        if thinkingEnabled && apiProvider == .anthropic {
+                        if thinkingEnabled,
+                           let pid = selectedProviderId,
+                           let provider = configManager.findProvider(for: pid),
+                           provider.apiProvider == .anthropic {
                             HStack {
                                 Text(L10n.t("thinking_budget"))
                                     .frame(width: 120, alignment: .trailing)
@@ -348,8 +371,12 @@ struct MappingDetailView: View {
         }
         .alert(L10n.t("saved"), isPresented: $showSaveConfirmation) {
             Button(L10n.t("ok"), role: .cancel) {
-                // 保存后更新原始数据
                 loadOriginalData()
+            }
+        }
+        .sheet(isPresented: $showNewProviderSheet) {
+            NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
+                selectedProviderId = newProvider.id
             }
         }
     }
@@ -360,8 +387,7 @@ struct MappingDetailView: View {
         name = mapping.name
         incomingModel = mapping.incomingModel
         actualModel = mapping.actualModel
-        apiProvider = mapping.apiProvider
-        baseURL = mapping.baseURL.absoluteString
+        selectedProviderId = mapping.providerConfigId
         isEnabled = mapping.isEnabled
 
         if let temp = mapping.parameters.temperature {
@@ -403,40 +429,30 @@ struct MappingDetailView: View {
             customFieldsEnabled = true
         }
 
-        if let key = try? keychain.retrieve(forKey: mappingId.uuidString) {
-            apiKey = key
-        }
-
-        // 加载原始数据
         loadOriginalData()
     }
 
     private func loadOriginalData() {
         originalMapping = configManager.mappings.first(where: { $0.id == mappingId })
-        originalApiKey = apiKey
+        originalProviderId = selectedProviderId
         onHasChangesChange?(false)
     }
 
     private func saveChanges() {
-        guard let mapping = configManager.mappings.first(where: { $0.id == mappingId }) else { return }
+        guard let mapping = configManager.mappings.first(where: { $0.id == mappingId }),
+              let providerId = selectedProviderId else { return }
 
         let updatedMapping = ModelMapping(
             id: mapping.id,
             name: name,
             incomingModel: incomingModel,
             actualModel: actualModel,
-            apiProvider: apiProvider,
-            baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
+            providerConfigId: providerId,
             parameters: buildParameters(),
             isEnabled: isEnabled
         )
 
         configManager.update(updatedMapping)
-
-        if !apiKey.isEmpty {
-            try? keychain.save(apiKey, forKey: mappingId.uuidString)
-        }
-
         onSave?()
         showSaveConfirmation = true
     }

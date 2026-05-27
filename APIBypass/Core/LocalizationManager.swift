@@ -135,6 +135,33 @@ struct L10n {
         "new_config": [.chinese: "新配置", .english: "New Config"],
         "config_name_field": [.chinese: "请求的模型名", .english: "Requested model"],
         "actual_model_field": [.chinese: "实际调用的模型", .english: "Actual model called"],
+
+        // 提供商相关
+        "providers": [.chinese: "提供商", .english: "Providers"],
+        "provider_info": [.chinese: "提供商信息", .english: "Provider Info"],
+        "provider_name": [.chinese: "名称", .english: "Name"],
+        "provider_name_placeholder": [.chinese: "例如：我的 OpenAI", .english: "e.g. My OpenAI"],
+        "new_provider": [.chinese: "新建提供商", .english: "New Provider"],
+        "add_provider": [.chinese: "添加提供商", .english: "Add Provider"],
+        "delete_provider": [.chinese: "删除提供商", .english: "Delete Provider"],
+        "create_provider": [.chinese: "新建提供商", .english: "Create Provider"],
+        "provider": [.chinese: "提供商", .english: "Provider"],
+        "provider_missing": [.chinese: "提供商缺失", .english: "Provider Missing"],
+        "provider_deleted_warning": [.chinese: "提供商已删除，请重新选择", .english: "Provider deleted, please reselect"],
+
+        // 映射分组
+        "model_mappings": [.chinese: "模型映射", .english: "Model Mappings"],
+        "related_mappings": [.chinese: "关联的模型映射", .english: "Related Model Mappings"],
+
+        // 删除确认
+        "confirm_delete_mapping": [.chinese: "确认删除映射", .english: "Confirm Delete Mapping"],
+        "confirm_delete_provider": [.chinese: "确认删除提供商", .english: "Confirm Delete Provider"],
+        "confirm_delete_provider_msg": [.chinese: "确定要删除", .english: "Are you sure you want to delete"],
+        "confirm_delete_provider_hint_prefix": [.chinese: "？该提供商已被 ", .english: "? This provider is used by "],
+        "confirm_delete_provider_hint_suffix": [.chinese: " 个映射使用，删除后这些映射将失效", .english: " mapping(s). They will become invalid after deletion"],
+
+        // 其他
+        "delete_selected": [.chinese: "删除选中项", .english: "Delete Selected"],
     ]
 }
 

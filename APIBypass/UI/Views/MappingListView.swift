@@ -18,7 +18,8 @@ struct MappingListView: View {
                     VStack(alignment: .leading) {
                         Text(mapping.name)
                             .font(.headline)
-                        Text("\(mapping.incomingModel) → \(mapping.actualModel)")
+                        let providerName = configManager.findProvider(for: mapping.providerConfigId)?.name ?? L10n.t("provider_missing")
+                        Text("\(mapping.incomingModel) → \(mapping.actualModel) · \(providerName)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }

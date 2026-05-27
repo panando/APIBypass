@@ -23,6 +23,16 @@ struct ConfigWindow: View {
         } detail: {
             detailView
         }
+        .toolbar {
+            ToolbarItem(placement: .navigation) {
+                Button {
+                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
+                } label: {
+                    Image(systemName: "sidebar.leading")
+                }
+                .help("切换边栏")
+            }
+        }
         .toolbar(removing: .sidebarToggle)
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in

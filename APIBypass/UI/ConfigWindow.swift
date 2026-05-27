@@ -7,6 +7,9 @@ struct ConfigWindow: View {
     @State private var showDeleteProviderConfirmation = false
     @State private var providerToDelete: ProviderConfig?
 
+    // Sidebar state
+    @State private var sidebarVisible = true
+
     // Change tracking
     @State private var currentHasChanges = false
     @State private var pendingProviderId: UUID?
@@ -18,21 +21,32 @@ struct ConfigWindow: View {
     private let keychain = KeychainService.shared
 
     var body: some View {
-        NavigationSplitView {
-            sidebarContent
-        } detail: {
-            detailView
-        }
-        .toolbar(removing: .sidebarToggle)
-        .toolbar {
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    NSApp.sendAction(#selector(NSSplitViewController.toggleSidebar(_:)), to: nil, from: nil)
-                } label: {
-                    Image(systemName: "sidebar.leading")
-                }
+        HStack(spacing: 0) {
+            // Custom sidebar
+            if sidebarVisible {
+                sidebarContent
+                    .frame(minWidth: 220, idealWidth: 240, maxWidth: 280)
+                Divider()
             }
+
+            // Toggle button (always visible at left edge)
+            Button {
+                sidebarVisible.toggle()
+            } label: {
+                Image(systemName: sidebarVisible ? "sidebar.left" : "sidebar.right")
+                    .font(.body)
+            }
+            .buttonStyle(.plain)
+            .padding(.horizontal, 6)
+            .padding(.vertical, 8)
+            .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
+            .help(sidebarVisible ? "隐藏边栏" : "显示边栏")
+
+            // Detail area
+            detailView
+                .frame(minWidth: 400)
         }
+        .navigationTitle("APIBypass")
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id
@@ -41,25 +55,21 @@ struct ConfigWindow: View {
         .onAppear {
             let providerIds = configManager.providers.map { $0.id.uuidString }
             keychain.preloadKeys(for: providerIds)
-            // Remove any lingering system sidebar toggle from the toolbar
-            configureWindowToolbar()
         }
     }
 
     @ViewBuilder
     private var sidebarContent: some View {
-        providerList
-            .safeAreaInset(edge: .bottom) {
-                bottomToolbar
-            }
-            .navigationTitle("APIBypass")
+        VStack(spacing: 0) {
+            providerList
+            bottomToolbar
+        }
         .alert(L10n.t("confirm_delete_provider"), isPresented: $showDeleteProviderConfirmation) {
             Button(L10n.t("cancel"), role: .cancel) {
                 providerToDelete = nil
             }
             Button(L10n.t("delete"), role: .destructive) {
                 if let provider = providerToDelete {
-                    // Cascade delete all related mappings first
                     let relatedMappings = configManager.mappingsForProvider(provider.id)
                     for mapping in relatedMappings {
                         configManager.delete(mapping.id)
@@ -129,7 +139,6 @@ struct ConfigWindow: View {
                 }
             }
         }
-        .frame(minWidth: 220)
     }
 
     @ViewBuilder
@@ -304,21 +313,6 @@ struct ConfigWindow: View {
         .padding()
     }
 
-    private func configureWindowToolbar() {
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.2) {
-            for window in NSApp.windows {
-                guard let toolbar = window.toolbar else { continue }
-                let indices = toolbar.items.enumerated().compactMap { (i, item) -> Int? in
-                    let raw = item.itemIdentifier.rawValue
-                    return (raw.lowercased().contains("toggle") && raw.lowercased().contains("sidebar")) ? i : nil
-                }
-                for i in indices.reversed() {
-                    toolbar.removeItem(at: i)
-                }
-            }
-        }
-    }
-
     private func copyProvider(_ provider: ProviderConfig) {
         let newProvider = ProviderConfig(
             name: provider.name + " 副本",
@@ -328,12 +322,10 @@ struct ConfigWindow: View {
 
         configManager.addProvider(newProvider)
 
-        // Copy API key
         if let apiKey = try? keychain.retrieve(forKey: provider.id.uuidString) {
             try? keychain.save(apiKey, forKey: newProvider.id.uuidString)
         }
 
-        // Copy all mappings
         let mappingsToCopy = configManager.mappingsForProvider(provider.id)
         for mapping in mappingsToCopy {
             let newMapping = ModelMapping(

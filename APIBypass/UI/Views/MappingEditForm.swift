@@ -27,7 +27,11 @@ struct MappingEditForm: View {
     @Binding var customFields: [CustomField]
     @Binding var customFieldsEnabled: Bool
 
+    // Focus control
+    var focusIncomingModelTrigger: Int = 0
+
     @State private var showNewProviderSheet = false
+    @FocusState private var isIncomingModelFocused: Bool
     @ObservedObject private var l10n = LocalizationManager.shared
 
     var body: some View {
@@ -48,6 +52,7 @@ struct MappingEditForm: View {
                         Text(L10n.t("incoming_model"))
                             .frame(width: 100, alignment: .trailing)
                         TextField(L10n.t("incoming_model_field"), text: $incomingModel)
+                            .focused($isIncomingModelFocused)
                     }
                     HStack {
                         Text(L10n.t("actual_model"))
@@ -254,6 +259,9 @@ struct MappingEditForm: View {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id
             }
+        }
+        .onChange(of: focusIncomingModelTrigger) { _, _ in
+            isIncomingModelFocused = true
         }
     }
 }

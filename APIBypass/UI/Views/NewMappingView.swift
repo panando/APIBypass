@@ -26,6 +26,8 @@ struct NewMappingView: View {
     // Custom fields
     @State private var customFields: [CustomField] = []
     @State private var showDuplicateModelAlert = false
+    @State private var focusIncomingModelTrigger = 0
+    @FocusState private var isIncomingModelFocused: Bool
 
     var body: some View {
         ScrollView {
@@ -58,6 +60,9 @@ struct NewMappingView: View {
         } message: {
             Text(L10n.t("duplicate_model_msg"))
         }
+        .onChange(of: focusIncomingModelTrigger) { _, _ in
+            isIncomingModelFocused = true
+        }
     }
 
     @ViewBuilder
@@ -77,6 +82,7 @@ struct NewMappingView: View {
                     Text(L10n.t("incoming_model"))
                         .frame(width: 100, alignment: .trailing)
                     TextField(L10n.t("incoming_model_placeholder"), text: $incomingModel)
+                        .focused($isIncomingModelFocused)
                 }
                 HStack {
                     Text(L10n.t("actual_model"))
@@ -273,6 +279,7 @@ struct NewMappingView: View {
         let duplicateExists = configManager.mappings.contains { $0.incomingModel.lowercased() == incomingModel.lowercased() }
         if duplicateExists {
             showDuplicateModelAlert = true
+            focusIncomingModelTrigger += 1
             return
         }
 

@@ -36,11 +36,11 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private var sidebarContent: some View {
-        VStack {
-            providerList
-            bottomToolbar
-        }
-        .navigationTitle("APIBypass")
+        providerList
+            .safeAreaInset(edge: .bottom) {
+                bottomToolbar
+            }
+            .navigationTitle("APIBypass")
         .alert(L10n.t("confirm_delete_provider"), isPresented: $showDeleteProviderConfirmation) {
             Button(L10n.t("cancel"), role: .cancel) {
                 providerToDelete = nil
@@ -162,7 +162,7 @@ struct ConfigWindow: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "plus")
-                    Text(L10n.t("add_provider"))
+                    Text("添加")
                 }
             }
 
@@ -171,13 +171,16 @@ struct ConfigWindow: View {
             } label: {
                 HStack(spacing: 4) {
                     Image(systemName: "minus")
-                    Text(L10n.t("delete_provider"))
+                    Text("删除")
                 }
             }
             .disabled(selectedProviderId == nil)
+
+            Spacer()
         }
-        .padding(.horizontal)
-        .padding(.bottom, 8)
+        .padding(.horizontal, 12)
+        .padding(.vertical, 8)
+        .background(Color(NSColor.controlBackgroundColor).opacity(0.5))
     }
 
     private func deleteSelected() {
@@ -192,23 +195,77 @@ struct ConfigWindow: View {
     private var detailView: some View {
         if let pid = selectedProviderId,
            configManager.findProvider(for: pid) != nil {
-            ProviderDetailView(
-                configManager: configManager,
-                providerId: pid,
-                keychain: keychain,
-                onHasChangesChange: { hasChanges in
-                    currentHasChanges = hasChanges
-                },
-                onSave: {
-                    currentHasChanges = false
-                },
-                forceResetTrigger: forceResetTrigger,
-                saveTrigger: saveAndSwitchTrigger
-            )
-            .id(pid)
+            HStack(spacing: 0) {
+                ProviderDetailView(
+                    configManager: configManager,
+                    providerId: pid,
+                    keychain: keychain,
+                    onHasChangesChange: { hasChanges in
+                        currentHasChanges = hasChanges
+                    },
+                    onSave: {
+                        currentHasChanges = false
+                    },
+                    forceResetTrigger: forceResetTrigger,
+                    saveTrigger: saveAndSwitchTrigger
+                )
+                .id(pid)
+
+                Divider()
+
+                mappingListPanel
+            }
         } else {
             emptyStateView
         }
+    }
+
+    @ViewBuilder
+    private var mappingListPanel: some View {
+        VStack(alignment: .leading, spacing: 0) {
+            Text(L10n.t("model_mappings"))
+                .font(.subheadline)
+                .foregroundColor(.secondary)
+                .padding(.horizontal, 12)
+                .padding(.vertical, 10)
+
+            Divider()
+
+            if configManager.mappings.isEmpty {
+                Text("暂无映射")
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
+            } else {
+                List {
+                    ForEach(configManager.mappings) { mapping in
+                        VStack(alignment: .leading, spacing: 2) {
+                            HStack {
+                                Circle()
+                                    .fill(mapping.isEnabled ? Color.green : Color.gray)
+                                    .frame(width: 6, height: 6)
+                                Text(mapping.name)
+                                    .font(.body)
+                                    .lineLimit(1)
+                            }
+                            Text("\(mapping.incomingModel) → \(mapping.actualModel)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .lineLimit(1)
+                            if let provider = configManager.findProvider(for: mapping.providerConfigId) {
+                                Text(provider.name)
+                                    .font(.caption2)
+                                    .foregroundColor(.secondary)
+                            }
+                        }
+                        .padding(.vertical, 4)
+                    }
+                }
+                .listStyle(.plain)
+            }
+        }
+        .frame(width: 220)
+        .background(Color(NSColor.controlBackgroundColor))
     }
 
     @ViewBuilder

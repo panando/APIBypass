@@ -15,6 +15,7 @@ struct MappingCardView: View {
     @State private var showUnsavedAlert = false
     @State private var showDeleteConfirmation = false
     @State private var showDuplicateModelAlert = false
+    @State private var focusIncomingModelTrigger = 0
 
     // Form state
     @State private var name: String = ""
@@ -137,7 +138,8 @@ struct MappingCardView: View {
                     thinkingEnabled: $thinkingEnabled,
                     thinkingBudget: $thinkingBudget,
                     customFields: $customFields,
-                    customFieldsEnabled: $customFieldsEnabled
+                    customFieldsEnabled: $customFieldsEnabled,
+                    focusIncomingModelTrigger: focusIncomingModelTrigger
                 )
                 .padding(12)
 
@@ -266,6 +268,7 @@ struct MappingCardView: View {
         }
         if duplicateExists {
             showDuplicateModelAlert = true
+            focusIncomingModelTrigger += 1
             return
         }
 

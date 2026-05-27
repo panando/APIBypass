@@ -33,6 +33,12 @@ struct ConfigWindow: View {
 
             detailView
                 .frame(minWidth: 400)
+
+            if mappingPanelVisible {
+                draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible)
+                mappingListPanel
+                    .frame(width: mappingPanelWidth)
+            }
         }
         .frame(minWidth: 600, minHeight: 500)
         .navigationTitle("APIBypass")
@@ -140,25 +146,41 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private var providerList: some View {
-        List(selection: Binding<UUID?>(
-            get: { selectedProviderId },
-            set: { newId in
-                if currentHasChanges && newId != selectedProviderId {
-                    pendingProviderId = newId
-                    showSwitchConfirmation = true
-                } else {
-                    selectedProviderId = newId
+        VStack(spacing: 0) {
+            // Custom section header
+            HStack {
+                Text(L10n.t("providers"))
+                    .font(.headline)
+                    .foregroundColor(.primary)
+                Spacer()
+            }
+            .padding(.horizontal, 12)
+            .padding(.vertical, 6)
+            .background(Color(NSColor.windowBackgroundColor).opacity(0.6))
+
+            List(selection: Binding<UUID?>(
+                get: { selectedProviderId },
+                set: { newId in
+                    if currentHasChanges && newId != selectedProviderId {
+                        pendingProviderId = newId
+                        showSwitchConfirmation = true
+                    } else {
+                        selectedProviderId = newId
+                    }
+                }
+            )) {
+                Section {
+                    ForEach(configManager.providers) { provider in
+                        providerRow(provider)
+                    }
+                    .onMove { source, destination in
+                        configManager.moveProvider(from: source, to: destination)
+                    }
+                } header: {
+                    EmptyView()
                 }
             }
-        )) {
-            Section(L10n.t("providers")) {
-                ForEach(configManager.providers) { provider in
-                    providerRow(provider)
-                }
-                .onMove { source, destination in
-                    configManager.moveProvider(from: source, to: destination)
-                }
-            }
+            .listStyle(.plain)
         }
     }
 
@@ -239,28 +261,20 @@ struct ConfigWindow: View {
     private var detailView: some View {
         if let pid = selectedProviderId,
            configManager.findProvider(for: pid) != nil {
-            HStack(spacing: 0) {
-                ProviderDetailView(
-                    configManager: configManager,
-                    providerId: pid,
-                    keychain: keychain,
-                    onHasChangesChange: { hasChanges in
-                        currentHasChanges = hasChanges
-                    },
-                    onSave: {
-                        currentHasChanges = false
-                    },
-                    forceResetTrigger: forceResetTrigger,
-                    saveTrigger: saveAndSwitchTrigger
-                )
-                .id(pid)
-
-                if mappingPanelVisible {
-                    draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible)
-                    mappingListPanel
-                        .frame(width: mappingPanelWidth)
-                }
-            }
+            ProviderDetailView(
+                configManager: configManager,
+                providerId: pid,
+                keychain: keychain,
+                onHasChangesChange: { hasChanges in
+                    currentHasChanges = hasChanges
+                },
+                onSave: {
+                    currentHasChanges = false
+                },
+                forceResetTrigger: forceResetTrigger,
+                saveTrigger: saveAndSwitchTrigger
+            )
+            .id(pid)
         } else {
             emptyStateView
         }

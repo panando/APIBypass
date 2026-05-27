@@ -17,16 +17,13 @@ struct ConfigWindow: View {
     @ObservedObject private var l10n = LocalizationManager.shared
     private let keychain = KeychainService.shared
 
-    @State private var sidebarVisible = true
-
     var body: some View {
-        HStack(spacing: 0) {
-            if sidebarVisible {
-                sidebarContent
-                    .frame(minWidth: 220, idealWidth: 240, maxWidth: 300)
-                Divider()
-            }
-            detailView
+        NavigationSplitView {
+            sidebarContent
+        } content: {
+            contentView
+        } detail: {
+            mappingListPanel
         }
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
@@ -197,62 +194,25 @@ struct ConfigWindow: View {
     }
 
     @ViewBuilder
-    private var detailView: some View {
+    private var contentView: some View {
         if let pid = selectedProviderId,
            configManager.findProvider(for: pid) != nil {
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        sidebarVisible.toggle()
-                    } label: {
-                        Image(systemName: "sidebar.leading")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("切换边栏")
-                    .padding(.leading, 8)
-                    .padding(.vertical, 4)
-                    Spacer()
-                }
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-
-                HStack(spacing: 0) {
-                    ProviderDetailView(
-                        configManager: configManager,
-                        providerId: pid,
-                        keychain: keychain,
-                        onHasChangesChange: { hasChanges in
-                            currentHasChanges = hasChanges
-                        },
-                        onSave: {
-                            currentHasChanges = false
-                        },
-                        forceResetTrigger: forceResetTrigger,
-                        saveTrigger: saveAndSwitchTrigger
-                    )
-                    .id(pid)
-
-                    Divider()
-
-                    mappingListPanel
-                }
-            }
+            ProviderDetailView(
+                configManager: configManager,
+                providerId: pid,
+                keychain: keychain,
+                onHasChangesChange: { hasChanges in
+                    currentHasChanges = hasChanges
+                },
+                onSave: {
+                    currentHasChanges = false
+                },
+                forceResetTrigger: forceResetTrigger,
+                saveTrigger: saveAndSwitchTrigger
+            )
+            .id(pid)
         } else {
-            VStack(spacing: 0) {
-                HStack {
-                    Button {
-                        sidebarVisible.toggle()
-                    } label: {
-                        Image(systemName: "sidebar.leading")
-                    }
-                    .buttonStyle(.borderless)
-                    .help("切换边栏")
-                    .padding(.leading, 8)
-                    .padding(.vertical, 4)
-                    Spacer()
-                }
-                .background(Color(NSColor.controlBackgroundColor).opacity(0.3))
-                emptyStateView
-            }
+            emptyStateView
         }
     }
 

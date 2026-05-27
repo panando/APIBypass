@@ -18,11 +18,16 @@ struct ConfigWindow: View {
     private let keychain = KeychainService.shared
 
     var body: some View {
-        NavigationSplitView {
+        ThreeColumnSplitView(
+            leftDefaultWidth: 220,
+            rightDefaultWidth: 220,
+            leftMinWidth: 160,
+            rightMinWidth: 160
+        ) {
             sidebarContent
-        } content: {
-            contentView
-        } detail: {
+        } center: {
+            detailView
+        } right: {
             mappingListPanel
         }
         .sheet(isPresented: $showNewProviderSheet) {
@@ -42,7 +47,6 @@ struct ConfigWindow: View {
             .safeAreaInset(edge: .bottom) {
                 bottomToolbar
             }
-            .navigationTitle("APIBypass")
         .alert(L10n.t("confirm_delete_provider"), isPresented: $showDeleteProviderConfirmation) {
             Button(L10n.t("cancel"), role: .cancel) {
                 providerToDelete = nil
@@ -194,7 +198,7 @@ struct ConfigWindow: View {
     }
 
     @ViewBuilder
-    private var contentView: some View {
+    private var detailView: some View {
         if let pid = selectedProviderId,
            configManager.findProvider(for: pid) != nil {
             ProviderDetailView(

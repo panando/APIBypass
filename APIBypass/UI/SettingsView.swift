@@ -76,7 +76,7 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "info.circle")
                         .foregroundColor(.secondary)
-                    Text("\(L10n.t("version")): 0.3.2")
+                    Text("\(L10n.t("version")): 0.4.0")
                         .font(.callout)
                         .foregroundColor(.secondary)
                 }

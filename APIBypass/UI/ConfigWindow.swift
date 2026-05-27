@@ -35,7 +35,7 @@ struct ConfigWindow: View {
                 .frame(minWidth: 400)
 
             if mappingPanelVisible {
-                draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible)
+                draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible, reverse: true)
                 mappingListPanel
                     .frame(width: mappingPanelWidth)
             }
@@ -79,9 +79,9 @@ struct ConfigWindow: View {
     // MARK: - Draggable Divider
 
     @ViewBuilder
-    private func draggableDivider(width: Binding<CGFloat>, range: ClosedRange<CGFloat>, visible: Bool) -> some View {
+    private func draggableDivider(width: Binding<CGFloat>, range: ClosedRange<CGFloat>, visible: Bool, reverse: Bool = false) -> some View {
         if visible {
-            DraggableDivider(width: width, range: range)
+            DraggableDivider(width: width, range: range, reverse: reverse)
         }
     }
 
@@ -282,10 +282,9 @@ struct ConfigWindow: View {
     @ViewBuilder
     private var mappingListPanel: some View {
         VStack(alignment: .leading, spacing: 0) {
-            Text(L10n.t("model_mappings"))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
-                .padding(.horizontal, 12)
+            Text("映射状态")
+                .font(.headline)
+                .frame(maxWidth: .infinity)
                 .padding(.vertical, 10)
 
             Divider()
@@ -385,6 +384,7 @@ struct ConfigWindow: View {
 struct DraggableDivider: View {
     @Binding var width: CGFloat
     let range: ClosedRange<CGFloat>
+    var reverse: Bool = false
 
     var body: some View {
         Rectangle()
@@ -394,7 +394,7 @@ struct DraggableDivider: View {
             .gesture(
                 DragGesture(minimumDistance: 4, coordinateSpace: .local)
                     .onChanged { value in
-                        let delta = value.translation.width
+                        let delta = reverse ? -value.translation.width : value.translation.width
                         let newWidth = width + delta
                         width = min(max(newWidth, range.lowerBound), range.upperBound)
                     }

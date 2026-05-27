@@ -9,7 +9,9 @@ struct ConfigWindow: View {
 
     // Sidebar state
     @State private var sidebarVisible = true
-    @State private var mappingPanelVisible = true
+    @State private var mappingPanelVisible = false  // Default hidden
+    @State private var sidebarWidth: CGFloat = 240
+    @State private var mappingPanelWidth: CGFloat = 220
 
     // Change tracking
     @State private var currentHasChanges = false
@@ -25,13 +27,14 @@ struct ConfigWindow: View {
         HStack(spacing: 0) {
             if sidebarVisible {
                 sidebarContent
-                    .frame(minWidth: 220, idealWidth: 240, maxWidth: 280)
-                Divider()
+                    .frame(width: sidebarWidth)
+                draggableDivider(width: $sidebarWidth, range: 180...400, visible: sidebarVisible)
             }
 
             detailView
                 .frame(minWidth: 400)
         }
+        .frame(minWidth: 600, minHeight: 500)
         .navigationTitle("APIBypass")
         .toolbar {
             ToolbarItem(placement: .navigation) {
@@ -42,14 +45,16 @@ struct ConfigWindow: View {
                 }
                 .help(sidebarVisible ? "隐藏提供商边栏" : "显示提供商边栏")
             }
-            ToolbarItem(placement: .navigation) {
-                Button {
-                    mappingPanelVisible.toggle()
-                } label: {
-                    Image(systemName: "sidebar.right")
-                        .opacity(mappingPanelVisible ? 1.0 : 0.4)
+            if !configManager.mappings.isEmpty {
+                ToolbarItem(placement: .primaryAction) {
+                    Button {
+                        mappingPanelVisible.toggle()
+                    } label: {
+                        Image(systemName: "sidebar.right")
+                            .opacity(mappingPanelVisible ? 1.0 : 0.4)
+                    }
+                    .help(mappingPanelVisible ? "隐藏映射总览" : "显示映射总览")
                 }
-                .help(mappingPanelVisible ? "隐藏映射总览" : "显示映射总览")
             }
         }
         .sheet(isPresented: $showNewProviderSheet) {
@@ -62,6 +67,17 @@ struct ConfigWindow: View {
             keychain.preloadKeys(for: providerIds)
         }
     }
+
+    // MARK: - Draggable Divider
+
+    @ViewBuilder
+    private func draggableDivider(width: Binding<CGFloat>, range: ClosedRange<CGFloat>, visible: Bool) -> some View {
+        if visible {
+            DraggableDivider(width: width, range: range)
+        }
+    }
+
+    // MARK: - Sidebar Content
 
     @ViewBuilder
     private var sidebarContent: some View {
@@ -217,6 +233,8 @@ struct ConfigWindow: View {
         }
     }
 
+    // MARK: - Detail View
+
     @ViewBuilder
     private var detailView: some View {
         if let pid = selectedProviderId,
@@ -238,8 +256,9 @@ struct ConfigWindow: View {
                 .id(pid)
 
                 if mappingPanelVisible {
-                    Divider()
+                    draggableDivider(width: $mappingPanelWidth, range: 160...400, visible: mappingPanelVisible)
                     mappingListPanel
+                        .frame(width: mappingPanelWidth)
                 }
             }
         } else {
@@ -291,7 +310,6 @@ struct ConfigWindow: View {
                 .listStyle(.plain)
             }
         }
-        .frame(width: 220)
         .background(Color(NSColor.controlBackgroundColor))
     }
 
@@ -346,5 +364,40 @@ struct ConfigWindow: View {
         }
 
         selectedProviderId = newProvider.id
+    }
+}
+
+// MARK: - Draggable Divider View
+
+struct DraggableDivider: View {
+    @Binding var width: CGFloat
+    let range: ClosedRange<CGFloat>
+    @State private var dragStartWidth: CGFloat = 0
+
+    var body: some View {
+        Rectangle()
+            .fill(Color.secondary.opacity(0.3))
+            .frame(width: 4)
+            .contentShape(Rectangle().inset(by: -4))
+            .gesture(
+                DragGesture()
+                    .onChanged { value in
+                        if dragStartWidth == 0 {
+                            dragStartWidth = width
+                        }
+                        let newWidth = dragStartWidth + value.translation.width
+                        width = min(max(newWidth, range.lowerBound), range.upperBound)
+                    }
+                    .onEnded { _ in
+                        dragStartWidth = 0
+                    }
+            )
+            .onHover { hovering in
+                if hovering {
+                    NSCursor.resizeLeftRight.push()
+                } else {
+                    NSCursor.resizeLeftRight.pop()
+                }
+            }
     }
 }

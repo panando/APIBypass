@@ -174,6 +174,37 @@ struct L10n {
 
         // 其他
         "delete_selected": [.chinese: "删除选中项", .english: "Delete Selected"],
+
+        // Claude Code Launcher
+        "launch_claude_code": [.chinese: "启动 Claude Code", .english: "Launch Claude Code"],
+        "claude_code_launcher_title": [.chinese: "启动 Claude Code", .english: "Launch Claude Code"],
+        "select_provider": [.chinese: "选择提供商", .english: "Select Provider"],
+        "select_model_mapping": [.chinese: "选择模型映射", .english: "Select Model Mapping"],
+        "environment_variables": [.chinese: "环境变量", .english: "Environment Variables"],
+        "environment_variables_preview": [.chinese: "环境变量预览", .english: "Environment Variables Preview"],
+        "envvar_manual": [.chinese: "手动输入", .english: "Manual Input"],
+        "envvar_model_mapping": [.chinese: "模型映射", .english: "Model Mapping"],
+        "envvar_keychain_token": [.chinese: "API Token", .english: "API Token"],
+        "envvar_base_url": [.chinese: "Base URL", .english: "Base URL"],
+        "envvar_name": [.chinese: "变量名", .english: "Variable Name"],
+        "envvar_type": [.chinese: "类型", .english: "Type"],
+        "envvar_value": [.chinese: "值", .english: "Value"],
+        "add_envvar": [.chinese: "添加环境变量", .english: "Add Environment Variable"],
+        "reset_to_default": [.chinese: "重置为默认", .english: "Reset to Default"],
+        "use_first_mapping": [.chinese: "使用第一个可用映射", .english: "Use First Available Mapping"],
+        "claude_code_not_found": [.chinese: "未找到 Claude Code", .english: "Claude Code Not Found"],
+        "claude_code_not_found_msg": [.chinese: "请确保已安装 Claude Code 并在 PATH 中可用", .english: "Please ensure Claude Code is installed and available in PATH"],
+        "no_mappings_for_provider": [.chinese: "该提供商没有可用的模型映射", .english: "No enabled mappings for this provider"],
+        "edit_envvar": [.chinese: "编辑", .english: "Edit"],
+        "claude_code_env_vars_title": [.chinese: "Claude Code 环境变量", .english: "Claude Code Environment Variables"],
+        "claude_code_env_vars_desc": [.chinese: "配置启动 Claude Code 时注入的环境变量", .english: "Configure environment variables to inject when launching Claude Code"],
+        "add_env_var": [.chinese: "添加环境变量", .english: "Add Environment Variable"],
+        "env_var_name": [.chinese: "变量名", .english: "Variable Name"],
+        "env_var_type": [.chinese: "类型", .english: "Type"],
+        "env_var_value": [.chinese: "值", .english: "Value"],
+        "select_model": [.chinese: "选择模型", .english: "Select Model"],
+        "auto_select_first": [.chinese: "自动选择第一个", .english: "Auto Select First"],
+        "read_from_keychain": [.chinese: "从 Keychain 读取", .english: "Read from Keychain"],
     ]
 }
 

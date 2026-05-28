@@ -309,13 +309,10 @@ struct NewMappingView: View {
         let freqPenalty = Double(frequencyPenalty)
         let presPenalty = Double(presencePenalty)
 
-        let thinking: ThinkingConfig? = {
-            guard thinkingOverrideEnabled else { return nil }
-            return ThinkingConfig(
-                enabled: thinkingEnabled,
-                budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
-            )
-        }()
+        let thinking = ThinkingConfig(
+            enabled: thinkingEnabled,
+            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
+        )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty
             ? nil
@@ -328,7 +325,9 @@ struct NewMappingView: View {
             frequencyPenalty: freqPenalty,
             presencePenalty: presPenalty,
             thinking: thinking,
-            customFields: customFieldsDict
+            thinkingOverrideEnabled: thinkingOverrideEnabled,
+            customFields: customFieldsDict,
+            customFieldsEnabled: customFields.isEmpty ? nil : true
         )
     }
 }

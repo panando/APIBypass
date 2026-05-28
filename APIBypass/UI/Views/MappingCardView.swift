@@ -251,6 +251,9 @@ struct MappingCardView: View {
         if let thinking = current.parameters.thinking {
             thinkingEnabled = thinking.enabled
             thinkingBudget = thinking.budgetTokens.map { String($0) } ?? ""
+        } else {
+            thinkingEnabled = false
+            thinkingBudget = ""
         }
         thinkingOverrideEnabled = current.parameters.thinkingOverrideEnabled ?? false
         if current.parameters.thinkingOverrideEnabled == nil && current.parameters.thinking != nil {

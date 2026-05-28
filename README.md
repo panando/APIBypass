@@ -28,6 +28,12 @@ Many AI clients don't let you customize API request parameters, and some clients
 - **Closed-source clients**: Some apps don't let you control thinking mode or other parameters. APIBypass injects custom parameters to override defaults.
 - **Centralized configuration**: Configure once, use with any client. No need to update each client when changing models or parameters.
 
+![Screenshot](screenshot_configure.png)
+
+<img src="screenshot_launch.png" alt="screenshot_launch" style="zoom: 50%;" />
+
+<img src="screenshot_settings.png" alt="Screenshot" style="zoom:45%;" />
+
 ## Features
 
 ### API Format Translation (New in v0.5.0)
@@ -87,10 +93,6 @@ Many AI clients don't let you customize API request parameters, and some clients
 - Save button highlights when changes detected
 - Formatted JSON request logging in terminal
 - Settings panel with about info, version number, GitHub link (clickable), and License
-
-![Screenshot](screenshot_configure.png)
-
-![Screenshot](screenshot_settings.png)
 
 ## System Requirements
 
@@ -256,6 +258,6 @@ APIBypass/
 - All traffic is processed locally — no third-party servers involved
 - No telemetry or usage data collected
 
-## License
+## Star this project 
 
-MIT
+Your support means a lot — please star this project if you find it useful.

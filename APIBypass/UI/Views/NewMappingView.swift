@@ -177,11 +177,18 @@ struct NewMappingView: View {
                     .labelsHidden()
             }
 
+            Text(L10n.t("reasoning_hint"))
+                .font(.caption)
+                .foregroundColor(.secondary)
+
             VStack(spacing: 8) {
                 HStack {
-                    Toggle(L10n.t("enable_thinking"), isOn: $thinkingEnabled)
-                        .disabled(!thinkingOverrideEnabled)
+                    Text(L10n.t("enable_thinking"))
                     Spacer()
+                    Toggle("", isOn: $thinkingEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                        .disabled(!thinkingOverrideEnabled)
                 }
                 if thinkingEnabled,
                    let pid = selectedProviderId,

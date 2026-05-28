@@ -410,6 +410,9 @@ struct MappingDetailView: View {
             if let budget = thinking.budgetTokens {
                 thinkingBudget = String(budget)
             }
+        } else {
+            thinkingEnabled = false
+            thinkingBudget = ""
         }
         if let enabled = mapping.parameters.thinkingOverrideEnabled {
             thinkingOverrideEnabled = enabled

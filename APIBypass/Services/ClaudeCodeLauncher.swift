@@ -75,12 +75,8 @@ final class ClaudeCodeLauncher {
             case .keychainToken:
                 // 从 Keychain 读取 API Key
                 do {
-                    if let token = try KeychainService.shared.retrieve(forKey: provider.id.uuidString) {
-                        value = token
-                    } else {
-                        // Keychain 中没有找到，跳过这个环境变量
-                        continue
-                    }
+                    let token = try KeychainService.shared.retrieve(forKey: provider.id.uuidString)
+                    value = token
                 } catch {
                     // 读取失败，跳过
                     continue
@@ -211,7 +207,6 @@ final class ClaudeCodeLauncher {
         }
 
         // 尝试匹配 nvm 版本通配符
-        let nvmGlobPattern = "\(homeDirectory)/.nvm/versions/node/*/bin/claude"
         do {
             let files = try FileManager.default.contentsOfDirectory(atPath: "\(homeDirectory)/.nvm/versions/node")
             for version in files {

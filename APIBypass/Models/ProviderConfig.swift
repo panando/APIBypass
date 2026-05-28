@@ -5,23 +5,22 @@ struct ProviderConfig: Codable, Identifiable, Equatable {
     var name: String
     var apiProvider: APIProvider
     var baseURL: URL
-    var environmentVariables: [EnvironmentVariableConfig]
+    var environmentVariables: [EnvironmentVariableConfig] = []
 
     init(
         id: UUID = UUID(),
         name: String,
         apiProvider: APIProvider,
         baseURL: URL,
-        environmentVariables: [EnvironmentVariableConfig]? = nil
+        environmentVariables: [EnvironmentVariableConfig] = []
     ) {
         self.id = id
         self.name = name
         self.apiProvider = apiProvider
         self.baseURL = baseURL
-        self.environmentVariables = environmentVariables ?? ProviderConfig.defaultEnvironmentVariables()
+        self.environmentVariables = environmentVariables
     }
 
-    /// 预设的环境变量模板
     static func defaultEnvironmentVariables() -> [EnvironmentVariableConfig] {
         [
             EnvironmentVariableConfig(

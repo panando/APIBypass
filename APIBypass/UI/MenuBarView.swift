@@ -34,6 +34,13 @@ struct MenuBarView: View {
                 openSettingsWindow()
             }
 
+            Divider()
+
+            Button("启动 Claude Code") {
+                openLaunchClaudeCodeWindow()
+            }
+            .disabled(configManager.providers.isEmpty)
+
             Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
                 if isRunning {
                     onStop()
@@ -97,5 +104,33 @@ struct MenuBarView: View {
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.becomeKey()
+    }
+
+    private func openLaunchClaudeCodeWindow() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
+        // Check if window already exists
+        if let existingWindow = NSApplication.shared.windows.first(where: {
+            $0.identifier?.rawValue == "launch-claude-window"
+        }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        // Create new window
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 600),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = "启动 Claude Code"
+        window.identifier = NSUserInterfaceItemIdentifier("launch-claude-window")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView:
+            LaunchClaudeCodeView(configManager: configManager)
+        )
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 }

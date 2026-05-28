@@ -79,7 +79,7 @@ struct L10n {
         "config_name": [.chinese: "配置名称", .english: "Config Name"],
         "incoming_model": [.chinese: "客户端模型名", .english: "Incoming Model"],
         "actual_model": [.chinese: "实际模型名", .english: "Actual Model"],
-        "api_provider": [.chinese: "API接口类型", .english: "API Provider"],
+        "api_provider": [.chinese: "API接口类型", .english: "API Format"],
         "base_url": [.chinese: "Base URL", .english: "Base URL"],
         "api_key": [.chinese: "API Key", .english: "API Key"],
         "reasoning_override": [.chinese: "更改默认推理模式", .english: "Reasoning Mode Override"],
@@ -224,8 +224,8 @@ struct L10n {
         "launcher_keychain_failed": [.chinese: "Keychain 读取失败", .english: "Keychain read failed"],
 
         // API Provider types
-        "provider_type_openai": [.chinese: "OpenAI", .english: "OpenAI"],
-        "provider_type_anthropic": [.chinese: "Anthropic", .english: "Anthropic"],
+        "provider_type_openai": [.chinese: "OpenAI", .english: "OpenAI-compatible API"],
+        "provider_type_anthropic": [.chinese: "Anthropic", .english: "Anthropic API format"],
 
         // Parameter names
         "param_temperature": [.chinese: "温度", .english: "Temperature"],

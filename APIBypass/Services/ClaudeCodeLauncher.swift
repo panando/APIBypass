@@ -11,9 +11,9 @@ enum LauncherError: Error, LocalizedError {
         case .claudeCodeNotFound:
             return L10n.t("launcher_claude_not_found")
         case .launchFailed(let message):
-            return L10n.t("launcher_failed", message)
+            return "\(L10n.t("launcher_failed")): \(message)"
         case .keychainReadFailed(let message):
-            return L10n.t("launcher_keychain_failed", message)
+            return "\(L10n.t("launcher_keychain_failed")): \(message)"
         }
     }
 }

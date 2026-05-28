@@ -60,7 +60,7 @@ struct L10n {
         "about": [.chinese: "关于", .english: "About"],
         "about_description": [.chinese: "APIBypass 是一款 API 模型映射代理工具，可拦截客户端请求并注入自定义参数，无缝切换模型提供商。", .english: "APIBypass is an API model mapping proxy that intercepts client requests and injects custom parameters for seamless model provider switching."],
         "license": [.chinese: "许可证: MIT License", .english: "License: MIT License"],
-        "github_repo": [.chinese: "GitHub: https://github.com/panando/APIBypass", .english: "GitHub: https://github.com/panando/APIBypass"],
+        "github_repo": [.chinese: "https://github.com/panando/APIBypass", .english: "https://github.com/panando/APIBypass"],
 
         // 配置窗口
         "model_mapping": [.chinese: "模型映射", .english: "Model Mapping"],

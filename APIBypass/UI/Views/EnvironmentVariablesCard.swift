@@ -2,7 +2,9 @@ import SwiftUI
 
 /// Provider 详情页的环境变量配置卡片
 struct EnvironmentVariablesCard: View {
-    @Binding var provider: ProviderConfig
+    @Binding var environmentVariables: [EnvironmentVariableConfig]
+    let providerId: UUID
+    let baseURL: URL
     @ObservedObject var configManager: ConfigManager
 
     var body: some View {
@@ -42,11 +44,11 @@ struct EnvironmentVariablesCard: View {
 
     private var environmentVariablesList: some View {
         VStack(spacing: 8) {
-            ForEach($provider.environmentVariables) { $envVar in
+            ForEach($environmentVariables) { $envVar in
                 EnvironmentVariableRow(
                     envVar: $envVar,
-                    provider: provider,
-                    mappings: configManager.mappingsForProvider(provider.id)
+                    baseURL: baseURL,
+                    mappings: configManager.mappingsForProvider(providerId)
                 )
             }
         }
@@ -62,7 +64,7 @@ struct EnvironmentVariablesCard: View {
     // MARK: - Actions
 
     private func resetToDefaults() {
-        provider.environmentVariables = ProviderConfig.defaultEnvironmentVariables()
+        environmentVariables = ProviderConfig.defaultEnvironmentVariables()
     }
 
     private func addEnvironmentVariable() {
@@ -73,7 +75,7 @@ struct EnvironmentVariablesCard: View {
             type: .manual,
             isEnabled: true
         )
-        provider.environmentVariables.append(newVar)
+        environmentVariables.append(newVar)
     }
 }
 
@@ -81,7 +83,7 @@ struct EnvironmentVariablesCard: View {
 
 struct EnvironmentVariableRow: View {
     @Binding var envVar: EnvironmentVariableConfig
-    let provider: ProviderConfig
+    let baseURL: URL
     let mappings: [ModelMapping]
 
     var body: some View {
@@ -169,7 +171,7 @@ struct EnvironmentVariableRow: View {
         HStack {
             Image(systemName: "link")
                 .foregroundColor(.secondary)
-            Text(provider.baseURL.absoluteString)
+            Text(baseURL.absoluteString)
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .lineLimit(1)

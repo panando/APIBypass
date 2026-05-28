@@ -25,6 +25,9 @@ struct ProviderDetailView: View {
     @State private var lastResetTrigger = 0
     @State private var lastSaveTrigger = 0
 
+    // Environment variables state
+    @State private var environmentVariables: [EnvironmentVariableConfig] = []
+
     // Mapping creation sheet
     @State private var showNewMappingSheet = false
 
@@ -193,6 +196,14 @@ struct ProviderDetailView: View {
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
 
+                // Environment Variables Section
+                EnvironmentVariablesCard(
+                    environmentVariables: $environmentVariables,
+                    providerId: providerId,
+                    baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
+                    configManager: configManager
+                )
+
                 Spacer()
             }
             .padding()
@@ -247,6 +258,7 @@ struct ProviderDetailView: View {
         name = provider.name
         apiProvider = provider.apiProvider
         baseURL = provider.baseURL.absoluteString
+        environmentVariables = provider.environmentVariables
 
         if let key = try? keychain.retrieve(forKey: providerId.uuidString) {
             apiKey = key
@@ -271,7 +283,7 @@ struct ProviderDetailView: View {
             name: name,
             apiProvider: apiProvider,
             baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
-            environmentVariables: provider.environmentVariables
+            environmentVariables: environmentVariables
         )
 
         configManager.updateProvider(updatedProvider)

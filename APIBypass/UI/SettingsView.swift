@@ -76,7 +76,7 @@ struct SettingsView: View {
                 HStack(spacing: 8) {
                     Image(systemName: "info.circle")
                         .foregroundColor(.secondary)
-                    Text("\(L10n.t("version")): 0.4.0")
+                    Text("\(L10n.t("version")): \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")")
                         .font(.callout)
                         .foregroundColor(.secondary)
                 }

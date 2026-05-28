@@ -4,7 +4,7 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**APIBypass** 是一款 macOS 菜单栏应用，作为本地 LLM API 代理，支持自动格式转换。让 Claude Code 能够使用任何 OpenAI 兼容 API，注入自定义参数，一键启动 Claude Code 并预配置环境变量 —— 无需修改客户端配置。
+**APIBypass** 是一款 macOS 菜单栏应用，作为本地 LLM API 代理，支持自动格式转换。它打通不同 API 格式（Anthropic ↔ OpenAI），注入自定义参数，映射模型名称，集中管理 AI 提供商配置 —— 无需修改客户端。
 
 [English](README.md)
 

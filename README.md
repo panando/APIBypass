@@ -4,7 +4,7 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**APIBypass** is a macOS menu bar app that acts as a local LLM API proxy with automatic format translation. It lets Claude Code work with any OpenAI-compatible API, inject custom parameters, and launch Claude Code with pre-configured environment variables — all without modifying your client.
+**APIBypass** is a macOS menu bar app that acts as a local LLM API proxy with automatic format translation. It bridges incompatible API formats (Anthropic ↔ OpenAI), injects custom parameters, maps model names, and centrally manages your AI provider configurations — all without modifying your clients.
 
 [中文说明](README_CN.md)
 

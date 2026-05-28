@@ -16,6 +16,7 @@ final class ConfigManager: ObservableObject {
         load()
         migrateIfNeeded()
         cleanupOrphanMappings()
+        migrateProviderEnvironmentVariables()
     }
 
     // MARK: - Orphan Cleanup
@@ -27,6 +28,24 @@ final class ConfigManager: ObservableObject {
             mappings.removeAll { !validIds.contains($0.providerConfigId) }
             save()
             print("[Cleanup] Removed \(orphans.count) orphan mapping(s) with invalid provider")
+        }
+    }
+
+    // MARK: - Environment Variables Migration
+
+    private func migrateProviderEnvironmentVariables() {
+        var needsSave = false
+
+        for index in providers.indices {
+            if providers[index].environmentVariables.isEmpty {
+                providers[index].environmentVariables = ProviderConfig.defaultEnvironmentVariables()
+                needsSave = true
+            }
+        }
+
+        if needsSave {
+            saveProviders()
+            print("[Migration] Added default environment variables to \(providers.count) provider(s)")
         }
     }
 

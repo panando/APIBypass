@@ -144,6 +144,27 @@ final class ConfigManager: ObservableObject {
             return
         }
         providers = decoded
+
+        // Migrate old providers to add default environment variables
+        migrateProviderEnvironmentVariables()
+    }
+
+    // MARK: - Migration
+
+    private func migrateProviderEnvironmentVariables() {
+        var needsSave = false
+
+        for index in providers.indices {
+            // If environmentVariables is empty, add defaults
+            if providers[index].environmentVariables.isEmpty {
+                providers[index].environmentVariables = ProviderConfig.defaultEnvironmentVariables()
+                needsSave = true
+            }
+        }
+
+        if needsSave {
+            saveProviders()
+        }
     }
 
     // MARK: - Migration

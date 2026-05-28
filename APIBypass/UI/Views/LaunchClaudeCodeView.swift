@@ -14,6 +14,7 @@ struct LaunchClaudeCodeView: View {
     @AppStorage("launcher.haikuModel") private var savedHaikuModel: String = ""
     @AppStorage("launcher.subagentModel") private var savedSubagentModel: String = ""
     @AppStorage("launcher.effortLevel") private var savedEffortLevel: String = ""
+    @AppStorage("serverPort") private var serverPort: Int = 8390
 
     @State private var selectedProviderId: UUID?
     @State private var selectedTerminalId: String = "terminal"
@@ -42,15 +43,12 @@ struct LaunchClaudeCodeView: View {
         return configManager.findProvider(for: id)
     }
 
-    private var apiKey: String? {
-        guard let id = selectedProviderId else { return nil }
-        return try? KeychainService.shared.retrieve(forKey: id.uuidString)
+    private var localBaseURL: String {
+        "http://127.0.0.1:\(serverPort)"
     }
 
     private var canLaunch: Bool {
         guard selectedProvider != nil,
-              let key = apiKey,
-              !key.isEmpty,
               !anthropicModel.isEmpty,
               selectedTerminal != nil else {
             return false
@@ -206,15 +204,14 @@ struct LaunchClaudeCodeView: View {
             Group {
                 envVarReadOnlyRow(
                     name: "ANTHROPIC_BASE_URL",
-                    value: provider.baseURL.absoluteString,
+                    value: localBaseURL,
                     icon: "link"
                 )
 
                 envVarReadOnlyRow(
                     name: "ANTHROPIC_AUTH_TOKEN",
-                    value: apiKey?.isEmpty ?? true ? L10n.t("api_key_not_set") : "••••••••",
-                    icon: "key.fill",
-                    isError: apiKey?.isEmpty ?? true
+                    value: "1234 (placeholder)",
+                    icon: "key.fill"
                 )
             }
 
@@ -426,9 +423,7 @@ struct LaunchClaudeCodeView: View {
 
     private func launchClaudeCode() {
         guard let provider = selectedProvider,
-              let terminal = selectedTerminal,
-              let key = apiKey,
-              !key.isEmpty else {
+              let terminal = selectedTerminal else {
             errorMessage = L10n.t("no_provider_selected")
             return
         }
@@ -438,8 +433,8 @@ struct LaunchClaudeCodeView: View {
 
         // 构建环境变量
         var customEnvVars: [String: String] = [
-            "ANTHROPIC_BASE_URL": provider.baseURL.absoluteString,
-            "ANTHROPIC_AUTH_TOKEN": key,
+            "ANTHROPIC_BASE_URL": localBaseURL,
+            "ANTHROPIC_AUTH_TOKEN": "1234",
             "ANTHROPIC_MODEL": anthropicModel
         ]
 

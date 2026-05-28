@@ -19,3 +19,4 @@ DerivedData/
 # Package
 Package.resolved
 *.dmg
+docs/

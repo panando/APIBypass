@@ -34,6 +34,11 @@ struct MenuBarView: View {
                 openSettingsWindow()
             }
 
+            Button(L10n.t("launch_claude_code")) {
+                openLaunchClaudeCodeWindow()
+            }
+            .disabled(configManager.providers.isEmpty)
+
             Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
                 if isRunning {
                     onStop()
@@ -97,5 +102,29 @@ struct MenuBarView: View {
         window.center()
         window.makeKeyAndOrderFront(nil)
         window.becomeKey()
+    }
+
+    private func openLaunchClaudeCodeWindow() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
+        if let existingWindow = NSApplication.shared.windows.first(where: {
+            $0.identifier?.rawValue == "launch-claude-window"
+        }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 500, height: 480),
+            styleMask: [.titled, .closable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("launch_claude_code")
+        window.identifier = NSUserInterfaceItemIdentifier("launch-claude-window")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: LaunchClaudeCodeView(configManager: configManager))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 }

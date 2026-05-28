@@ -1,5 +1,8 @@
 import SwiftUI
 
+// Forward declarations for types defined in other files
+// These will be resolved at link time
+
 struct LaunchClaudeCodeView: View {
     @ObservedObject var configManager: ConfigManager
     @Environment(\.dismiss) private var dismiss

@@ -10,12 +10,16 @@ struct MappingCardView: View {
     var onDelete: (() -> Void)?
     var onHasChangesChange: ((Bool) -> Void)?
 
+    // 外部触发保存
+    var externalSaveTrigger: Int = 0
+
     @ObservedObject private var l10n = LocalizationManager.shared
 
     @State private var showUnsavedAlert = false
     @State private var showDeleteConfirmation = false
     @State private var showDuplicateModelAlert = false
     @State private var focusIncomingModelTrigger = 0
+    @State private var lastExternalSaveTrigger = 0
 
     // Form state
     @State private var name: String = ""
@@ -206,10 +210,26 @@ struct MappingCardView: View {
         }
         .onAppear {
             loadMappingData()
-            onHasChangesChange?(false)
+            // 延迟通知，确保状态已同步
+            DispatchQueue.main.async {
+                onHasChangesChange?(false)
+            }
+        }
+        .onChange(of: mapping.id) { _, _ in
+            // 当 mapping 改变时（例如新创建的映射出现在列表中），重新加载数据
+            loadMappingData()
+            DispatchQueue.main.async {
+                onHasChangesChange?(false)
+            }
         }
         .onChange(of: hasChanges) { _, newValue in
             onHasChangesChange?(newValue)
+        }
+        .onChange(of: externalSaveTrigger) { _, newValue in
+            if newValue != lastExternalSaveTrigger && hasChanges {
+                lastExternalSaveTrigger = newValue
+                saveChanges()
+            }
         }
     }
 
@@ -281,6 +301,7 @@ struct MappingCardView: View {
 
         configManager.update(current)
         originalMapping = current
+        onHasChangesChange?(false)
         onSave?()
     }
 

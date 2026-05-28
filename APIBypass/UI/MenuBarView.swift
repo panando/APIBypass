@@ -115,8 +115,8 @@ struct MenuBarView: View {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 500, height: 480),
-            styleMask: [.titled, .closable],
+            contentRect: NSRect(x: 0, y: 0, width: 750, height: 700),
+            styleMask: [.titled, .closable, .resizable],
             backing: .buffered,
             defer: false
         )

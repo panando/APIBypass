@@ -25,9 +25,6 @@ struct ProviderDetailView: View {
     @State private var lastResetTrigger = 0
     @State private var lastSaveTrigger = 0
 
-    // Environment variables state
-    @State private var environmentVariables: [EnvironmentVariableConfig] = []
-
     // Mapping creation sheet
     @State private var showNewMappingSheet = false
 
@@ -36,6 +33,7 @@ struct ProviderDetailView: View {
     @State private var mappingWithChanges: UUID?
     @State private var showMappingSwitchAlert = false
     @State private var pendingMappingId: UUID?
+    @State private var mappingSaveTrigger = 0
 
     private var hasChanges: Bool {
         name != originalName
@@ -67,8 +65,8 @@ struct ProviderDetailView: View {
                             Text(L10n.t("api_provider"))
                                 .frame(width: 100, alignment: .trailing)
                             Picker("", selection: $apiProvider) {
-                                Text("OpenAI").tag(APIProvider.openai)
-                                Text("Anthropic").tag(APIProvider.anthropic)
+                                Text(L10n.t("provider_type_openai")).tag(APIProvider.openai)
+                                Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
                             }
                             .pickerStyle(.menu)
                             .onChange(of: apiProvider) { _, newValue in
@@ -183,7 +181,8 @@ struct ProviderDetailView: View {
                                         } else if mappingWithChanges == mapping.id {
                                             mappingWithChanges = nil
                                         }
-                                    }
+                                    },
+                                    externalSaveTrigger: mappingSaveTrigger
                                 )
                             }
                             .onMove { source, destination in
@@ -195,14 +194,6 @@ struct ProviderDetailView: View {
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
                 .cornerRadius(8)
-
-                // Environment Variables Section
-                EnvironmentVariablesCard(
-                    environmentVariables: $environmentVariables,
-                    providerId: providerId,
-                    baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
-                    configManager: configManager
-                )
 
                 Spacer()
             }
@@ -237,19 +228,32 @@ struct ProviderDetailView: View {
             }
             Button(L10n.t("discard_changes"), role: .destructive) {
                 if let id = pendingMappingId {
+                    mappingWithChanges = nil
                     expandedMappingId = id
                 }
-                mappingWithChanges = nil
                 pendingMappingId = nil
             }
             Button(L10n.t("save_and_switch")) {
-                pendingMappingId = nil
+                // 触发保存
+                mappingSaveTrigger += 1
+                // 延迟切换，让保存完成
+                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                    if let id = pendingMappingId {
+                        mappingWithChanges = nil
+                        expandedMappingId = id
+                    }
+                    pendingMappingId = nil
+                }
             }
         } message: {
             Text(L10n.t("unsaved_changes_msg"))
         }
         .sheet(isPresented: $showNewMappingSheet) {
             NewMappingView(configManager: configManager, keychain: keychain, defaultProviderId: providerId)
+        }
+        .onChange(of: relatedMappings.count) { _, _ in
+            // 当映射数量变化时（新建或删除），清除未保存状态
+            mappingWithChanges = nil
         }
     }
 
@@ -258,7 +262,6 @@ struct ProviderDetailView: View {
         name = provider.name
         apiProvider = provider.apiProvider
         baseURL = provider.baseURL.absoluteString
-        environmentVariables = provider.environmentVariables
 
         if let key = try? keychain.retrieve(forKey: providerId.uuidString) {
             apiKey = key
@@ -283,7 +286,7 @@ struct ProviderDetailView: View {
             name: name,
             apiProvider: apiProvider,
             baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
-            environmentVariables: environmentVariables
+            environmentVariables: provider.environmentVariables
         )
 
         configManager.updateProvider(updatedProvider)

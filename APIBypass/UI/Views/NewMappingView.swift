@@ -112,7 +112,7 @@ struct NewMappingView: View {
                     HStack {
                         Text("")
                             .frame(width: 100, alignment: .trailing)
-                        Text("\(provider.apiProvider.rawValue) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
+                        Text("\(L10n.t(provider.apiProvider == .openai ? "provider_type_openai" : "provider_type_anthropic")) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
                             .font(.caption)
                             .foregroundColor(.secondary)
                     }
@@ -133,27 +133,27 @@ struct NewMappingView: View {
 
             VStack(spacing: 8) {
                 HStack {
-                    Text("Temperature")
+                    Text(L10n.t("param_temperature"))
                         .frame(width: 120, alignment: .trailing)
                     TextField(L10n.t("temp_placeholder"), text: $temperature)
                 }
                 HStack {
-                    Text("Max Tokens")
+                    Text(L10n.t("param_max_tokens"))
                         .frame(width: 120, alignment: .trailing)
                     TextField(L10n.t("max_tokens_placeholder"), text: $maxTokens)
                 }
                 HStack {
-                    Text("Top P")
+                    Text(L10n.t("param_top_p"))
                         .frame(width: 120, alignment: .trailing)
                     TextField(L10n.t("top_p_placeholder"), text: $topP)
                 }
                 HStack {
-                    Text("Frequency Penalty")
+                    Text(L10n.t("param_frequency_penalty"))
                         .frame(width: 120, alignment: .trailing)
                     TextField(L10n.t("freq_penalty_placeholder"), text: $frequencyPenalty)
                 }
                 HStack {
-                    Text("Presence Penalty")
+                    Text(L10n.t("param_presence_penalty"))
                         .frame(width: 120, alignment: .trailing)
                     TextField(L10n.t("pres_penalty_placeholder"), text: $presencePenalty)
                 }

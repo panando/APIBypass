@@ -34,8 +34,8 @@ struct NewProviderView: View {
                         Text(L10n.t("api_provider"))
                             .frame(width: 100, alignment: .trailing)
                         Picker("", selection: $apiProvider) {
-                            Text("OpenAI").tag(APIProvider.openai)
-                            Text("Anthropic").tag(APIProvider.anthropic)
+                            Text(L10n.t("provider_type_openai")).tag(APIProvider.openai)
+                            Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
                         }
                         .pickerStyle(.menu)
                         .onChange(of: apiProvider) { _, newValue in

@@ -4,7 +4,7 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-A lightweight macOS menu bar app that acts as a local LLM API proxy. Take control of model behavior even when your AI client doesn't expose those settings.
+**APIBypass** is a macOS menu bar app that acts as a local LLM API proxy with automatic format translation. It lets Claude Code work with any OpenAI-compatible API, inject custom parameters, and launch Claude Code with pre-configured environment variables — all without modifying your client.
 
 [中文说明](README_CN.md)
 
@@ -12,16 +12,45 @@ A lightweight macOS menu bar app that acts as a local LLM API proxy. Take contro
 
 ## Why APIBypass?
 
-Many AI clients don't let you customize API request parameters (e.g., disable thinking mode, set temperature, adjust max_tokens). APIBypass runs a local proxy server that intercepts API calls from your client, injects your custom parameters, and forwards them to the real API endpoint.
+Many AI clients don't let you customize API request parameters, and some clients (like Claude Code) only support specific API formats. APIBypass solves these problems:
+
+1. **API Format Translation**: Claude Code only speaks Anthropic API, but many providers use OpenAI format. APIBypass automatically translates between them — Claude Code can now work with DeepSeek, Qwen, OpenCode Go, and any OpenAI-compatible API.
+
+2. **Parameter Injection**: Set temperature, thinking mode, max tokens, and custom parameters globally without modifying each client.
+
+3. **Model Mapping**: Map the model name your client requests to a different actual model — switch models without changing client config.
+
+4. **Claude Code Launcher**: One-click launch Claude Code in your preferred terminal with all environment variables pre-configured.
 
 ### Use Cases
 
-- **Closed-source clients**: Some apps don't let you control thinking mode or other parameters. APIBypass injects custom parameters (e.g., `enable_thinking: false`) to override defaults. Works with any OpenAI/Anthropic-compatible API.
-- **Parameter injection**: Set temperature, top_p, and other parameters globally without modifying each client.
-- **Model name mapping**: Map the model name your client requests to a different actual model — switch models without changing client config.
-- **Multi-format support**: Works with both OpenAI Chat Completions and Anthropic Messages APIs.
+- **Claude Code with OpenAI APIs**: Use Claude Code with DeepSeek, Qwen, or any OpenAI-compatible provider — automatic format translation handles the protocol difference.
+- **Closed-source clients**: Some apps don't let you control thinking mode or other parameters. APIBypass injects custom parameters to override defaults.
+- **Centralized configuration**: Configure once, use with any client. No need to update each client when changing models or parameters.
 
 ## Features
+
+### API Format Translation (New in v0.5.0)
+- Automatic Anthropic ↔ OpenAI format translation
+- Request body conversion: system prompts, messages, tools, images, thinking mode
+- Response conversion: content blocks, tool calls, usage statistics, stop reasons
+- SSE streaming translation: real-time event format conversion for streaming responses
+- Smart detection: only translates when client format ≠ upstream provider format
+
+### Claude Code Launcher (New in v0.5.0)
+- One-click launch from menu bar
+- Terminal selection: Terminal.app, iTerm2, Alacritty, Kitty, Warp, Hyper
+- Environment variable injection: ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_MODEL
+- Model presets: configure default Opus/Sonnet/Haiku/Subagent models
+- Effort level selector: none, low, medium, high, max
+- Working directory picker
+- Settings persistence between launches
+
+### Provider Management (New in v0.4.0)
+- Separate Provider configurations (API type, base URL, API key)
+- Model mappings reference providers — no duplicate credentials
+- Environment variables per provider for Claude Code integration
+- Auto-migration from legacy format
 
 ### Core Proxy
 - Runs in the macOS menu bar — stays out of your Dock
@@ -53,7 +82,9 @@ Many AI clients don't let you customize API request parameters (e.g., disable th
 
 ### UI & UX
 - Bilingual interface: Chinese (中文) and English, switchable in Settings
-- Save button highlights green when changes detected
+- Three-column layout: Providers sidebar, detail editor, mapping overview
+- Resizable panels with draggable dividers
+- Save button highlights when changes detected
 - Formatted JSON request logging in terminal
 - Settings panel with about info, version number, GitHub link (clickable), and License
 
@@ -95,22 +126,35 @@ On first launch, allow network connections when prompted.
 
 Click the APIBypass icon in the menu bar. The server starts automatically on launch, and the indicator turns green when running on `127.0.0.1:8390` (default port, configurable in Settings). You can also manually start/stop via the menu.
 
-### 2. Configure Mappings
+### 2. Configure Providers
 
-Click "Configure..." in the menu bar. Create a model mapping:
+Click "Configure..." in the menu bar. Create a provider:
 
 | Field | Description | Example |
 |---|---|---|
-| Config Name | A label for this mapping | `My Custom Config` |
-| Incoming Model | The model name your client sends | `qwen3.6-plus` |
-| Actual Model | The real model to call upstream | `qwen3.6-plus` |
+| Provider Name | A label for this provider | `My DeepSeek` |
 | API Provider | OpenAI or Anthropic | `OpenAI` |
-| Base URL | Upstream API endpoint | `https://api.example.com/v1` |
+| Base URL | Upstream API endpoint | `https://api.deepseek.com/v1` |
 | API Key | Your upstream API key | Stored in Keychain |
+
+The API Provider type determines whether format translation is needed:
+- If client sends Anthropic format but provider is OpenAI → automatic translation
+- If client sends OpenAI format but provider is Anthropic → automatic translation
+- Same format → no translation, direct passthrough
+
+### 3. Configure Model Mappings
+
+Inside each provider, create model mappings:
+
+| Field | Description | Example |
+|---|---|---|
+| Config Name | A label for this mapping | `Claude Sonnet` |
+| Incoming Model | The model name your client sends | `claude-sonnet-4-6` |
+| Actual Model | The real model to call upstream | `deepseek-chat` |
 
 The master enable switch at the top of each config page controls whether that mapping is active.
 
-### 3. Parameter Injection
+### 4. Parameter Injection
 
 - **Reasoning Mode Override**: Toggle the master switch to control thinking mode:
   - Enable → inject `enable_thinking: true` (OpenAI) or `thinking: {type: "enabled"}` (Anthropic)
@@ -119,9 +163,20 @@ The master enable switch at the top of each config page controls whether that ma
 - **Standard Parameters**: Fill in Temperature, Max Tokens, Top P, Frequency Penalty, or Presence Penalty to inject.
 - **Custom Fields**: Inject arbitrary JSON key-value pairs. Values are auto-detected: `"true"/"false"` → boolean, `"42"` → integer, `"3.14"` → double, `"{\"key\":\"val\"}"` → JSON object.
 
-### 4. Configure Your Client
+### 5. Launch Claude Code (New in v0.5.0)
 
-Point your AI client to `http://127.0.0.1:8390/v1`. The API Key field can be anything — the proxy replaces it with your real key.
+Click "Launch Claude Code" in the menu bar:
+1. Select a provider (base URL and API token are auto-configured)
+2. Select your preferred terminal
+3. Choose a model for `ANTHROPIC_MODEL` (required)
+4. Optionally configure Opus/Sonnet/Haiku/Subagent model defaults
+5. Set effort level (none, low, medium, high, max)
+6. Optionally set a working directory
+7. Click "Launch" — Claude Code opens in your terminal with all environment variables set
+
+### 6. Configure Your Client (Manual)
+
+If not using the launcher, point your AI client to `http://127.0.0.1:8390/v1`:
 
 **Example (Cursor):**
 ```
@@ -129,12 +184,15 @@ OpenAI Base URL: http://127.0.0.1:8390/v1
 Anthropic Base URL: http://127.0.0.1:8390/v1
 ```
 
-### 5. Verify (Developers)
+The API Key field can be anything — the proxy replaces it with your real key.
+
+### 7. Verify (Developers)
 
 When running with `swift run`, watch the terminal for formatted request logs:
 - Incoming request body (original)
 - Upstream URL and actual model name
 - Transformed request body (with injected parameters)
+- Format translation status (if applicable)
 
 > This step is for developers. Downloaded DMG users do not see terminal output.
 
@@ -153,13 +211,17 @@ APIBypass/
 ├── APIBypassApp.swift          # App entry point + menu bar icon
 ├── Core/
 │   ├── ConfigManager.swift     # Config management (UserDefaults)
+│   ├── FormatTranslator.swift  # Anthropic ↔ OpenAI request/response translation
 │   ├── HTTPServer.swift        # Hummingbird HTTP server + SSE streaming
 │   ├── LocalizationManager.swift  # i18n: Chinese/English strings
-│   └── ProxyEngine.swift       # Request transform engine
+│   ├── ProxyEngine.swift       # Request transform engine
+│   └── StreamTranslator.swift  # SSE streaming format translation
 ├── Models/
 │   ├── APIProvider.swift       # API provider enum
+│   ├── ProviderConfig.swift    # Provider + environment variables
 │   └── ModelMapping.swift      # Data models
 ├── Services/
+│   ├── ClaudeCodeLauncher.swift  # Terminal detection + launch
 │   ├── KeychainService.swift   # Keychain storage with caching
 │   └── NetworkService.swift    # HTTP + streaming network service
 ├── UI/
@@ -167,8 +229,15 @@ APIBypass/
 │   ├── MenuBarView.swift       # Menu bar popup
 │   ├── SettingsView.swift      # Settings panel (language + port + about)
 │   └── Views/
-│       ├── MappingDetailView.swift  # Config detail editor
-│       └── MappingListView.swift    # Config list with context menu
+│       ├── EnvironmentVariablesCard.swift  # Provider env vars config
+│       ├── LaunchClaudeCodeView.swift      # Claude Code launcher UI
+│       ├── MappingCardView.swift           # Expandable mapping card
+│       ├── MappingDetailView.swift         # Config detail editor
+│       ├── MappingEditForm.swift           # Shared form component
+│       ├── MappingListView.swift           # Config list with context menu
+│       ├── NewMappingView.swift            # New mapping sheet
+│       ├── NewProviderView.swift           # New provider sheet
+│       └── ProviderDetailView.swift        # Provider detail editor
 └── Package.swift               # Swift Package manifest
 ```
 

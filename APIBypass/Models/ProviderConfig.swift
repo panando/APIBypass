@@ -32,6 +32,13 @@ struct ProviderConfig: Codable, Identifiable, Equatable {
             ),
             EnvironmentVariableConfig(
                 id: UUID(),
+                name: "ANTHROPIC_AUTH_TOKEN",
+                value: "",
+                type: .keychainToken,
+                isEnabled: true
+            ),
+            EnvironmentVariableConfig(
+                id: UUID(),
                 name: "ANTHROPIC_MODEL",
                 value: "",
                 type: .modelMapping,
@@ -39,9 +46,37 @@ struct ProviderConfig: Codable, Identifiable, Equatable {
             ),
             EnvironmentVariableConfig(
                 id: UUID(),
-                name: "ANTHROPIC_AUTH_TOKEN",
+                name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
                 value: "",
-                type: .keychainToken,
+                type: .manual,
+                isEnabled: true
+            ),
+            EnvironmentVariableConfig(
+                id: UUID(),
+                name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                value: "",
+                type: .manual,
+                isEnabled: true
+            ),
+            EnvironmentVariableConfig(
+                id: UUID(),
+                name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+                value: "",
+                type: .manual,
+                isEnabled: true
+            ),
+            EnvironmentVariableConfig(
+                id: UUID(),
+                name: "CLAUDE_CODE_SUBAGENT_MODEL",
+                value: "",
+                type: .manual,
+                isEnabled: true
+            ),
+            EnvironmentVariableConfig(
+                id: UUID(),
+                name: "CLAUDE_CODE_EFFORT_LEVEL",
+                value: "max",
+                type: .manual,
                 isEnabled: true
             )
         ]

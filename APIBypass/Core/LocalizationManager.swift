@@ -205,6 +205,34 @@ struct L10n {
         "select_model": [.chinese: "选择模型", .english: "Select Model"],
         "auto_select_first": [.chinese: "自动选择第一个", .english: "Auto Select First"],
         "read_from_keychain": [.chinese: "从 Keychain 读取", .english: "Read from Keychain"],
+        "please_select": [.chinese: "请选择", .english: "Please Select"],
+        "none": [.chinese: "无", .english: "None"],
+        "launch": [.chinese: "启动", .english: "Launch"],
+        "optional": [.chinese: "可选", .english: "Optional"],
+        "no_provider_selected": [.chinese: "未选择提供商", .english: "No Provider Selected"],
+        "api_key_not_set": [.chinese: "(未设置)", .english: "(Not Set)"],
+        "select_terminal": [.chinese: "终端", .english: "Terminal"],
+        "model_settings": [.chinese: "模型配置", .english: "Model Settings"],
+        "launch_claude_code_desc": [.chinese: "在终端中启动 Claude Code 并注入环境变量", .english: "Launch Claude Code in terminal with environment variables"],
+        "launcher_terminal_not_found": [.chinese: "未找到可用的终端应用", .english: "No terminal application found"],
+        "working_directory": [.chinese: "工作目录", .english: "Working Directory"],
+        "working_directory_hint": [.chinese: "留空使用用户主目录", .english: "Leave empty for home directory"],
+
+        // Launcher errors
+        "launcher_claude_not_found": [.chinese: "未找到 Claude Code", .english: "Claude Code not found"],
+        "launcher_failed": [.chinese: "启动失败", .english: "Launch failed"],
+        "launcher_keychain_failed": [.chinese: "Keychain 读取失败", .english: "Keychain read failed"],
+
+        // API Provider types
+        "provider_type_openai": [.chinese: "OpenAI", .english: "OpenAI"],
+        "provider_type_anthropic": [.chinese: "Anthropic", .english: "Anthropic"],
+
+        // Parameter names
+        "param_temperature": [.chinese: "温度", .english: "Temperature"],
+        "param_max_tokens": [.chinese: "最大Token数", .english: "Max Tokens"],
+        "param_top_p": [.chinese: "Top P", .english: "Top P"],
+        "param_frequency_penalty": [.chinese: "频率惩罚", .english: "Frequency Penalty"],
+        "param_presence_penalty": [.chinese: "存在惩罚", .english: "Presence Penalty"],
     ]
 }
 

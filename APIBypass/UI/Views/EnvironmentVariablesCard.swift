@@ -87,38 +87,36 @@ struct EnvironmentVariableRow: View {
     let mappings: [ModelMapping]
 
     var body: some View {
-        HStack(spacing: 12) {
-            enabledToggle
-            nameField
-            typePicker
-            valueEditor
+        VStack(alignment: .leading, spacing: 6) {
+            // 第一行：启用开关 + 变量名
+            HStack(spacing: 8) {
+                Toggle("", isOn: $envVar.isEnabled)
+                    .toggleStyle(.checkbox)
+                    .labelsHidden()
+
+                TextField(L10n.t("env_var_name"), text: $envVar.name)
+                    .textFieldStyle(.roundedBorder)
+            }
+
+            // 第二行：类型选择器 + 值编辑器
+            HStack(spacing: 8) {
+                Picker("", selection: $envVar.type) {
+                    ForEach(EnvironmentVariableConfig.EnvVarType.allCases, id: \.self) { type in
+                        Text(typeDisplayName(type)).tag(type)
+                    }
+                }
+                .frame(width: 140)
+                .labelsHidden()
+
+                valueEditor
+            }
+            .padding(.leading, 24)
         }
-        .padding(.vertical, 4)
+        .padding(.vertical, 6)
         .opacity(envVar.isEnabled ? 1.0 : 0.5)
     }
 
     // MARK: - Subviews
-
-    private var enabledToggle: some View {
-        Toggle("", isOn: $envVar.isEnabled)
-            .toggleStyle(.checkbox)
-            .labelsHidden()
-    }
-
-    private var nameField: some View {
-        TextField(L10n.t("env_var_name"), text: $envVar.name)
-            .frame(width: 180)
-    }
-
-    private var typePicker: some View {
-        Picker(L10n.t("env_var_type"), selection: $envVar.type) {
-            ForEach(EnvironmentVariableConfig.EnvVarType.allCases, id: \.self) { type in
-                Text(typeDisplayName(type)).tag(type)
-            }
-        }
-        .frame(width: 120)
-        .labelsHidden()
-    }
 
     private func typeDisplayName(_ type: EnvironmentVariableConfig.EnvVarType) -> String {
         switch type {
@@ -134,6 +132,7 @@ struct EnvironmentVariableRow: View {
         switch envVar.type {
         case .manual:
             TextField(L10n.t("env_var_value"), text: $envVar.value)
+                .textFieldStyle(.roundedBorder)
 
         case .modelMapping:
             modelMappingPicker
@@ -147,7 +146,7 @@ struct EnvironmentVariableRow: View {
     }
 
     private var modelMappingPicker: some View {
-        Picker(L10n.t("select_model"), selection: $envVar.value) {
+        Picker("", selection: $envVar.value) {
             Text(L10n.t("auto_select_first")).tag("")
             ForEach(mappings.filter { $0.isEnabled }, id: \.id) { mapping in
                 Text("\(mapping.incomingModel) → \(mapping.actualModel)")

@@ -1,8 +1,22 @@
 import Foundation
 
+/// 终端应用配置
+struct TerminalApp: Identifiable, Equatable {
+    let id: String
+    let name: String
+    let bundleId: String?
+    let path: String?
+    let launchCommand: (String, [String: String], String?) -> String
+
+    static func == (lhs: TerminalApp, rhs: TerminalApp) -> Bool {
+        lhs.id == rhs.id
+    }
+}
+
 /// Claude Code 启动器错误
 enum LauncherError: Error, LocalizedError {
     case claudeCodeNotFound
+    case terminalNotFound
     case launchFailed(String)
     case keychainReadFailed(String)
 
@@ -10,6 +24,8 @@ enum LauncherError: Error, LocalizedError {
         switch self {
         case .claudeCodeNotFound:
             return L10n.t("launcher_claude_not_found")
+        case .terminalNotFound:
+            return L10n.t("launcher_terminal_not_found")
         case .launchFailed(let message):
             return "\(L10n.t("launcher_failed")): \(message)"
         case .keychainReadFailed(let message):
@@ -23,129 +39,138 @@ struct LaunchConfiguration {
     let provider: ProviderConfig
     let selectedMapping: ModelMapping?
     let customEnvVars: [String: String]
+    let workingDirectory: URL?
 }
 
 /// Claude Code 启动器
 final class ClaudeCodeLauncher {
 
-    // MARK: - 环境变量构建
+    // MARK: - 终端检测
 
-    /// 构建环境变量字典
-    /// - Parameters:
-    ///   - provider: 提供商配置
-    ///   - selectedMapping: 选中的模型映射（可选）
-    ///   - customEnvVars: 自定义环境变量（覆盖配置中的值）
-    /// - Returns: 完整的环境变量字典
-    func buildEnvironmentVariables(
-        provider: ProviderConfig,
-        selectedMapping: ModelMapping? = nil,
-        customEnvVars: [String: String] = [:]
-    ) -> [String: String] {
-        var env: [String: String] = [:]
+    /// 获取系统可用的终端应用列表
+    static func availableTerminals() -> [TerminalApp] {
+        var terminals: [TerminalApp] = []
 
-        // 合并系统环境变量
-        for (key, value) in ProcessInfo.processInfo.environment {
-            env[key] = value
-        }
-
-        // 处理 Provider 配置的环境变量
-        for varConfig in provider.environmentVariables where varConfig.isEnabled {
-            // 如果自定义环境变量中有相同 key，使用自定义值
-            if let customValue = customEnvVars[varConfig.name] {
-                env[varConfig.name] = customValue
-                continue
-            }
-
-            let value: String
-
-            switch varConfig.type {
-            case .manual:
-                value = varConfig.value
-
-            case .baseURL:
-                value = provider.baseURL.absoluteString
-
-            case .modelMapping:
-                value = selectedMapping?.incomingModel ?? varConfig.value
-                if value.isEmpty {
-                    // 如果没有选中映射且没有默认值，使用第一个启用的映射
-                    continue
+        // Terminal.app (系统自带)
+        let terminalPath = "/System/Applications/Utilities/Terminal.app"
+        if FileManager.default.fileExists(atPath: terminalPath) {
+            terminals.append(TerminalApp(
+                id: "terminal",
+                name: "Terminal",
+                bundleId: "com.apple.Terminal",
+                path: terminalPath,
+                launchCommand: { claudePath, envVars, workDir in
+                    let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                    let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                    return "tell application \"Terminal\"\nactivate\ndo script \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell"
                 }
+            ))
+        }
 
-            case .keychainToken:
-                // 从 Keychain 读取 API Key
-                do {
-                    let token = try KeychainService.shared.retrieve(forKey: provider.id.uuidString)
-                    value = token
-                } catch {
-                    // 读取失败，跳过
-                    continue
-                }
+        // iTerm2
+        let itermPaths = [
+            "/Applications/iTerm.app",
+            NSHomeDirectory() + "/Applications/iTerm.app"
+        ]
+        for path in itermPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                terminals.append(TerminalApp(
+                    id: "iterm2",
+                    name: "iTerm2",
+                    bundleId: "com.googlecode.iterm2",
+                    path: path,
+                    launchCommand: { claudePath, envVars, workDir in
+                        let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                        return "tell application \"iTerm2\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
+                    }
+                ))
+                break
             }
-
-            env[varConfig.name] = value
         }
 
-        // 最后合并所有自定义环境变量（覆盖 Provider 配置中的值）
-        for (key, value) in customEnvVars {
-            env[key] = value
+        // Alacritty
+        let alacrittyPaths = [
+            "/Applications/Alacritty.app",
+            NSHomeDirectory() + "/Applications/Alacritty.app"
+        ]
+        for path in alacrittyPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                terminals.append(TerminalApp(
+                    id: "alacritty",
+                    name: "Alacritty",
+                    bundleId: "io.alacritty",
+                    path: path,
+                    launchCommand: { claudePath, envVars, workDir in
+                        let envString = envVars.map { "\($0.key)=\'\($0.value)\'" }.joined(separator: " ")
+                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                        return "tell application \"Alacritty\" to activate\ndo shell script \"\(envString) \(cdCommand)\(claudePath) &\""
+                    }
+                ))
+                break
+            }
         }
 
-        return env
+        // Kitty
+        let kittyPaths = [
+            "/Applications/kitty.app",
+            NSHomeDirectory() + "/Applications/kitty.app"
+        ]
+        for path in kittyPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                terminals.append(TerminalApp(
+                    id: "kitty",
+                    name: "Kitty",
+                    bundleId: "net.kovidgoyal.kitty",
+                    path: path,
+                    launchCommand: { claudePath, envVars, workDir in
+                        let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                        return "tell application \"kitty\"\nactivate\nend tell\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
+                    }
+                ))
+                break
+            }
+        }
+
+        // Warp
+        let warpPath = "/Applications/Warp.app"
+        if FileManager.default.fileExists(atPath: warpPath) {
+            terminals.append(TerminalApp(
+                id: "warp",
+                name: "Warp",
+                bundleId: "dev.warp.Warp-Stable",
+                path: warpPath,
+                launchCommand: { claudePath, envVars, workDir in
+                    let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                    let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                    return "tell application \"Warp\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
+                }
+            ))
+        }
+
+        // Hyper
+        let hyperPath = "/Applications/Hyper.app"
+        if FileManager.default.fileExists(atPath: hyperPath) {
+            terminals.append(TerminalApp(
+                id: "hyper",
+                name: "Hyper",
+                bundleId: "co.zeit.hyper",
+                path: hyperPath,
+                launchCommand: { claudePath, envVars, workDir in
+                    let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                    let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                    return "tell application \"Hyper\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
+                }
+            ))
+        }
+
+        return terminals
     }
 
-    // MARK: - Claude Code 启动
-
-    /// 启动 Claude Code
-    /// - Parameters:
-    ///   - configuration: 启动配置
-    ///   - workingDirectory: 工作目录（可选，默认为当前目录）
-    /// - Returns: 启动的进程
-    /// - Throws: LauncherError
-    func launchClaudeCode(
-        configuration: LaunchConfiguration,
-        workingDirectory: URL? = nil
-    ) throws -> Process {
-        let process = Process()
-
-        // 查找 Claude Code 可执行文件
-        guard let claudePath = findClaudeCodeExecutable() else {
-            throw LauncherError.claudeCodeNotFound
-        }
-
-        process.executableURL = URL(fileURLWithPath: claudePath)
-
-        // 构建环境变量
-        let env = buildEnvironmentVariables(
-            provider: configuration.provider,
-            selectedMapping: configuration.selectedMapping,
-            customEnvVars: configuration.customEnvVars
-        )
-        process.environment = env
-
-        // 设置工作目录
-        if let workingDir = workingDirectory {
-            process.currentDirectoryURL = workingDir
-        } else {
-            process.currentDirectoryURL = URL(fileURLWithPath: NSHomeDirectory())
-        }
-
-        // 设置输出管道
-        let outputPipe = Pipe()
-        let errorPipe = Pipe()
-        process.standardOutput = outputPipe
-        process.standardError = errorPipe
-
-        // 启动进程
-        try process.run()
-
-        return process
-    }
-
-    // MARK: - 查找可执行文件
+    // MARK: - Claude Code 查找
 
     /// 查找 Claude Code 可执行文件路径
-    /// - Returns: 可执行文件路径，如果未找到则返回 nil
     func findClaudeCodeExecutable() -> String? {
         // 1. 尝试从 PATH 查找
         if let pathFromWhich = findClaudeUsingWhich() {
@@ -220,5 +245,44 @@ final class ClaudeCodeLauncher {
         }
 
         return nil
+    }
+
+    // MARK: - 启动
+
+    /// 在指定终端中启动 Claude Code
+    /// - Parameters:
+    ///   - terminal: 终端应用
+    ///   - configuration: 启动配置
+    /// - Throws: LauncherError
+    func launchInTerminal(terminal: TerminalApp, configuration: LaunchConfiguration) throws {
+        // 查找 Claude Code 可执行文件
+        guard let claudePath = findClaudeCodeExecutable() else {
+            throw LauncherError.claudeCodeNotFound
+        }
+
+        // 构建环境变量
+        var envVars = configuration.customEnvVars
+
+        // 使用传入的环境变量
+        for (key, value) in configuration.customEnvVars {
+            envVars[key] = value
+        }
+
+        // 工作目录
+        let workDir = configuration.workingDirectory?.path
+
+        // 生成 AppleScript 命令
+        let script = terminal.launchCommand(claudePath, envVars, workDir)
+
+        // 执行 AppleScript
+        let task = Process()
+        task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+        task.arguments = ["-e", script]
+
+        do {
+            try task.run()
+        } catch {
+            throw LauncherError.launchFailed(error.localizedDescription)
+        }
     }
 }

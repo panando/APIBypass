@@ -130,7 +130,12 @@ final class HTTPServer: ObservableObject {
         // 检测是否为流式请求
         let isStreaming = (json["stream"] as? Bool) ?? false
 
-        // 转换请求
+        // 确定是否需要格式转换
+        let upstreamFormat: APIFormat = provider.apiProvider == .openai ? .openai : .anthropic
+        let needsConversion = format != upstreamFormat
+        let effectiveFormat = needsConversion ? upstreamFormat : format
+
+        // 转换请求（参数注入 + 模型名替换）
         let transformedData: Data
         do {
             transformedData = try proxyEngine.transformRequest(data: data, mapping: mapping, format: format)
@@ -140,6 +145,23 @@ final class HTTPServer: ObservableObject {
                 status: .internalServerError,
                 body: .init(byteBuffer: ByteBuffer(data: errorData))
             )
+        }
+
+        // 格式转换（Anthropic ↔ OpenAI）
+        let finalRequestData: Data
+        if needsConversion {
+            let translator = FormatTranslator()
+            do {
+                finalRequestData = try translator.translateRequest(transformedData, from: format, to: upstreamFormat)
+            } catch {
+                let errorData = #"{"error": "Format translation failed"}"#.data(using: .utf8)!
+                return Response(
+                    status: .internalServerError,
+                    body: .init(byteBuffer: ByteBuffer(data: errorData))
+                )
+            }
+        } else {
+            finalRequestData = transformedData
         }
 
         // 获取 API Key
@@ -154,44 +176,47 @@ final class HTTPServer: ObservableObject {
             )
         }
 
-        // 构建上游请求 URL
+        // 构建上游请求 URL（使用转换后的有效格式）
         let upstreamURL: URL
         let baseURLString = provider.baseURL.absoluteString
 
-        // 智能处理 URL：如果 baseURL 已包含 /v1，不再重复添加
         if baseURLString.hasSuffix("/v1") || baseURLString.hasSuffix("/v1/") {
-            // baseURL 已包含 /v1，直接拼接端点
-            let endpointPath = format == .openai ? "chat/completions" : "messages"
+            let endpointPath = effectiveFormat == .openai ? "chat/completions" : "messages"
             upstreamURL = provider.baseURL.appendingPathComponent(endpointPath)
         } else {
-            // baseURL 不包含 /v1，添加完整端点
-            let endpoint = format == .openai ? "/v1/chat/completions" : "/v1/messages"
+            let endpoint = effectiveFormat == .openai ? "/v1/chat/completions" : "/v1/messages"
             upstreamURL = provider.baseURL.appendingPathComponent(endpoint)
         }
 
         let upstreamRequest = networkService.buildRequest(
             url: upstreamURL,
             method: "POST",
-            body: transformedData,
+            body: finalRequestData,
             apiKey: apiKey,
             provider: provider.apiProvider,
             customHeaders: mapping.parameters.customHeaders
         )
 
         // 日志: 转换后请求
-        print("\n📤 转发到上游 API\(isStreaming ? " [流式模式]" : "")")
+        print("\n📤 转发到上游 API\(isStreaming ? " [流式模式]" : "")\(needsConversion ? " [格式转换: \(format) → \(upstreamFormat)]" : "")")
         print("────────────────────────────────────────────────────────────")
         print("上游 URL: \(upstreamURL.absoluteString)")
         print("实际模型: \(mapping.actualModel)")
-        if let transformedBody = String(data: transformedData, encoding: .utf8) {
+        if let finalBody = String(data: finalRequestData, encoding: .utf8) {
             print("请求体 (转换后):")
-            print(prettyJSON(transformedBody) ?? transformedBody)
+            print(prettyJSON(finalBody) ?? finalBody)
         }
         print("━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━\n")
 
         // 根据是否流式选择处理路径
         if isStreaming {
-            return try await handleStreamingRequest(upstreamRequest: upstreamRequest)
+            return try await handleStreamingRequest(
+                upstreamRequest: upstreamRequest,
+                needsConversion: needsConversion,
+                upstreamFormat: upstreamFormat,
+                clientFormat: format,
+                model: mapping.actualModel
+            )
         }
 
         // 发送请求并返回响应
@@ -199,15 +224,23 @@ final class HTTPServer: ObservableObject {
             let (responseData, response) = try await networkService.send(request: upstreamRequest)
             let httpResponse = response as! HTTPURLResponse
 
+            // 格式转换响应体
+            let finalResponseData: Data
+            if needsConversion {
+                let translator = FormatTranslator()
+                finalResponseData = try translator.translateResponse(responseData, from: upstreamFormat, to: format, model: mapping.actualModel)
+            } else {
+                finalResponseData = responseData
+            }
+
             print("📥 上游响应: \(httpResponse.statusCode)")
-            if httpResponse.statusCode >= 300, let bodyStr = String(data: responseData, encoding: .utf8) {
+            if httpResponse.statusCode >= 300, let bodyStr = String(data: finalResponseData, encoding: .utf8) {
                 print("📥 响应体: \(bodyStr)")
             }
 
             var headers = HTTPFields()
             for (key, value) in httpResponse.allHeaderFields {
                 let keyString = (key as? String ?? "").lowercased()
-                // 跳过 hop-by-hop 和可能导致冲突的 header
                 guard !["transfer-encoding", "connection", "content-length", "content-encoding", "keep-alive"].contains(keyString) else { continue }
                 if let name = HTTPField.Name(String(describing: key)) {
                     headers[name] = String(describing: value)
@@ -215,15 +248,15 @@ final class HTTPServer: ObservableObject {
             }
 
             let statusCode = httpResponse.statusCode
-            print("📤 返回客户端: \(statusCode), body 大小: \(responseData.count) bytes")
-            if let bodyStr = String(data: responseData, encoding: .utf8) {
+            print("📤 返回客户端: \(statusCode), body 大小: \(finalResponseData.count) bytes")
+            if let bodyStr = String(data: finalResponseData, encoding: .utf8) {
                 print("📤 响应体: \(bodyStr.prefix(500))")
             }
 
             return Response(
                 status: HTTPResponse.Status(code: statusCode),
                 headers: headers,
-                body: .init(byteBuffer: ByteBuffer(data: responseData))
+                body: .init(byteBuffer: ByteBuffer(data: finalResponseData))
             )
         } catch {
             print("❌ 上游请求失败: \(error)")
@@ -236,7 +269,13 @@ final class HTTPServer: ObservableObject {
     }
 
     /// 处理流式请求
-    private func handleStreamingRequest(upstreamRequest: URLRequest) async throws -> Response {
+    private func handleStreamingRequest(
+        upstreamRequest: URLRequest,
+        needsConversion: Bool,
+        upstreamFormat: APIFormat,
+        clientFormat: APIFormat,
+        model: String
+    ) async throws -> Response {
         let streamResult = try await networkService.sendStream(request: upstreamRequest)
 
         var headers = HTTPFields()
@@ -244,7 +283,6 @@ final class HTTPServer: ObservableObject {
         headers[.cacheControl] = "no-cache"
         headers[.connection] = "keep-alive"
 
-        // 转发上游的相关 header
         if let httpResponse = streamResult.response as? HTTPURLResponse {
             for (key, value) in httpResponse.allHeaderFields {
                 let keyString = (key as? String ?? "").lowercased()
@@ -257,21 +295,46 @@ final class HTTPServer: ObservableObject {
         }
 
         let body = ResponseBody(contentLength: nil) { writer in
-            var buffer = ByteBuffer()
-            buffer.reserveCapacity(1024)
-
             do {
-                for try await byte in streamResult.bytes {
-                    buffer.writeInteger(byte)
-                    if byte == UInt8(ascii: "\n") {
-                        try await writer.write(buffer)
-                        buffer.clear()
+                if needsConversion {
+                    // 流式格式转换
+                    let streamTranslator = StreamTranslator()
+                    let convertedStream: AsyncThrowingStream<String, Error>
+                    switch (upstreamFormat, clientFormat) {
+                    case (.openai, .anthropic):
+                        convertedStream = streamTranslator.translateOpenAIToAnthropic(bytes: streamResult.bytes, model: model)
+                    case (.anthropic, .openai):
+                        convertedStream = streamTranslator.translateAnthropicToOpenAI(bytes: streamResult.bytes, model: model)
+                    default:
+                        // 不应到达
+                        try await writer.finish(nil)
+                        return
                     }
+
+                    for try await sseString in convertedStream {
+                        if let stringData = sseString.data(using: .utf8) {
+                            let buf = ByteBuffer(data: stringData)
+                            try await writer.write(buf)
+                        }
+                    }
+                    try await writer.finish(nil)
+                } else {
+                    // 无转换，逐行转发
+                    var buffer = ByteBuffer()
+                    buffer.reserveCapacity(1024)
+
+                    for try await byte in streamResult.bytes {
+                        buffer.writeInteger(byte)
+                        if byte == UInt8(ascii: "\n") {
+                            try await writer.write(buffer)
+                            buffer.clear()
+                        }
+                    }
+                    if buffer.readableBytes > 0 {
+                        try await writer.write(buffer)
+                    }
+                    try await writer.finish(nil)
                 }
-                if buffer.readableBytes > 0 {
-                    try await writer.write(buffer)
-                }
-                try await writer.finish(nil)
             } catch {
                 print("[SSE] 流传输错误: \(error)")
                 try await writer.finish(nil)

@@ -147,7 +147,7 @@ struct LaunchClaudeCodeView: View {
         do {
             let process = try launcher.launchClaudeCode(configuration: configuration)
 
-            process.terminationHandler = { \[self\] process in
+            process.terminationHandler = { [weak self] process in
                 DispatchQueue.main.async {
                     self.isLaunching = false
                     if process.terminationStatus != 0 {

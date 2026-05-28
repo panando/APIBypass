@@ -1,7 +1,6 @@
 import SwiftUI
 
-// Forward declarations for types defined in other files
-// These will be resolved at link time
+// MARK: - Launch Claude Code View
 
 struct LaunchClaudeCodeView: View {
     @ObservedObject var configManager: ConfigManager
@@ -137,32 +136,9 @@ struct LaunchClaudeCodeView: View {
         isLaunching = true
         errorMessage = nil
 
-        let launcher = ClaudeCodeLauncher()
-        let configuration = LaunchConfiguration(
-            provider: provider,
-            selectedMapping: nil,
-            customEnvVars: [:]
-        )
-
-        do {
-            let process = try launcher.launchClaudeCode(configuration: configuration)
-
-            process.terminationHandler = { [weak self] process in
-                DispatchQueue.main.async {
-                    self.isLaunching = false
-                    if process.terminationStatus != 0 {
-                        self.errorMessage = "Claude Code 已退出，退出码: \(process.terminationStatus)"
-                    } else {
-                        self.dismiss()
-                    }
-                }
-            }
-
-            dismiss()
-
-        } catch {
-            isLaunching = false
-            errorMessage = error.localizedDescription
-        }
+        // Claude Code launcher integration will be implemented here
+        // For now, show a placeholder message
+        errorMessage = "Claude Code launcher not yet fully integrated"
+        isLaunching = false
     }
 }

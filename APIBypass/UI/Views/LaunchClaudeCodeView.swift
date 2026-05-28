@@ -147,13 +147,13 @@ struct LaunchClaudeCodeView: View {
         do {
             let process = try launcher.launchClaudeCode(configuration: configuration)
 
-            process.terminationHandler = { [weak self] process in
+            process.terminationHandler = { \[self\] process in
                 DispatchQueue.main.async {
-                    self?.isLaunching = false
+                    self.isLaunching = false
                     if process.terminationStatus != 0 {
-                        self?.errorMessage = "Claude Code 已退出，退出码: \(process.terminationStatus)"
+                        self.errorMessage = "Claude Code 已退出，退出码: \(process.terminationStatus)"
                     } else {
-                        self?.dismiss()
+                        self.dismiss()
                     }
                 }
             }

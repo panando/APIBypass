@@ -270,7 +270,8 @@ struct ProviderDetailView: View {
             id: provider.id,
             name: name,
             apiProvider: apiProvider,
-            baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL
+            baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
+            environmentVariables: provider.environmentVariables
         )
 
         configManager.updateProvider(updatedProvider)

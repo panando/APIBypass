@@ -1,7 +1,5 @@
 import SwiftUI
 
-// MARK: - Launch Claude Code View
-
 struct LaunchClaudeCodeView: View {
     @ObservedObject var configManager: ConfigManager
     @Environment(\.dismiss) private var dismiss
@@ -136,9 +134,26 @@ struct LaunchClaudeCodeView: View {
         isLaunching = true
         errorMessage = nil
 
-        // Claude Code launcher integration will be implemented here
-        // For now, show a placeholder message
-        errorMessage = "Claude Code launcher not yet fully integrated"
-        isLaunching = false
+        let launcher = ClaudeCodeLauncher()
+        let configuration = LaunchConfiguration(
+            provider: provider,
+            selectedMapping: nil,
+            customEnvVars: [:]
+        )
+
+        do {
+            let process = try launcher.launchClaudeCode(configuration: configuration)
+
+            process.terminationHandler = { process in
+                // Note: Cannot use weak self in struct, but this is fine since
+                // we don't need to update UI after launch
+            }
+
+            dismiss()
+
+        } catch {
+            isLaunching = false
+            errorMessage = error.localizedDescription
+        }
     }
 }

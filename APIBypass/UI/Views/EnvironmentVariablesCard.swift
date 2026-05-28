@@ -110,12 +110,21 @@ struct EnvironmentVariableRow: View {
 
     private var typePicker: some View {
         Picker(L10n.t("env_var_type"), selection: $envVar.type) {
-            ForEach(EnvVarType.allCases, id: \.self) { type in
-                Text(type.localizedName).tag(type)
+            ForEach(EnvironmentVariableConfig.EnvVarType.allCases, id: \.self) { type in
+                Text(typeDisplayName(type)).tag(type)
             }
         }
         .frame(width: 120)
         .labelsHidden()
+    }
+
+    private func typeDisplayName(_ type: EnvironmentVariableConfig.EnvVarType) -> String {
+        switch type {
+        case .manual: return L10n.t("envvar_manual")
+        case .modelMapping: return L10n.t("envvar_model_mapping")
+        case .keychainToken: return L10n.t("envvar_keychain_token")
+        case .baseURL: return L10n.t("envvar_base_url")
+        }
     }
 
     @ViewBuilder

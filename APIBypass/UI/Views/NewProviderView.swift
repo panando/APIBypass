@@ -86,7 +86,8 @@ struct NewProviderView: View {
         let provider = ProviderConfig(
             name: name,
             apiProvider: apiProvider,
-            baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL
+            baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
+            environmentVariables: ProviderConfig.defaultEnvironmentVariables()
         )
 
         configManager.addProvider(provider)

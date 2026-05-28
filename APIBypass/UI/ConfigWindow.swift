@@ -355,7 +355,8 @@ struct ConfigWindow: View {
         let newProvider = ProviderConfig(
             name: provider.name + " 副本",
             apiProvider: provider.apiProvider,
-            baseURL: provider.baseURL
+            baseURL: provider.baseURL,
+            environmentVariables: provider.environmentVariables
         )
 
         configManager.addProvider(newProvider)

@@ -5,27 +5,36 @@ struct LaunchClaudeCodeView: View {
     @Environment(\.dismiss) private var dismiss
 
     // 持久化设置
-    @AppStorage("launcher.selectedProviderId") private var savedProviderId: String?
+
     @AppStorage("launcher.selectedTerminalId") private var savedTerminalId: String = "terminal"
     @AppStorage("launcher.workingDirectory") private var savedWorkingDirectory: String = ""
     @AppStorage("launcher.anthropicModel") private var savedAnthropicModel: String = ""
+    @AppStorage("launcher.anthropicModelProviderId") private var savedAnthropicModelProviderId: String?
     @AppStorage("launcher.opusModel") private var savedOpusModel: String = ""
+    @AppStorage("launcher.opusModelProviderId") private var savedOpusModelProviderId: String?
     @AppStorage("launcher.sonnetModel") private var savedSonnetModel: String = ""
+    @AppStorage("launcher.sonnetModelProviderId") private var savedSonnetModelProviderId: String?
     @AppStorage("launcher.haikuModel") private var savedHaikuModel: String = ""
+    @AppStorage("launcher.haikuModelProviderId") private var savedHaikuModelProviderId: String?
     @AppStorage("launcher.subagentModel") private var savedSubagentModel: String = ""
+    @AppStorage("launcher.subagentModelProviderId") private var savedSubagentModelProviderId: String?
     @AppStorage("launcher.effortLevel") private var savedEffortLevel: String = ""
     @AppStorage("launcher.disableAttributionHeader") private var savedDisableAttributionHeader: Bool = false
     @AppStorage("launcher.rectifierEnabled") private var savedRectifierEnabled: Bool = true
     @AppStorage("serverPort") private var serverPort: Int = 8390
 
-    @State private var selectedProviderId: UUID?
     @State private var selectedTerminalId: String = "terminal"
     @State private var workingDirectory: String = ""
     @State private var showDirectoryPicker = false
+    @State private var anthropicModelProviderId: UUID?
     @State private var anthropicModel: String = ""
+    @State private var opusModelProviderId: UUID?
     @State private var opusModel: String = ""
+    @State private var sonnetModelProviderId: UUID?
     @State private var sonnetModel: String = ""
+    @State private var haikuModelProviderId: UUID?
     @State private var haikuModel: String = ""
+    @State private var subagentModelProviderId: UUID?
     @State private var subagentModel: String = ""
     @State private var effortLevel: String = ""
     @State private var disableAttributionHeader: Bool = false
@@ -42,17 +51,12 @@ struct LaunchClaudeCodeView: View {
         availableTerminals.first { $0.id == selectedTerminalId }
     }
 
-    private var selectedProvider: ProviderConfig? {
-        guard let id = selectedProviderId else { return nil }
-        return configManager.findProvider(for: id)
-    }
-
     private var localBaseURL: String {
         "http://127.0.0.1:\(serverPort)"
     }
 
     private var canLaunch: Bool {
-        guard selectedProvider != nil,
+        guard anthropicModelProviderId != nil,
               !anthropicModel.isEmpty,
               selectedTerminal != nil else {
             return false
@@ -70,13 +74,10 @@ struct LaunchClaudeCodeView: View {
                     // 提供商、终端、目录选择
                     selectionSection
 
-                    if let provider = selectedProvider {
-                        Divider()
-                            .padding(.vertical, 4)
+                    Divider()
+                        .padding(.vertical, 4)
 
-                        // 环境变量配置
-                        envVarsSection(provider: provider)
-                    }
+                    envVarsSection
                 }
                 .padding(.horizontal, 4)
             }
@@ -137,25 +138,6 @@ struct LaunchClaudeCodeView: View {
 
     private var selectionSection: some View {
         VStack(spacing: 16) {
-            // 提供商选择
-            HStack(spacing: 16) {
-                Text(L10n.t("select_provider"))
-                    .font(.headline)
-                    .frame(width: 100, alignment: .leading)
-
-                Picker("", selection: $selectedProviderId) {
-                    Text(L10n.t("please_select")).tag(UUID?.none)
-                    ForEach(configManager.providers) { provider in
-                        Text(provider.name).tag(provider.id as UUID?)
-                    }
-                }
-                .pickerStyle(.menu)
-                .frame(maxWidth: .infinity)
-                .onChange(of: selectedProviderId) { _, _ in saveSettings() }
-
-                Spacer()
-            }
-
             // 终端选择
             HStack(spacing: 16) {
                 Text(L10n.t("select_terminal"))
@@ -199,7 +181,7 @@ struct LaunchClaudeCodeView: View {
 
     // MARK: - Environment Variables Section
 
-    private func envVarsSection(provider: ProviderConfig) -> some View {
+    private var envVarsSection: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text(L10n.t("claude_code_env_vars_title"))
                 .font(.headline)
@@ -229,34 +211,34 @@ struct LaunchClaudeCodeView: View {
             // ANTHROPIC_MODEL (必填)
             modelPickerRow(
                 name: "ANTHROPIC_MODEL",
-                selection: $anthropicModel,
-                mappings: enabledMappings(provider: provider),
+                providerId: $anthropicModelProviderId,
+                model: $anthropicModel,
                 isRequired: true
             )
 
             // 其他模型配置
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
-                selection: $opusModel,
-                mappings: enabledMappings(provider: provider)
+                providerId: $opusModelProviderId,
+                model: $opusModel
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
-                selection: $sonnetModel,
-                mappings: enabledMappings(provider: provider)
+                providerId: $sonnetModelProviderId,
+                model: $sonnetModel
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-                selection: $haikuModel,
-                mappings: enabledMappings(provider: provider)
+                providerId: $haikuModelProviderId,
+                model: $haikuModel
             )
 
             modelPickerRow(
                 name: "CLAUDE_CODE_SUBAGENT_MODEL",
-                selection: $subagentModel,
-                mappings: enabledMappings(provider: provider)
+                providerId: $subagentModelProviderId,
+                model: $subagentModel
             )
 
             // EFFORT_LEVEL
@@ -351,7 +333,7 @@ struct LaunchClaudeCodeView: View {
         }
     }
 
-    private func modelPickerRow(name: String, selection: Binding<String>, mappings: [ModelMapping], isRequired: Bool = false) -> some View {
+    private func modelPickerRow(name: String, providerId: Binding<UUID?>, model: Binding<String>, isRequired: Bool = false) -> some View {
         HStack(spacing: 12) {
             HStack(spacing: 4) {
                 Text(name)
@@ -365,15 +347,35 @@ struct LaunchClaudeCodeView: View {
             }
             .frame(width: 280, alignment: .leading)
 
-            Picker("", selection: selection) {
-                Text(isRequired ? L10n.t("please_select") : L10n.t("none")).tag("")
-                ForEach(mappings, id: \.id) { mapping in
-                    Text(mapping.incomingModel).tag(mapping.incomingModel)
+            Picker("", selection: providerId) {
+                Text(L10n.t("please_select")).tag(UUID?.none)
+                ForEach(configManager.providers) { provider in
+                    Text(provider.name).tag(provider.id as UUID?)
                 }
             }
+            .pickerStyle(.menu)
+            .frame(width: 140)
+            .onChange(of: providerId.wrappedValue) { oldValue, newValue in
+                if oldValue != newValue {
+                    model.wrappedValue = ""
+                }
+                saveSettings()
+            }
+
+            let selectedProvider = providerId.wrappedValue.flatMap { configManager.findProvider(for: $0) }
+            Picker("", selection: model) {
+                Text(isRequired ? L10n.t("please_select") : L10n.t("none")).tag("")
+                if let provider = selectedProvider {
+                    ForEach(enabledMappings(provider: provider), id: \.id) { mapping in
+                        Text(mapping.incomingModel).tag(mapping.incomingModel)
+                    }
+                }
+            }
+            .pickerStyle(.menu)
             .labelsHidden()
-            .frame(width: 200)
-            .onChange(of: selection.wrappedValue) { _, _ in saveSettings() }
+            .frame(width: 160)
+            .disabled(selectedProvider == nil)
+            .onChange(of: model.wrappedValue) { _, _ in saveSettings() }
 
             Spacer()
         }
@@ -431,42 +433,50 @@ struct LaunchClaudeCodeView: View {
     // MARK: - Persistence
 
     private func loadSavedSettings() {
-        // 恢复上次选择的提供商
-        if let idString = savedProviderId,
-           let id = UUID(uuidString: idString),
-           configManager.findProvider(for: id) != nil {
-            selectedProviderId = id
-        }
-
-        // 恢复终端选择
         if availableTerminals.contains(where: { $0.id == savedTerminalId }) {
             selectedTerminalId = savedTerminalId
         } else if let first = availableTerminals.first {
             selectedTerminalId = first.id
         }
 
-        // 恢复工作目录
         workingDirectory = savedWorkingDirectory
 
-        // 恢复上次的环境变量设置
+        anthropicModelProviderId = uuidFrom(saved: savedAnthropicModelProviderId)
         anthropicModel = savedAnthropicModel
+        opusModelProviderId = uuidFrom(saved: savedOpusModelProviderId)
         opusModel = savedOpusModel
+        sonnetModelProviderId = uuidFrom(saved: savedSonnetModelProviderId)
         sonnetModel = savedSonnetModel
+        haikuModelProviderId = uuidFrom(saved: savedHaikuModelProviderId)
         haikuModel = savedHaikuModel
+        subagentModelProviderId = uuidFrom(saved: savedSubagentModelProviderId)
         subagentModel = savedSubagentModel
         effortLevel = savedEffortLevel
         disableAttributionHeader = savedDisableAttributionHeader
         rectifierEnabled = savedRectifierEnabled
     }
 
+    private func uuidFrom(saved: String?) -> UUID? {
+        guard let idString = saved,
+              let id = UUID(uuidString: idString),
+              configManager.findProvider(for: id) != nil else {
+            return nil
+        }
+        return id
+    }
+
     private func saveSettings() {
-        savedProviderId = selectedProviderId?.uuidString
         savedTerminalId = selectedTerminalId
         savedWorkingDirectory = workingDirectory
+        savedAnthropicModelProviderId = anthropicModelProviderId?.uuidString
         savedAnthropicModel = anthropicModel
+        savedOpusModelProviderId = opusModelProviderId?.uuidString
         savedOpusModel = opusModel
+        savedSonnetModelProviderId = sonnetModelProviderId?.uuidString
         savedSonnetModel = sonnetModel
+        savedHaikuModelProviderId = haikuModelProviderId?.uuidString
         savedHaikuModel = haikuModel
+        savedSubagentModelProviderId = subagentModelProviderId?.uuidString
         savedSubagentModel = subagentModel
         savedEffortLevel = effortLevel
         savedDisableAttributionHeader = disableAttributionHeader
@@ -476,8 +486,11 @@ struct LaunchClaudeCodeView: View {
     // MARK: - Launch
 
     private func launchClaudeCode() {
-        guard let provider = selectedProvider,
-              let terminal = selectedTerminal else {
+        guard let terminal = selectedTerminal else {
+            errorMessage = L10n.t("no_terminal_selected")
+            return
+        }
+        guard let defaultProvider = anthropicModelProviderId.flatMap({ configManager.findProvider(for: $0) }) else {
             errorMessage = L10n.t("no_provider_selected")
             return
         }
@@ -503,7 +516,7 @@ struct LaunchClaudeCodeView: View {
 
         let launcher = ClaudeCodeLauncher()
         let configuration = LaunchConfiguration(
-            provider: provider,
+            provider: defaultProvider,
             selectedMapping: nil,
             customEnvVars: customEnvVars,
             workingDirectory: workDir,

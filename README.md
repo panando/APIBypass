@@ -25,6 +25,8 @@ Many AI clients don't let you customize API request parameters, and some clients
 
 4. **Claude Code Launcher**: One-click launch Claude Code in your preferred terminal with all environment variables pre-configured.
 
+![menu](menu.png)
+
 ### Use Cases
 
 - **Claude Code with OpenAI APIs**: Use Claude Code with DeepSeek, Qwen, or any OpenAI-compatible provider — automatic format translation handles the protocol difference.

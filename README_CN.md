@@ -25,6 +25,8 @@
 
 4. **Claude Code 启动器**：一键在选定的终端中启动 Claude Code，自动注入所有环境变量。
 
+![menu](menu.png)
+
 ### 典型场景
 
 - **Claude Code + OpenAI API**：让 Claude Code 使用 DeepSeek、Qwen 等 OpenAI 兼容提供商 —— 自动格式转换解决协议差异

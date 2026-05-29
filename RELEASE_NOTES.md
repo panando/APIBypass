@@ -1,3 +1,36 @@
+# APIBypass v0.5.3
+
+## What's New
+
+### Cross-Provider Model Selection in Claude Code Launcher
+- **Per-model provider picker**: each model environment variable (ANTHROPIC_MODEL, OPUS, SONNET, HAIKU, SUBAGENT) now has an independent two-tier picker — first select the provider, then choose a mapping from that provider
+- **Removed top-level provider selector**: the previous single provider picker at the top of the launcher is no longer needed, since each model carries its own provider context
+- All five models can now route to different upstream providers simultaneously
+
+## Changelog
+
+- feat: two-tier model selection (provider → mapping) per model in Claude Code launcher
+- feat: cross-provider model support — each env var model can target a different provider
+- feat: remove redundant top-level provider picker from launcher UI
+- docs: update screenshot for new launcher layout
+
+## Download
+
+- [APIBypass-0.5.3.dmg](https://github.com/panando/APIBypass/releases/tag/v0.5.3)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.5.3
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.5.2
 
 ## What's New
@@ -142,6 +175,7 @@ swift build -c release
 
 ## Previous Releases
 
+- [v0.5.2](https://github.com/panando/APIBypass/releases/tag/v0.5.2) - OpenAI Responses API, Claude Code compatibility fixes, URL building improvements
 - [v0.5.1](https://github.com/panando/APIBypass/releases/tag/v0.5.1) - Build warnings cleanup
 - [v0.5.0](https://github.com/panando/APIBypass/releases/tag/v0.5.0) - API format translation, Claude Code launcher, i18n
 - [v0.4.0](https://github.com/panando/APIBypass/releases/tag/v0.4.0) - Provider management, hierarchical UI

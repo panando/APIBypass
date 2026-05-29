@@ -3,6 +3,7 @@ import Foundation
 enum APIFormat {
     case openai
     case anthropic
+    case responses
 }
 
 enum ProxyError: Error {
@@ -57,8 +58,7 @@ final class ProxyEngine {
                 } else {
                     json["thinking"] = ["type": "disabled"]
                 }
-            case .openai:
-                // enable_thinking 用于 DeepSeek/Qwen3/GLM 等第三方 OpenAI 兼容 API
+            case .openai, .responses:
                 json["enable_thinking"] = thinking.enabled
             }
         }

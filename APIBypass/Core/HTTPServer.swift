@@ -48,6 +48,13 @@ final class HTTPServer: ObservableObject {
             return try await self.handleProxyRequest(request, context, format: .anthropic)
         }
 
+        router.post("/v1/responses") { [weak self] request, context in
+            guard let self = self else {
+                return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
+            }
+            return try await self.handleProxyRequest(request, context, format: .responses)
+        }
+
         // 模型列表端点
         router.get("/v1/models") { request, context in
             let models = await self.configManager.mappings.map { mapping in
@@ -131,7 +138,12 @@ final class HTTPServer: ObservableObject {
         let isStreaming = (json["stream"] as? Bool) ?? false
 
         // 确定是否需要格式转换
-        let upstreamFormat: APIFormat = provider.apiProvider == .openai ? .openai : .anthropic
+        let upstreamFormat: APIFormat
+        switch provider.apiProvider {
+        case .openai: upstreamFormat = .openai
+        case .anthropic: upstreamFormat = .anthropic
+        case .openaiResponses: upstreamFormat = .responses
+        }
         let needsConversion = format != upstreamFormat
         let effectiveFormat = needsConversion ? upstreamFormat : format
 
@@ -178,14 +190,19 @@ final class HTTPServer: ObservableObject {
 
         // 构建上游请求 URL（使用转换后的有效格式）
         let upstreamURL: URL
-        let baseURLString = provider.baseURL.absoluteString
+        let endpointPath: String
+        switch effectiveFormat {
+        case .openai: endpointPath = "chat/completions"
+        case .anthropic: endpointPath = "messages"
+        case .responses: endpointPath = "responses"
+        }
 
-        if baseURLString.hasSuffix("/v1") || baseURLString.hasSuffix("/v1/") {
-            let endpointPath = effectiveFormat == .openai ? "chat/completions" : "messages"
+        let lastPath = provider.baseURL.lastPathComponent
+        let isVersionPath = lastPath.range(of: #"^v\d+"#, options: .regularExpression) != nil
+        if isVersionPath || lastPath == "api" {
             upstreamURL = provider.baseURL.appendingPathComponent(endpointPath)
         } else {
-            let endpoint = effectiveFormat == .openai ? "/v1/chat/completions" : "/v1/messages"
-            upstreamURL = provider.baseURL.appendingPathComponent(endpoint)
+            upstreamURL = provider.baseURL.appendingPathComponent("v1").appendingPathComponent(endpointPath)
         }
 
         let upstreamRequest = networkService.buildRequest(
@@ -193,7 +210,7 @@ final class HTTPServer: ObservableObject {
             method: "POST",
             body: finalRequestData,
             apiKey: apiKey,
-            provider: provider.apiProvider,
+            provider: provider.apiProvider.transportFormat,
             customHeaders: mapping.parameters.customHeaders
         )
 
@@ -219,19 +236,21 @@ final class HTTPServer: ObservableObject {
             )
         }
 
-        // 发送请求并返回响应
         do {
-            let (responseData, response) = try await networkService.send(request: upstreamRequest)
-            let httpResponse = response as! HTTPURLResponse
-
-            // 格式转换响应体
-            let finalResponseData: Data
-            if needsConversion {
-                let translator = FormatTranslator()
-                finalResponseData = try translator.translateResponse(responseData, from: upstreamFormat, to: format, model: mapping.actualModel)
-            } else {
-                finalResponseData = responseData
-            }
+            let rectifierEnabled = mapping.parameters.rectifierEnabled ?? true
+            let (finalResponseData, httpResponse) = try await sendWithRectifier(
+                upstreamRequest: upstreamRequest,
+                needsConversion: needsConversion,
+                upstreamFormat: upstreamFormat,
+                clientFormat: format,
+                model: mapping.actualModel,
+                rectifierEnabled: rectifierEnabled,
+                apiKey: apiKey,
+                provider: provider.apiProvider.transportFormat,
+                customHeaders: mapping.parameters.customHeaders,
+                baseURL: upstreamURL,
+                actualModel: mapping.actualModel
+            )
 
             print("📥 上游响应: \(httpResponse.statusCode)")
             if httpResponse.statusCode >= 300, let bodyStr = String(data: finalResponseData, encoding: .utf8) {
@@ -276,28 +295,16 @@ final class HTTPServer: ObservableObject {
         clientFormat: APIFormat,
         model: String
     ) async throws -> Response {
-        let streamResult = try await networkService.sendStream(request: upstreamRequest)
-
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
         headers[.cacheControl] = "no-cache"
         headers[.connection] = "keep-alive"
 
-        if let httpResponse = streamResult.response as? HTTPURLResponse {
-            for (key, value) in httpResponse.allHeaderFields {
-                let keyString = (key as? String ?? "").lowercased()
-                if keyString.hasPrefix("x-") || keyString == "request-id" {
-                    if let name = HTTPField.Name(String(describing: key)) {
-                        headers[name] = String(describing: value)
-                    }
-                }
-            }
-        }
-
         let body = ResponseBody(contentLength: nil) { writer in
             do {
+                let streamResult = try await self.networkService.sendStream(request: upstreamRequest)
+
                 if needsConversion {
-                    // 流式格式转换
                     let streamTranslator = StreamTranslator()
                     let convertedStream: AsyncThrowingStream<String, Error>
                     switch (upstreamFormat, clientFormat) {
@@ -305,8 +312,23 @@ final class HTTPServer: ObservableObject {
                         convertedStream = streamTranslator.translateOpenAIToAnthropic(bytes: streamResult.bytes, model: model)
                     case (.anthropic, .openai):
                         convertedStream = streamTranslator.translateAnthropicToOpenAI(bytes: streamResult.bytes, model: model)
+                    case (.responses, .anthropic), (.responses, .openai), (.anthropic, .responses), (.openai, .responses):
+                        print("[SSE] Responses streaming format translation not yet fully implemented, forwarding raw stream")
+                        var buffer = ByteBuffer()
+                        buffer.reserveCapacity(1024)
+                        for try await byte in streamResult.bytes {
+                            buffer.writeInteger(byte)
+                            if byte == UInt8(ascii: "\n") {
+                                try await writer.write(buffer)
+                                buffer.clear()
+                            }
+                        }
+                        if buffer.readableBytes > 0 {
+                            try await writer.write(buffer)
+                        }
+                        try await writer.finish(nil)
+                        return
                     default:
-                        // 不应到达
                         try await writer.finish(nil)
                         return
                     }
@@ -319,7 +341,6 @@ final class HTTPServer: ObservableObject {
                     }
                     try await writer.finish(nil)
                 } else {
-                    // 无转换，逐行转发
                     var buffer = ByteBuffer()
                     buffer.reserveCapacity(1024)
 
@@ -337,11 +358,96 @@ final class HTTPServer: ObservableObject {
                 }
             } catch {
                 print("[SSE] 流传输错误: \(error)")
+                let errorJSON: String
+                if case ProxyError.upstreamError(let code, let data) = error {
+                    let bodyStr = String(data: data ?? Data(), encoding: .utf8) ?? "unknown"
+                    errorJSON = "{\"error\":{\"message\":\"Upstream \(code): \(bodyStr)\",\"type\":\"upstream_error\"}}"
+                } else {
+                    errorJSON = "{\"error\":{\"message\":\"\(error.localizedDescription)\",\"type\":\"proxy_error\"}}"
+                }
+                let sseError = "data: \(errorJSON)\n\ndata: [DONE]\n\n"
+                if let errorData = sseError.data(using: .utf8) {
+                    let buf = ByteBuffer(data: errorData)
+                    try await writer.write(buf)
+                }
                 try await writer.finish(nil)
             }
         }
 
         return Response(status: .ok, headers: headers, body: body)
+    }
+
+    private func sendWithRectifier(
+        upstreamRequest: URLRequest,
+        needsConversion: Bool,
+        upstreamFormat: APIFormat,
+        clientFormat: APIFormat,
+        model: String,
+        rectifierEnabled: Bool,
+        apiKey: String,
+        provider: APIProvider,
+        customHeaders: [String: String]?,
+        baseURL: URL,
+        actualModel: String
+    ) async throws -> (Data, HTTPURLResponse) {
+        let (responseData, response) = try await networkService.send(request: upstreamRequest)
+        let httpResponse = response as! HTTPURLResponse
+
+        if rectifierEnabled && (httpResponse.statusCode == 400 || httpResponse.statusCode == 422) {
+            let errorBody = String(data: responseData, encoding: .utf8) ?? ""
+            let translator = FormatTranslator()
+
+            if translator.shouldRectifyThinkingSignature(errorBody) || translator.shouldRectifyThinkingBudget(errorBody) {
+                print("🔄 Rectifier triggered for status \(httpResponse.statusCode), retrying with fixed request...")
+
+                guard let originalBody = upstreamRequest.httpBody,
+                      var bodyJson = try? JSONSerialization.jsonObject(with: originalBody) as? [String: Any] else {
+                    return (responseData, httpResponse)
+                }
+
+                if translator.shouldRectifyThinkingSignature(errorBody) {
+                    _ = translator.rectifyAnthropicRequest(&bodyJson)
+                }
+                if translator.shouldRectifyThinkingBudget(errorBody) {
+                    _ = translator.rectifyThinkingBudget(&bodyJson)
+                }
+
+                let newBody = try JSONSerialization.data(withJSONObject: bodyJson)
+                var newRequest = upstreamRequest
+                newRequest.httpBody = newBody
+
+                print("🔄 Rectifier retry request body:")
+                if let bodyStr = String(data: newBody, encoding: .utf8) {
+                    print(prettyJSON(bodyStr) ?? bodyStr)
+                }
+
+                let (retryData, retryResponse) = try await networkService.send(request: newRequest)
+                let retryHttpResponse = retryResponse as! HTTPURLResponse
+
+                if retryHttpResponse.statusCode < 300 {
+                    print("✅ Rectifier retry succeeded")
+                } else {
+                    print("❌ Rectifier retry failed with status \(retryHttpResponse.statusCode)")
+                }
+
+                let finalData: Data
+                if needsConversion {
+                    finalData = try translator.translateResponse(retryData, from: upstreamFormat, to: clientFormat, model: model)
+                } else {
+                    finalData = retryData
+                }
+                return (finalData, retryHttpResponse)
+            }
+        }
+
+        let finalData: Data
+        if needsConversion {
+            let translator = FormatTranslator()
+            finalData = try translator.translateResponse(responseData, from: upstreamFormat, to: clientFormat, model: model)
+        } else {
+            finalData = responseData
+        }
+        return (finalData, httpResponse)
     }
 
     /// 格式化 JSON 字符串

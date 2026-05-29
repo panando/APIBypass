@@ -14,6 +14,8 @@ struct LaunchClaudeCodeView: View {
     @AppStorage("launcher.haikuModel") private var savedHaikuModel: String = ""
     @AppStorage("launcher.subagentModel") private var savedSubagentModel: String = ""
     @AppStorage("launcher.effortLevel") private var savedEffortLevel: String = ""
+    @AppStorage("launcher.disableAttributionHeader") private var savedDisableAttributionHeader: Bool = false
+    @AppStorage("launcher.rectifierEnabled") private var savedRectifierEnabled: Bool = true
     @AppStorage("serverPort") private var serverPort: Int = 8390
 
     @State private var selectedProviderId: UUID?
@@ -26,6 +28,8 @@ struct LaunchClaudeCodeView: View {
     @State private var haikuModel: String = ""
     @State private var subagentModel: String = ""
     @State private var effortLevel: String = ""
+    @State private var disableAttributionHeader: Bool = false
+    @State private var rectifierEnabled: Bool = true
 
     @State private var isLaunching = false
     @State private var errorMessage: String?
@@ -86,7 +90,7 @@ struct LaunchClaudeCodeView: View {
             buttonBar
         }
         .padding(24)
-        .frame(minWidth: 700, idealWidth: 750, minHeight: 600, idealHeight: 700)
+        .frame(minWidth: 700, idealWidth: 750, minHeight: 720, idealHeight: 800)
         .onAppear {
             loadSavedSettings()
         }
@@ -274,6 +278,52 @@ struct LaunchClaudeCodeView: View {
 
                 Spacer()
             }
+
+            Divider()
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.t("attribution_header"))
+                        .font(.system(.body, design: .monospaced))
+                    Text(L10n.t("attribution_header_desc"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                    Text(L10n.t("attribution_header_note"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(2)
+                }
+                .frame(width: 480, alignment: .leading)
+
+                Toggle("", isOn: $disableAttributionHeader)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .onChange(of: disableAttributionHeader) { _, _ in saveSettings() }
+
+                Spacer()
+            }
+
+            Divider()
+
+            HStack(spacing: 12) {
+                VStack(alignment: .leading, spacing: 4) {
+                    Text(L10n.t("rectifier"))
+                        .font(.system(.body, design: .monospaced))
+                    Text(L10n.t("rectifier_desc"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(3)
+                }
+                .frame(width: 480, alignment: .leading)
+
+                Toggle("", isOn: $rectifierEnabled)
+                    .labelsHidden()
+                    .toggleStyle(.switch)
+                    .onChange(of: rectifierEnabled) { _, _ in saveSettings() }
+
+                Spacer()
+            }
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
@@ -405,6 +455,8 @@ struct LaunchClaudeCodeView: View {
         haikuModel = savedHaikuModel
         subagentModel = savedSubagentModel
         effortLevel = savedEffortLevel
+        disableAttributionHeader = savedDisableAttributionHeader
+        rectifierEnabled = savedRectifierEnabled
     }
 
     private func saveSettings() {
@@ -417,6 +469,8 @@ struct LaunchClaudeCodeView: View {
         savedHaikuModel = haikuModel
         savedSubagentModel = subagentModel
         savedEffortLevel = effortLevel
+        savedDisableAttributionHeader = disableAttributionHeader
+        savedRectifierEnabled = rectifierEnabled
     }
 
     // MARK: - Launch
@@ -452,7 +506,8 @@ struct LaunchClaudeCodeView: View {
             provider: provider,
             selectedMapping: nil,
             customEnvVars: customEnvVars,
-            workingDirectory: workDir
+            workingDirectory: workDir,
+            disableAttributionHeader: disableAttributionHeader
         )
 
         do {

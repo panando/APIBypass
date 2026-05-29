@@ -23,6 +23,7 @@ struct InjectedParameters: Codable, Equatable {
     let thinkingOverrideEnabled: Bool?
     let customFields: [String: String]?
     let customFieldsEnabled: Bool?
+    let rectifierEnabled: Bool?
 
     init(
         temperature: Double? = nil,
@@ -36,7 +37,8 @@ struct InjectedParameters: Codable, Equatable {
         thinking: ThinkingConfig? = nil,
         thinkingOverrideEnabled: Bool? = nil,
         customFields: [String: String]? = nil,
-        customFieldsEnabled: Bool? = nil
+        customFieldsEnabled: Bool? = nil,
+        rectifierEnabled: Bool? = nil
     ) {
         self.temperature = temperature
         self.maxTokens = maxTokens
@@ -50,6 +52,7 @@ struct InjectedParameters: Codable, Equatable {
         self.thinkingOverrideEnabled = thinkingOverrideEnabled
         self.customFields = customFields
         self.customFieldsEnabled = customFieldsEnabled
+        self.rectifierEnabled = rectifierEnabled
     }
 
     static let empty = InjectedParameters()

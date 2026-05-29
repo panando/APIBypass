@@ -40,6 +40,7 @@ struct LaunchConfiguration {
     let selectedMapping: ModelMapping?
     let customEnvVars: [String: String]
     let workingDirectory: URL?
+    let disableAttributionHeader: Bool
 }
 
 /// Claude Code 启动器
@@ -266,6 +267,11 @@ final class ClaudeCodeLauncher {
         // 使用传入的环境变量
         for (key, value) in configuration.customEnvVars {
             envVars[key] = value
+        }
+
+        // cch Solution 2: 禁用动态归因 header，避免破坏 prompt 前缀缓存
+        if configuration.disableAttributionHeader {
+            envVars["CLAUDE_CODE_ATTRIBUTION_HEADER"] = "0"
         }
 
         // 工作目录

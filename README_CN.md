@@ -36,23 +36,22 @@
 
 ## 功能
 
-### API 格式转换（v0.5.0 新增）
+### API 格式转换
 - 自动 Anthropic ↔ OpenAI 格式转换
 - 请求体转换：系统提示、消息、工具、图片、思考模式
 - 响应转换：内容块、工具调用、用量统计、停止原因
 - SSE 流式转换：流式响应的实时事件格式转换
 - 智能检测：只在客户端格式 ≠ 上游提供商格式时转换
+- 支持 OpenAI Responses API (`/v1/responses`)
 
-### Claude Code 启动器（v0.5.0 新增）
+### Claude Code 启动器
 - 从菜单栏一键启动
 - 终端选择：Terminal.app、iTerm2、Alacritty、Kitty、Warp、Hyper
 - 环境变量注入：ANTHROPIC_BASE_URL、ANTHROPIC_AUTH_TOKEN、ANTHROPIC_MODEL
 - 模型预设：配置默认 Opus/Sonnet/Haiku/Subagent 模型
 - Effort level 选择器：none、low、medium、high、max
-- 工作目录选择器
-- 设置持久化保存
 
-### 提供商管理（v0.4.0 新增）
+### 提供商管理
 - 独立的 Provider 配置（API 类型、Base URL、API Key）
 - 模型映射引用提供商 —— 无需重复配置凭证
 - 每个提供商可配置环境变量，用于 Claude Code 集成
@@ -61,18 +60,17 @@
 ### 核心代理
 - 运行在 macOS 菜单栏，不占用 Dock 空间
 - 本地代理服务器，监听 `127.0.0.1:8390`（可自定义）
-- 应用启动自动开启服务
 - 支持 OpenAI Chat Completions API (`/v1/chat/completions`)
 - 支持 Anthropic Messages API (`/v1/messages`)
+- 支持 OpenAI Responses API (`/v1/responses`)
 - SSE 流式输出支持 — `stream: true` 时实时转发
+- Claude Code 兼容模式 — 自动去除 `cch` 计费头、控制 `CLAUDE_CODE_ATTRIBUTION_HEADER` 注入
 
 ### 模型映射
 - 模型名称映射（客户端请求名 → 实际调用名）
 - 支持多组配置，每组可独立启停
 - 配置页面顶部独立启停开关
 - 右键菜单：复制配置（含 API Key）、删除配置
-- 删除确认对话框，防止误删
-- 未保存变更检测，切换配置时弹出警告
 
 ### 参数注入
 - Temperature、Max Tokens、Top P、Frequency Penalty、Presence Penalty
@@ -89,8 +87,6 @@
 ### 界面与体验
 - 双语界面：中文 / English，在设置面板中即时切换
 - 三栏布局：提供商边栏、详情编辑器、映射概览
-- 可调整大小的面板，支持拖拽分隔条
-- 检测到变更时保存按钮高亮
 - 终端实时显示格式化 JSON 请求日志
 - 设置面板包含关于信息、版本号、GitHub 链接（可点击打开）和许可证信息
 
@@ -165,7 +161,7 @@ API 类型决定是否需要格式转换：
 - **标准参数**：填入 Temperature、Max Tokens、Top P、Frequency Penalty、Presence Penalty 即可注入
 - **自定义参数**：可注入任意 JSON 字段，值自动识别类型：`"true"/"false"` → 布尔值、`"42"` → 整数、`"3.14"` → 浮点数、`"{\"key\":\"val\"}"` → JSON 对象
 
-### 5. 启动 Claude Code（v0.5.0 新增）
+### 5. 启动 Claude Code
 
 点击菜单栏「启动 Claude Code」：
 1. 选择提供商（Base URL 和 API Token 自动配置）
@@ -221,7 +217,8 @@ APIBypass/
 ├── Models/
 │   ├── APIProvider.swift       # API 提供商枚举
 │   ├── ProviderConfig.swift    # 提供商 + 环境变量
-│   └── ModelMapping.swift      # 数据模型
+│   ├── ModelMapping.swift      # 数据模型
+│   └── RectifierModels.swift   # Claude Code 兼容性辅助工具
 ├── Services/
 │   ├── ClaudeCodeLauncher.swift  # 终端检测 + 启动
 │   ├── KeychainService.swift   # Keychain 安全存储（带缓存）

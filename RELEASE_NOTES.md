@@ -1,3 +1,77 @@
+# APIBypass v0.5.2
+
+## What's New
+
+### Claude Code Compatibility
+- **Strip `cch` billing headers**: automatically removes `cch` request identifiers from headers to prevent billing conflicts when using Claude Code with non-Anthropic providers
+- **CLAUDE_CODE_ATTRIBUTION_HEADER toggle**: new control in the Claude Code launcher to enable or disable the `CLAUDE_CODE_ATTRIBUTION_HEADER` environment variable
+
+### OpenAI Responses API Support
+- Added proxy support for the OpenAI Responses API endpoint (`/v1/responses`)
+- Responses API format is handled alongside Chat Completions for seamless integration
+
+### Bug Fixes & Improvements
+- **Fixed URL building**: proxy now correctly constructs upstream URLs for providers with non-standard paths (e.g., `/v3`)
+- **Fixed streaming error responses**: upstream errors during SSE streaming are now returned in proper SSE format with correct `data:` prefix and newline termination
+- **Build warnings cleaned up**: removed unused variable initialization
+
+## Changelog
+
+- feat: add OpenAI Responses API (`/v1/responses`) proxy support
+- feat: add RectifierModels for Claude Code billing header handling
+- feat: strip `cch` billing headers in HTTPServer
+- feat: add CLAUDE_CODE_ATTRIBUTION_HEADER toggle in Claude Code launcher
+- fix: upstream URL building for providers with non-`/v1` paths
+- fix: SSE streaming error response format
+- chore: remove unused `baseURLString` variable
+- docs: update README and README_CN with v0.5.2 features
+
+## Download
+
+- [APIBypass-0.5.2.dmg](https://github.com/panando/APIBypass/releases/tag/v0.5.2)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.5.2
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
+# APIBypass v0.5.1
+
+## What's New
+
+### Bug Fixes
+- **Fixed build warnings**: removed unused variable initialization
+
+## Changelog
+
+- chore: fix build warnings (unused `baseURLString`)
+- chore: update screenshots
+
+## Download
+
+- [APIBypass-0.5.1.dmg](https://github.com/panando/APIBypass/releases/tag/v0.5.1)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.5.1
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.5.0
 
 ## What's New
@@ -68,6 +142,8 @@ swift build -c release
 
 ## Previous Releases
 
+- [v0.5.1](https://github.com/panando/APIBypass/releases/tag/v0.5.1) - Build warnings cleanup
+- [v0.5.0](https://github.com/panando/APIBypass/releases/tag/v0.5.0) - API format translation, Claude Code launcher, i18n
 - [v0.4.0](https://github.com/panando/APIBypass/releases/tag/v0.4.0) - Provider management, hierarchical UI
 - [v0.3.2](https://github.com/panando/APIBypass/releases/tag/v0.3.2) - Proxy header fix, SSE streaming improvement
 - [v0.3.1](https://github.com/panando/APIBypass/releases/tag/v0.3.1) - Custom server port, version info, localization fix

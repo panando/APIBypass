@@ -36,23 +36,22 @@ Many AI clients don't let you customize API request parameters, and some clients
 
 ## Features
 
-### API Format Translation (New in v0.5.0)
+### API Format Translation
 - Automatic Anthropic ↔ OpenAI format translation
 - Request body conversion: system prompts, messages, tools, images, thinking mode
 - Response conversion: content blocks, tool calls, usage statistics, stop reasons
 - SSE streaming translation: real-time event format conversion for streaming responses
 - Smart detection: only translates when client format ≠ upstream provider format
+- OpenAI Responses API (`/v1/responses`) support
 
-### Claude Code Launcher (New in v0.5.0)
+### Claude Code Launcher
 - One-click launch from menu bar
 - Terminal selection: Terminal.app, iTerm2, Alacritty, Kitty, Warp, Hyper
 - Environment variable injection: ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_MODEL
 - Model presets: configure default Opus/Sonnet/Haiku/Subagent models
 - Effort level selector: none, low, medium, high, max
-- Working directory picker
-- Settings persistence between launches
 
-### Provider Management (New in v0.4.0)
+### Provider Management
 - Separate Provider configurations (API type, base URL, API key)
 - Model mappings reference providers — no duplicate credentials
 - Environment variables per provider for Claude Code integration
@@ -61,18 +60,17 @@ Many AI clients don't let you customize API request parameters, and some clients
 ### Core Proxy
 - Runs in the macOS menu bar — stays out of your Dock
 - Local proxy server on `127.0.0.1:8390` (configurable)
-- Auto-start server on app launch
 - OpenAI Chat Completions API (`/v1/chat/completions`)
 - Anthropic Messages API (`/v1/messages`)
+- OpenAI Responses API (`/v1/responses`)
 - SSE streaming support — real-time forwarding when `stream: true`
+- Claude Code compatibility mode — strips `cch` billing headers and controls `CLAUDE_CODE_ATTRIBUTION_HEADER`
 
 ### Model Mapping
 - Model name mapping (client request name → actual model)
 - Multiple configurations, each independently switchable
 - Enable/disable individual configurations at the top of each config page
 - Right-click context menu: copy config (including API key), delete config
-- Delete confirmation dialog to prevent accidental deletion
-- Unsaved changes detection and warning when switching configs
 
 ### Parameter Injection
 - Temperature, Max Tokens, Top P, Frequency Penalty, Presence Penalty
@@ -89,8 +87,6 @@ Many AI clients don't let you customize API request parameters, and some clients
 ### UI & UX
 - Bilingual interface: Chinese (中文) and English, switchable in Settings
 - Three-column layout: Providers sidebar, detail editor, mapping overview
-- Resizable panels with draggable dividers
-- Save button highlights when changes detected
 - Formatted JSON request logging in terminal
 - Settings panel with about info, version number, GitHub link (clickable), and License
 
@@ -165,7 +161,7 @@ The master enable switch at the top of each config page controls whether that ma
 - **Standard Parameters**: Fill in Temperature, Max Tokens, Top P, Frequency Penalty, or Presence Penalty to inject.
 - **Custom Fields**: Inject arbitrary JSON key-value pairs. Values are auto-detected: `"true"/"false"` → boolean, `"42"` → integer, `"3.14"` → double, `"{\"key\":\"val\"}"` → JSON object.
 
-### 5. Launch Claude Code (New in v0.5.0)
+### 5. Launch Claude Code
 
 Click "Launch Claude Code" in the menu bar:
 1. Select a provider (base URL and API token are auto-configured)
@@ -221,7 +217,8 @@ APIBypass/
 ├── Models/
 │   ├── APIProvider.swift       # API provider enum
 │   ├── ProviderConfig.swift    # Provider + environment variables
-│   └── ModelMapping.swift      # Data models
+│   ├── ModelMapping.swift      # Data models
+│   └── RectifierModels.swift   # Claude Code compatibility helpers
 ├── Services/
 │   ├── ClaudeCodeLauncher.swift  # Terminal detection + launch
 │   ├── KeychainService.swift   # Keychain storage with caching

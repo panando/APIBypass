@@ -35,6 +35,7 @@ struct NewProviderView: View {
                             .frame(width: 100, alignment: .trailing)
                         Picker("", selection: $apiProvider) {
                             Text(L10n.t("provider_type_openai")).tag(APIProvider.openai)
+                            Text(L10n.t("provider_type_openai_responses")).tag(APIProvider.openaiResponses)
                             Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
                         }
                         .pickerStyle(.menu)

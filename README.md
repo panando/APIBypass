@@ -6,9 +6,12 @@
 
 **APIBypass** is a macOS menu bar app that acts as a local LLM API proxy with automatic format translation. It bridges incompatible API formats (Anthropic ↔ OpenAI), injects custom parameters, maps model names, and centrally manages your AI provider configurations — all without modifying your clients.
 
-[中文说明](README_CN.md)
-
 </div>
+<p align="center">
+  <strong>English</strong>
+  &nbsp;·&nbsp;
+  <a href="./README_CN.md">简体中文</a>
+</p>
 
 ## Why APIBypass?
 

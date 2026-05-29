@@ -6,9 +6,12 @@
 
 **APIBypass** 是一款 macOS 菜单栏应用，作为本地 LLM API 代理，支持自动格式转换。它打通不同 API 格式（Anthropic ↔ OpenAI），注入自定义参数，映射模型名称，集中管理 AI 提供商配置 —— 无需修改客户端。
 
-[English](README.md)
-
 </div>
+<p align="center">
+  <a href="./README.md">English</a>
+  &nbsp;·&nbsp;
+  <strong>简体中文</strong>
+</p>
 
 ## 为什么需要 APIBypass？
 

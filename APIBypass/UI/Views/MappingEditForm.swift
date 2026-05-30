@@ -68,6 +68,8 @@ struct MappingEditForm: View {
                             }
                         }
                         .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .offset(x: -10)
 
                         Button {
                             showNewProviderSheet = true

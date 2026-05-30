@@ -39,6 +39,8 @@ struct NewProviderView: View {
                             Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
                         }
                         .pickerStyle(.menu)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .offset(x: -10)
                         .onChange(of: apiProvider) { _, newValue in
                             baseURL = newValue.defaultBaseURL.absoluteString
                         }

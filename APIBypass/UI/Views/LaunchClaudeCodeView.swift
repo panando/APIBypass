@@ -1,5 +1,9 @@
 import SwiftUI
 
+extension Notification.Name {
+    static let launchClaudeCodeWindowDidShow = Notification.Name("launchClaudeCodeWindowDidShow")
+}
+
 struct LaunchClaudeCodeView: View {
     @ObservedObject var configManager: ConfigManager
     @Environment(\.dismiss) private var dismiss
@@ -26,16 +30,6 @@ struct LaunchClaudeCodeView: View {
     @State private var selectedTerminalId: String = "terminal"
     @State private var workingDirectory: String = ""
     @State private var showDirectoryPicker = false
-    @State private var anthropicModelProviderId: UUID?
-    @State private var anthropicModel: String = ""
-    @State private var opusModelProviderId: UUID?
-    @State private var opusModel: String = ""
-    @State private var sonnetModelProviderId: UUID?
-    @State private var sonnetModel: String = ""
-    @State private var haikuModelProviderId: UUID?
-    @State private var haikuModel: String = ""
-    @State private var subagentModelProviderId: UUID?
-    @State private var subagentModel: String = ""
     @State private var effortLevel: String = ""
     @State private var disableAttributionHeader: Bool = false
     @State private var rectifierEnabled: Bool = true
@@ -55,9 +49,79 @@ struct LaunchClaudeCodeView: View {
         "http://127.0.0.1:\(serverPort)"
     }
 
+    private var anthropicModelProviderBinding: Binding<UUID?> {
+        Binding(
+            get: {
+                guard let idString = savedAnthropicModelProviderId,
+                      let id = UUID(uuidString: idString),
+                      configManager.findProvider(for: id) != nil else {
+                    return nil
+                }
+                return id
+            },
+            set: { savedAnthropicModelProviderId = $0?.uuidString }
+        )
+    }
+
+    private var opusModelProviderBinding: Binding<UUID?> {
+        Binding(
+            get: {
+                guard let idString = savedOpusModelProviderId,
+                      let id = UUID(uuidString: idString),
+                      configManager.findProvider(for: id) != nil else {
+                    return nil
+                }
+                return id
+            },
+            set: { savedOpusModelProviderId = $0?.uuidString }
+        )
+    }
+
+    private var sonnetModelProviderBinding: Binding<UUID?> {
+        Binding(
+            get: {
+                guard let idString = savedSonnetModelProviderId,
+                      let id = UUID(uuidString: idString),
+                      configManager.findProvider(for: id) != nil else {
+                    return nil
+                }
+                return id
+            },
+            set: { savedSonnetModelProviderId = $0?.uuidString }
+        )
+    }
+
+    private var haikuModelProviderBinding: Binding<UUID?> {
+        Binding(
+            get: {
+                guard let idString = savedHaikuModelProviderId,
+                      let id = UUID(uuidString: idString),
+                      configManager.findProvider(for: id) != nil else {
+                    return nil
+                }
+                return id
+            },
+            set: { savedHaikuModelProviderId = $0?.uuidString }
+        )
+    }
+
+    private var subagentModelProviderBinding: Binding<UUID?> {
+        Binding(
+            get: {
+                guard let idString = savedSubagentModelProviderId,
+                      let id = UUID(uuidString: idString),
+                      configManager.findProvider(for: id) != nil else {
+                    return nil
+                }
+                return id
+            },
+            set: { savedSubagentModelProviderId = $0?.uuidString }
+        )
+    }
+
     private var canLaunch: Bool {
-        guard anthropicModelProviderId != nil,
-              !anthropicModel.isEmpty,
+        guard anthropicModelProviderBinding.wrappedValue != nil,
+              !savedAnthropicModel.isEmpty,
               selectedTerminal != nil else {
             return false
         }
@@ -70,7 +134,7 @@ struct LaunchClaudeCodeView: View {
             headerView
 
             ScrollView {
-                VStack(spacing: 20) {
+        VStack(alignment: .leading, spacing: 20) {
                     // 提供商、终端、目录选择
                     selectionSection
 
@@ -93,6 +157,9 @@ struct LaunchClaudeCodeView: View {
         .padding(24)
         .frame(minWidth: 700, idealWidth: 750, minHeight: 720, idealHeight: 800)
         .onAppear {
+            loadSavedSettings()
+        }
+        .onReceive(NotificationCenter.default.publisher(for: .launchClaudeCodeWindowDidShow)) { _ in
             loadSavedSettings()
         }
         .fileImporter(
@@ -150,7 +217,8 @@ struct LaunchClaudeCodeView: View {
                     }
                 }
                 .pickerStyle(.menu)
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .offset(x: -10)
                 .onChange(of: selectedTerminalId) { _, _ in saveSettings() }
 
                 Spacer()
@@ -211,34 +279,34 @@ struct LaunchClaudeCodeView: View {
             // ANTHROPIC_MODEL (必填)
             modelPickerRow(
                 name: "ANTHROPIC_MODEL",
-                providerId: $anthropicModelProviderId,
-                model: $anthropicModel,
+                providerId: anthropicModelProviderBinding,
+                model: $savedAnthropicModel,
                 isRequired: true
             )
 
             // 其他模型配置
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
-                providerId: $opusModelProviderId,
-                model: $opusModel
+                providerId: opusModelProviderBinding,
+                model: $savedOpusModel
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
-                providerId: $sonnetModelProviderId,
-                model: $sonnetModel
+                providerId: sonnetModelProviderBinding,
+                model: $savedSonnetModel
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-                providerId: $haikuModelProviderId,
-                model: $haikuModel
+                providerId: haikuModelProviderBinding,
+                model: $savedHaikuModel
             )
 
             modelPickerRow(
                 name: "CLAUDE_CODE_SUBAGENT_MODEL",
-                providerId: $subagentModelProviderId,
-                model: $subagentModel
+                providerId: subagentModelProviderBinding,
+                model: $savedSubagentModel
             )
 
             // EFFORT_LEVEL
@@ -255,7 +323,7 @@ struct LaunchClaudeCodeView: View {
                     Text("max").tag("max")
                 }
                 .labelsHidden()
-                .frame(width: 200)
+                .frame(width: 200, alignment: .leading)
                 .onChange(of: effortLevel) { _, _ in saveSettings() }
 
                 Spacer()
@@ -354,12 +422,12 @@ struct LaunchClaudeCodeView: View {
                 }
             }
             .pickerStyle(.menu)
-            .frame(width: 140)
+            .frame(width: 150)
+            .offset(x: -10)
             .onChange(of: providerId.wrappedValue) { oldValue, newValue in
                 if oldValue != newValue {
                     model.wrappedValue = ""
                 }
-                saveSettings()
             }
 
             let selectedProvider = providerId.wrappedValue.flatMap { configManager.findProvider(for: $0) }
@@ -372,10 +440,10 @@ struct LaunchClaudeCodeView: View {
                 }
             }
             .pickerStyle(.menu)
+            .frame(width: 200)
+            .offset(x: -10)
             .labelsHidden()
-            .frame(width: 160)
             .disabled(selectedProvider == nil)
-            .onChange(of: model.wrappedValue) { _, _ in saveSettings() }
 
             Spacer()
         }
@@ -441,16 +509,6 @@ struct LaunchClaudeCodeView: View {
 
         workingDirectory = savedWorkingDirectory
 
-        anthropicModelProviderId = uuidFrom(saved: savedAnthropicModelProviderId)
-        anthropicModel = savedAnthropicModel
-        opusModelProviderId = uuidFrom(saved: savedOpusModelProviderId)
-        opusModel = savedOpusModel
-        sonnetModelProviderId = uuidFrom(saved: savedSonnetModelProviderId)
-        sonnetModel = savedSonnetModel
-        haikuModelProviderId = uuidFrom(saved: savedHaikuModelProviderId)
-        haikuModel = savedHaikuModel
-        subagentModelProviderId = uuidFrom(saved: savedSubagentModelProviderId)
-        subagentModel = savedSubagentModel
         effortLevel = savedEffortLevel
         disableAttributionHeader = savedDisableAttributionHeader
         rectifierEnabled = savedRectifierEnabled
@@ -468,29 +526,17 @@ struct LaunchClaudeCodeView: View {
     private func saveSettings() {
         savedTerminalId = selectedTerminalId
         savedWorkingDirectory = workingDirectory
-        savedAnthropicModelProviderId = anthropicModelProviderId?.uuidString
-        savedAnthropicModel = anthropicModel
-        savedOpusModelProviderId = opusModelProviderId?.uuidString
-        savedOpusModel = opusModel
-        savedSonnetModelProviderId = sonnetModelProviderId?.uuidString
-        savedSonnetModel = sonnetModel
-        savedHaikuModelProviderId = haikuModelProviderId?.uuidString
-        savedHaikuModel = haikuModel
-        savedSubagentModelProviderId = subagentModelProviderId?.uuidString
-        savedSubagentModel = subagentModel
         savedEffortLevel = effortLevel
         savedDisableAttributionHeader = disableAttributionHeader
         savedRectifierEnabled = rectifierEnabled
     }
-
-    // MARK: - Launch
 
     private func launchClaudeCode() {
         guard let terminal = selectedTerminal else {
             errorMessage = L10n.t("no_terminal_selected")
             return
         }
-        guard let defaultProvider = anthropicModelProviderId.flatMap({ configManager.findProvider(for: $0) }) else {
+        guard let defaultProvider = anthropicModelProviderBinding.wrappedValue.flatMap({ configManager.findProvider(for: $0) }) else {
             errorMessage = L10n.t("no_provider_selected")
             return
         }
@@ -502,13 +548,13 @@ struct LaunchClaudeCodeView: View {
         var customEnvVars: [String: String] = [
             "ANTHROPIC_BASE_URL": localBaseURL,
             "ANTHROPIC_AUTH_TOKEN": "1234",
-            "ANTHROPIC_MODEL": anthropicModel
+            "ANTHROPIC_MODEL": savedAnthropicModel
         ]
 
-        if !opusModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = opusModel }
-        if !sonnetModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = sonnetModel }
-        if !haikuModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = haikuModel }
-        if !subagentModel.isEmpty { customEnvVars["CLAUDE_CODE_SUBAGENT_MODEL"] = subagentModel }
+        if !savedOpusModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = savedOpusModel }
+        if !savedSonnetModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = savedSonnetModel }
+        if !savedHaikuModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = savedHaikuModel }
+        if !savedSubagentModel.isEmpty { customEnvVars["CLAUDE_CODE_SUBAGENT_MODEL"] = savedSubagentModel }
         if !effortLevel.isEmpty { customEnvVars["CLAUDE_CODE_EFFORT_LEVEL"] = effortLevel }
 
         // 工作目录

@@ -70,6 +70,8 @@ struct ProviderDetailView: View {
                                 Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
                             }
                             .pickerStyle(.menu)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .offset(x: -10)
                             .onChange(of: apiProvider) { _, newValue in
                                 if baseURL.isEmpty || baseURL == APIProvider.openai.defaultBaseURL.absoluteString || baseURL == APIProvider.anthropic.defaultBaseURL.absoluteString {
                                     baseURL = newValue.defaultBaseURL.absoluteString

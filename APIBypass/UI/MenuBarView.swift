@@ -111,6 +111,7 @@ struct MenuBarView: View {
             $0.identifier?.rawValue == "launch-claude-window"
         }) {
             existingWindow.makeKeyAndOrderFront(nil)
+            NotificationCenter.default.post(name: .launchClaudeCodeWindowDidShow, object: nil)
             return
         }
 

@@ -197,9 +197,9 @@ final class HTTPServer: ObservableObject {
         case .responses: endpointPath = "responses"
         }
 
-        let lastPath = provider.baseURL.lastPathComponent
-        let isVersionPath = lastPath.range(of: #"^v\d+"#, options: .regularExpression) != nil
-        if isVersionPath || lastPath == "api" {
+        let urlPath = provider.baseURL.path
+        let hasVersionInPath = urlPath.range(of: #"/v\d+"#, options: .regularExpression) != nil
+        if hasVersionInPath || urlPath.hasSuffix("/api") {
             upstreamURL = provider.baseURL.appendingPathComponent(endpointPath)
         } else {
             upstreamURL = provider.baseURL.appendingPathComponent("v1").appendingPathComponent(endpointPath)

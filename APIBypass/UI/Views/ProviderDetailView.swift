@@ -71,7 +71,7 @@ struct ProviderDetailView: View {
                             }
                             .pickerStyle(.menu)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .offset(x: -10)
+                            .offset(x: -8)
                             .onChange(of: apiProvider) { _, newValue in
                                 if baseURL.isEmpty || baseURL == APIProvider.openai.defaultBaseURL.absoluteString || baseURL == APIProvider.anthropic.defaultBaseURL.absoluteString {
                                     baseURL = newValue.defaultBaseURL.absoluteString

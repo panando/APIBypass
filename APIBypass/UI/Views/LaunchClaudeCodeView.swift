@@ -218,7 +218,7 @@ struct LaunchClaudeCodeView: View {
                 }
                 .pickerStyle(.menu)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .offset(x: -10)
+                .offset(x: -8)
                 .onChange(of: selectedTerminalId) { _, _ in saveSettings() }
 
                 Spacer()
@@ -422,8 +422,8 @@ struct LaunchClaudeCodeView: View {
                 }
             }
             .pickerStyle(.menu)
-            .frame(width: 150)
-            .offset(x: -10)
+            .frame(width: 140, alignment: .leading)
+            .offset(x: -8)
             .onChange(of: providerId.wrappedValue) { oldValue, newValue in
                 if oldValue != newValue {
                     model.wrappedValue = ""
@@ -440,8 +440,8 @@ struct LaunchClaudeCodeView: View {
                 }
             }
             .pickerStyle(.menu)
-            .frame(width: 200)
-            .offset(x: -10)
+            .frame(width: 200, alignment: .leading)
+            .offset(x: -8)
             .labelsHidden()
             .disabled(selectedProvider == nil)
 

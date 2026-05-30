@@ -138,7 +138,7 @@ struct MappingDetailView: View {
                             }
                             .pickerStyle(.menu)
                             .frame(maxWidth: .infinity, alignment: .leading)
-                            .offset(x: -10)
+                            .offset(x: -8)
 
                             Button {
                                 showNewProviderSheet = true

@@ -46,6 +46,27 @@ struct LaunchConfiguration {
 /// Claude Code 启动器
 final class ClaudeCodeLauncher {
 
+    // MARK: - 1M context detection
+
+    /// Known 1M context window models (matched by regex, case-insensitive).
+    /// Claude Code CLI parses `[1m]` suffix to budget /context for 1e6 tokens,
+    /// then strips it before the API call.
+    /// Sources: DeepSeek & MiMo official Claude Code integration docs.
+    private static let deepseek1MPattern = #"(?i)(\w+-)?deepseek-v([4-9]|\d{2,})([.-]\w+)*"#
+    private static let mimo1MPattern   = #"(?i)(\w+-)?mimo-v(2\.[5-9]|2\.\d{2,}|[3-9]|\d{2,})([.-]\w+)*"#
+
+    /// Append `[1m]` suffix if the model supports a 1M context window.
+    static func with1MContextSuffix(_ model: String) -> String {
+        if model.range(of: #"\[1m\]"#, options: [.regularExpression, .caseInsensitive]) != nil {
+            return model
+        }
+        if model.range(of: deepseek1MPattern, options: .regularExpression) != nil ||
+           model.range(of: mimo1MPattern, options: .regularExpression) != nil {
+            return "\(model)[1m]"
+        }
+        return model
+    }
+
     // MARK: - 终端检测
 
     /// 获取系统可用的终端应用列表

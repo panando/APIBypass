@@ -514,15 +514,6 @@ struct LaunchClaudeCodeView: View {
         rectifierEnabled = savedRectifierEnabled
     }
 
-    private func uuidFrom(saved: String?) -> UUID? {
-        guard let idString = saved,
-              let id = UUID(uuidString: idString),
-              configManager.findProvider(for: id) != nil else {
-            return nil
-        }
-        return id
-    }
-
     private func saveSettings() {
         savedTerminalId = selectedTerminalId
         savedWorkingDirectory = workingDirectory
@@ -548,13 +539,13 @@ struct LaunchClaudeCodeView: View {
         var customEnvVars: [String: String] = [
             "ANTHROPIC_BASE_URL": localBaseURL,
             "ANTHROPIC_AUTH_TOKEN": "1234",
-            "ANTHROPIC_MODEL": savedAnthropicModel
+            "ANTHROPIC_MODEL": ClaudeCodeLauncher.with1MContextSuffix(savedAnthropicModel)
         ]
 
-        if !savedOpusModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = savedOpusModel }
-        if !savedSonnetModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = savedSonnetModel }
-        if !savedHaikuModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = savedHaikuModel }
-        if !savedSubagentModel.isEmpty { customEnvVars["CLAUDE_CODE_SUBAGENT_MODEL"] = savedSubagentModel }
+        if !savedOpusModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_OPUS_MODEL"] = ClaudeCodeLauncher.with1MContextSuffix(savedOpusModel) }
+        if !savedSonnetModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_SONNET_MODEL"] = ClaudeCodeLauncher.with1MContextSuffix(savedSonnetModel) }
+        if !savedHaikuModel.isEmpty { customEnvVars["ANTHROPIC_DEFAULT_HAIKU_MODEL"] = ClaudeCodeLauncher.with1MContextSuffix(savedHaikuModel) }
+        if !savedSubagentModel.isEmpty { customEnvVars["CLAUDE_CODE_SUBAGENT_MODEL"] = ClaudeCodeLauncher.with1MContextSuffix(savedSubagentModel) }
         if !effortLevel.isEmpty { customEnvVars["CLAUDE_CODE_EFFORT_LEVEL"] = effortLevel }
 
         // 工作目录

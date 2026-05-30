@@ -86,6 +86,9 @@ struct ModelMapping: Codable, Identifiable, Equatable {
     }
 
     func matches(model: String) -> Bool {
-        isEnabled && incomingModel == model
+        guard isEnabled else { return false }
+        if incomingModel == model { return true }
+        let stripped = model.replacingOccurrences(of: #"\[\d+[km]\]"#, with: "", options: .regularExpression)
+        return incomingModel == stripped
     }
 }

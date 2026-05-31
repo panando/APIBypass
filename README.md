@@ -4,7 +4,9 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**APIBypass** is a macOS menu bar app that acts as a local LLM API proxy with automatic format translation. It bridges incompatible API formats (Anthropic ↔ OpenAI), injects custom parameters, maps model names, and centrally manages your AI provider configurations — all without modifying your clients.
+**One BaseURL. All models. Zero hassle.**
+
+APIBypass is a macOS menu bar app that acts as your local LLM API gateway. Configure once, and every AI client connects to all your models through a single address — automatic format translation, model mapping, parameter injection, and Claude Code multi-model launch, all in one place.
 
 </div>
 <p align="center">
@@ -15,23 +17,49 @@
 
 ## Why APIBypass?
 
-Many AI clients don't let you customize API request parameters, and some clients (like Claude Code) only support specific API formats. APIBypass solves these problems:
+> Tired of these headaches?
 
-1. **API Format Translation**: Claude Code only speaks Anthropic API, but many providers use OpenAI format. APIBypass automatically translates between them — Claude Code can now work with DeepSeek, Qwen, OpenCode Go, and any OpenAI-compatible API.
+- Juggling multiple API keys across different clients and providers
+- Want Claude Code to use third-party models, but it only speaks Anthropic format
+- Different models need different temperature, thinking, and token settings — constantly tweaking configs
+- Claude Code has cache hit issues and can't properly recognize long-context models
+- API keys scattered everywhere, security feels like an afterthought
 
-2. **Parameter Injection**: Set temperature, thinking mode, max tokens, and custom parameters globally without modifying each client.
+**APIBypass solves all of these. One app, one address, done.**
 
-3. **Model Mapping**: Map the model name your client requests to a different actual model — switch models without changing client config.
+---
 
-4. **Claude Code Launcher**: One-click launch Claude Code in your preferred terminal with all environment variables pre-configured.
+## Highlights
+
+### One Gateway for All Models
+
+Configure each provider's BaseURL and API key once. Your clients only need `http://127.0.0.1:8390` — DeepSeek, Qwen, Kimi, OpenAI, Anthropic, and more. One entry point, no more config juggling.
+
+### Automatic Format Translation
+
+Client sends Anthropic format, upstream expects OpenAI? **Translated automatically, completely transparent.** Requests, responses, SSE streams, tool calls, thinking mode — all handled. Your client doesn't even know a format translation happened.
+
+### Custom Models & Fine-Grained Control
+
+- **Model mapping**: your client requests `claude-sonnet-4-6`, APIBypass calls whatever model you specify
+- **Parameter injection**: temperature, max tokens, thinking mode — controlled in one place
+- **Thinking mode toggle**: one-click on/off, compatible with both Anthropic and OpenAI formats
+
+### Claude Code Multi-Model Launcher
+
+**Break Claude Code's model barrier.** Launch Claude Code with one click and assign different providers to Opus, Sonnet, Haiku, and other roles — one session, multiple providers working together seamlessly.
+
+### Fixes for Claude Code Known Issues
+
+Addresses known compatibility issues when using third-party models with Claude Code, including cache optimization and long-context model recognition — making third-party models more stable and reliable in Claude Code.
+
+### Security & Privacy
+
+API keys stored in macOS Keychain, no plaintext in config files. All traffic stays local, no third-party servers, no telemetry.
+
+---
 
 ![menu](menu.png)
-
-### Use Cases
-
-- **Claude Code with OpenAI APIs**: Use Claude Code with DeepSeek, Qwen, or any OpenAI-compatible provider — automatic format translation handles the protocol difference.
-- **Closed-source clients**: Some apps don't let you control thinking mode or other parameters. APIBypass injects custom parameters to override defaults.
-- **Centralized configuration**: Configure once, use with any client. No need to update each client when changing models or parameters.
 
 ![Screenshot](screenshot_configure.png)
 
@@ -42,19 +70,17 @@ Many AI clients don't let you customize API request parameters, and some clients
 ## Features
 
 ### API Format Translation
-- Automatic Anthropic ↔ OpenAI format translation
-- Request body conversion: system prompts, messages, tools, images, thinking mode
-- Response conversion: content blocks, tool calls, usage statistics, stop reasons
-- SSE streaming translation: real-time event format conversion for streaming responses
+- Automatic Anthropic ↔ OpenAI format translation — request bodies, responses, SSE streams, tool calls, thinking mode
 - Smart detection: only translates when client format ≠ upstream provider format
-- OpenAI Responses API (`/v1/responses`) support
+- Supports `/v1/chat/completions` (OpenAI), `/v1/messages` (Anthropic), `/v1/responses` (OpenAI Responses API)
 
 ### Claude Code Launcher
-- One-click launch from menu bar
+- One-click launch from menu bar with all environment variables pre-configured
+- **Multi-provider model assignment**: assign different providers to Opus, Sonnet, Haiku, and Subagent roles in a single session
 - Terminal selection: Terminal.app, iTerm2, Alacritty, Kitty, Warp, Hyper
-- Environment variable injection: ANTHROPIC_BASE_URL, ANTHROPIC_AUTH_TOKEN, ANTHROPIC_MODEL
-- Model presets: configure default Opus/Sonnet/Haiku/Subagent models
 - Effort level selector: none, low, medium, high, max
+- **Cache fix**: strips `cch` billing headers, controls `CLAUDE_CODE_ATTRIBUTION_HEADER`
+- **1M context fix**: auto-appends `[1m]` suffix for long-context models
 
 ### Provider Management
 - Separate Provider configurations (API type, base URL, API key)
@@ -84,8 +110,7 @@ Many AI clients don't let you customize API request parameters, and some clients
 - Custom JSON fields — inject any parameter with any value type (supports strings, numbers, booleans, objects, arrays)
 
 ### Security & Privacy
-- API Key stored securely in macOS Keychain (single unified storage)
-- Single Keychain authorization for all configurations
+- API Keys stored securely in macOS Keychain — single authorization, no plaintext in config files
 - All traffic processed locally — no third-party servers involved
 - No telemetry or usage data collected
 

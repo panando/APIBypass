@@ -4,7 +4,9 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**APIBypass** 是一款 macOS 菜单栏应用，作为本地 LLM API 代理，支持自动格式转换。它打通不同 API 格式（Anthropic ↔ OpenAI），注入自定义参数，映射模型名称，集中管理 AI 提供商配置 —— 无需修改客户端。
+**一个地址，接入所有模型，零折腾。**
+
+APIBypass 是一款 macOS 菜单栏应用，充当你的本地大模型 API 网关。只需配置一次，所有 AI 客户端通过同一个地址即可接入你配置的全部模型 —— 自动格式转换、模型映射、参数注入、Claude Code 多模型启动，一站式搞定。
 
 </div>
 <p align="center">
@@ -15,23 +17,49 @@
 
 ## 为什么需要 APIBypass？
 
-很多 AI 客户端不允许自定义 API 请求参数，而且某些客户端（如 Claude Code）只支持特定的 API 格式。APIBypass 解决了这些问题：
+> 你是否有过这些烦恼？
 
-1. **API 格式自动转换**：Claude Code 只能使用 Anthropic API，但很多提供商使用 OpenAI 格式。APIBypass 自动在两者之间转换 —— Claude Code 现在可以使用 DeepSeek、Qwen、OpenCode Go 以及任何 OpenAI 兼容 API。
+- 有多个大模型提供商的 API Key，每个客户端都要手动配置一遍
+- 想让 Claude Code 用第三方模型，但它只认 Anthropic 格式
+- 不同模型需要不同的 temperature、thinking 参数，改来改去很麻烦
+- Claude Code 缓存命中率低、长上下文模型识别有问题
+- API Key 散落在各处，安全性堪忧
 
-2. **参数注入**：为所有请求统一设置 temperature、思考模式、max tokens 等参数，无需修改每个客户端。
+**APIBypass 一次解决所有问题。**
 
-3. **模型映射**：将客户端请求的模型名映射到实际模型名，方便切换模型而不修改客户端配置。
+---
 
-4. **Claude Code 启动器**：一键在选定的终端中启动 Claude Code，自动注入所有环境变量。
+## 核心亮点
+
+### 一站式 API 网关
+
+只需配置一次 BaseURL 和 API Key，你的客户端只需指向 `http://127.0.0.1:8390` —— DeepSeek、Qwen、Kimi、OpenAI、Anthropic…… 所有模型统一入口，告别多处配置。
+
+### 自动格式转换
+
+Claude Code 发 Anthropic 格式？上游是 OpenAI 格式？**自动转换，透明无感。** 请求、响应、SSE 流、工具调用、思考模式 —— 全部自动处理。你的客户端甚至不知道中间经历了一次格式翻译。
+
+### 自定义模型与精细控制
+
+- **模型映射**：客户端请求 `claude-sonnet-4-6`，实际调用你指定的任意模型
+- **参数注入**：temperature、max tokens、thinking 模式，统一控制
+- **思考模式开关**：一键开启/关闭，兼容 Anthropic 和 OpenAI 格式
+
+### Claude Code 多模型启动器
+
+**打破 Claude Code 的模型限制。** 一键启动 Claude Code，为 Opus、Sonnet、Haiku 等角色分别指定不同提供商的模型 —— 一次会话，多厂商模型协同工作，无缝切换。
+
+### 修复 Claude Code 已知问题
+
+针对 Claude Code 使用第三方模型时的已知兼容性问题进行了修复，包括但不限于缓存命中率优化、长上下文模型识别等，让第三方模型在 Claude Code 中的表现更加稳定可靠。
+
+### 安全与隐私
+
+API Key 存储在 macOS Keychain 中，配置文件无明文密钥。所有流量本地处理，不经过第三方服务器，不收集任何数据。
+
+---
 
 ![menu](menu.png)
-
-### 典型场景
-
-- **Claude Code + OpenAI API**：让 Claude Code 使用 DeepSeek、Qwen 等 OpenAI 兼容提供商 —— 自动格式转换解决协议差异
-- **闭源客户端**：某些软件不支持控制思考模式等参数，通过 APIBypass 注入自定义参数即可覆盖默认值
-- **集中配置**：一次配置，多端使用。更换模型或参数时无需逐个修改客户端
 
 ![配置界面](screenshot_configure.png)
 
@@ -42,19 +70,17 @@
 ## 功能
 
 ### API 格式转换
-- 自动 Anthropic ↔ OpenAI 格式转换
-- 请求体转换：系统提示、消息、工具、图片、思考模式
-- 响应转换：内容块、工具调用、用量统计、停止原因
-- SSE 流式转换：流式响应的实时事件格式转换
+- 自动 Anthropic ↔ OpenAI 格式转换 —— 请求体、响应、SSE 流、工具调用、思考模式
 - 智能检测：只在客户端格式 ≠ 上游提供商格式时转换
-- 支持 OpenAI Responses API (`/v1/responses`)
+- 支持 `/v1/chat/completions`（OpenAI）、`/v1/messages`（Anthropic）、`/v1/responses`（OpenAI Responses API）
 
 ### Claude Code 启动器
-- 从菜单栏一键启动
+- 从菜单栏一键启动，自动注入所有环境变量
+- **多提供商模型分配**：为 Opus、Sonnet、Haiku 和 Subagent 角色分配不同提供商
 - 终端选择：Terminal.app、iTerm2、Alacritty、Kitty、Warp、Hyper
-- 环境变量注入：ANTHROPIC_BASE_URL、ANTHROPIC_AUTH_TOKEN、ANTHROPIC_MODEL
-- 模型预设：配置默认 Opus/Sonnet/Haiku/Subagent 模型
 - Effort level 选择器：none、low、medium、high、max
+- **缓存修复**：去除 `cch` 计费头，控制 `CLAUDE_CODE_ATTRIBUTION_HEADER`
+- **1M 上下文修复**：自动为长上下文模型追加 `[1m]` 后缀
 
 ### 提供商管理
 - 独立的 Provider 配置（API 类型、Base URL、API Key）
@@ -84,8 +110,7 @@
 - 自定义 JSON 参数注入 — 支持字符串、数字、布尔、对象、数组等任意类型
 
 ### 安全与隐私
-- API Key 安全存储在 macOS Keychain 中（统一的合并存储）
-- 所有配置仅需一次 Keychain 授权
+- API Key 安全存储在 macOS Keychain 中，单次授权即可，配置文件无明文密钥
 - 所有流量在本地处理，不经过任何第三方服务器
 - 不收集任何遥测或使用数据
 

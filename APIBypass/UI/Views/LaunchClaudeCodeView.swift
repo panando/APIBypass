@@ -780,6 +780,9 @@ struct LaunchClaudeCodeView: View {
     // MARK: - Persistence
 
     private func loadSavedSettings() {
+        // 标记正在加载，避免 onChange 回调干扰
+        isApplyingTemplate = true
+
         if availableTerminals.contains(where: { $0.id == savedTerminalId }) {
             selectedTerminalId = savedTerminalId
         } else if let first = availableTerminals.first {
@@ -794,9 +797,35 @@ struct LaunchClaudeCodeView: View {
         recentDirectories = ClaudeCodeLauncher.loadRecentDirectories()
         templates = ClaudeCodeLauncher.loadTemplates()
         if let savedName = UserDefaults.standard.string(forKey: "launcher.activeTemplateName"),
-           templates.contains(where: { $0.name == savedName }) {
+           let tmpl = templates.first(where: { $0.name == savedName }) {
             activeTemplateName = savedName
+            // 检查当前值是否与模板匹配，设置 dirty 状态
+            isTemplateDirty = !templateMatchesCurrent(tmpl)
+        } else {
+            activeTemplateName = nil
+            isTemplateDirty = false
         }
+
+        // 延迟重置标志，确保 SwiftUI 视图更新完成后再重置
+        DispatchQueue.main.async {
+            isApplyingTemplate = false
+        }
+    }
+
+    private func templateMatchesCurrent(_ tmpl: LaunchTemplate) -> Bool {
+        savedAnthropicModel == tmpl.anthropicModel &&
+        savedAnthropicModelProviderId == tmpl.anthropicModelProviderId &&
+        savedOpusModel == tmpl.opusModel &&
+        savedOpusModelProviderId == tmpl.opusModelProviderId &&
+        savedSonnetModel == tmpl.sonnetModel &&
+        savedSonnetModelProviderId == tmpl.sonnetModelProviderId &&
+        savedHaikuModel == tmpl.haikuModel &&
+        savedHaikuModelProviderId == tmpl.haikuModelProviderId &&
+        savedSubagentModel == tmpl.subagentModel &&
+        savedSubagentModelProviderId == tmpl.subagentModelProviderId &&
+        effortLevel == (tmpl.effortLevel ?? "") &&
+        disableAttributionHeader == (tmpl.disableAttributionHeader ?? false) &&
+        rectifierEnabled == (tmpl.rectifierEnabled ?? true)
     }
 
     private func saveSettings() {
@@ -953,6 +982,7 @@ struct LaunchClaudeCodeView: View {
             if !workingDirectory.isEmpty {
                 ClaudeCodeLauncher.addRecentDirectory(workingDirectory)
             }
+            isLaunching = false
             dismiss()
         } catch {
             isLaunching = false

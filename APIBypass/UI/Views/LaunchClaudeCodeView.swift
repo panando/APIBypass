@@ -41,6 +41,8 @@ struct LaunchClaudeCodeView: View {
     @State private var showDeleteTemplateConfirm = false
     @State private var newTemplateName = ""
     @State private var renameText = ""
+    @State private var showTerminalRunningAlert = false
+    @State private var pendingTerminal: TerminalApp?
 
     @State private var isLaunching = false
     @State private var errorMessage: String?
@@ -311,6 +313,23 @@ struct LaunchClaudeCodeView: View {
             }
         } message: {
             Text(L10n.format("delete_template_confirm", activeTemplateName ?? ""))
+        }
+        .alert(L10n.t("terminal_already_running"), isPresented: $showTerminalRunningAlert) {
+            Button(L10n.t("new_tab")) {
+                if let terminal = pendingTerminal,
+                   let provider = anthropicModelProviderBinding.wrappedValue.flatMap({ configManager.findProvider(for: $0) }) {
+                    doLaunch(terminal: terminal, provider: provider, mode: .newTab)
+                }
+            }
+            Button(L10n.t("new_window")) {
+                if let terminal = pendingTerminal,
+                   let provider = anthropicModelProviderBinding.wrappedValue.flatMap({ configManager.findProvider(for: $0) }) {
+                    doLaunch(terminal: terminal, provider: provider, mode: .newWindow)
+                }
+            }
+            Button(L10n.t("cancel"), role: .cancel) {}
+        } message: {
+            Text(L10n.format("terminal_running_message", pendingTerminal?.name ?? ""))
         }
     }
 
@@ -765,7 +784,21 @@ struct LaunchClaudeCodeView: View {
         isLaunching = true
         errorMessage = nil
 
-        // 构建环境变量
+        // 检测终端是否已运行
+        if ClaudeCodeLauncher.isTerminalRunning(terminal) {
+            isLaunching = false
+            pendingTerminal = terminal
+            showTerminalRunningAlert = true
+            return
+        }
+
+        doLaunch(terminal: terminal, provider: defaultProvider, mode: .newWindow)
+    }
+
+    private func doLaunch(terminal: TerminalApp, provider: ProviderConfig, mode: TerminalLaunchMode) {
+        isLaunching = true
+        errorMessage = nil
+
         var customEnvVars: [String: String] = [
             "ANTHROPIC_BASE_URL": localBaseURL,
             "ANTHROPIC_AUTH_TOKEN": "1234",
@@ -778,17 +811,16 @@ struct LaunchClaudeCodeView: View {
         if !savedSubagentModel.isEmpty { customEnvVars["CLAUDE_CODE_SUBAGENT_MODEL"] = ClaudeCodeLauncher.with1MContextSuffix(savedSubagentModel) }
         if !effortLevel.isEmpty { customEnvVars["CLAUDE_CODE_EFFORT_LEVEL"] = effortLevel }
 
-        // 工作目录
         let workDir = workingDirectory.isEmpty ? nil : URL(fileURLWithPath: workingDirectory)
 
         let launcher = ClaudeCodeLauncher()
         let configuration = LaunchConfiguration(
-            provider: defaultProvider,
+            provider: provider,
             selectedMapping: nil,
             customEnvVars: customEnvVars,
             workingDirectory: workDir,
             disableAttributionHeader: disableAttributionHeader,
-            launchMode: .newWindow
+            launchMode: mode
         )
 
         do {

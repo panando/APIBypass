@@ -33,6 +33,7 @@ struct LaunchClaudeCodeView: View {
     @State private var effortLevel: String = ""
     @State private var disableAttributionHeader: Bool = false
     @State private var rectifierEnabled: Bool = true
+    @State private var recentDirectories: [String] = []
 
     @State private var isLaunching = false
     @State private var errorMessage: String?
@@ -230,9 +231,45 @@ struct LaunchClaudeCodeView: View {
                     .font(.headline)
                     .frame(width: 100, alignment: .leading)
 
-                TextField(L10n.t("working_directory_hint"), text: $workingDirectory)
-                    .textFieldStyle(.roundedBorder)
-                    .onChange(of: workingDirectory) { _, _ in saveSettings() }
+                Menu {
+                    if recentDirectories.isEmpty {
+                        Text(L10n.t("no_recent_dirs"))
+                            .foregroundColor(.secondary)
+                    } else {
+                        ForEach(recentDirectories, id: \.self) { path in
+                            Button {
+                                workingDirectory = path
+                            } label: {
+                                Text(path)
+                                    .truncationMode(.middle)
+                                    .lineLimit(1)
+                            }
+                        }
+                        Divider()
+                        Button(role: .destructive) {
+                            recentDirectories = []
+                            ClaudeCodeLauncher.saveRecentDirectories([])
+                        } label: {
+                            Label(L10n.t("clear_history"), systemImage: "trash")
+                        }
+                    }
+                } label: {
+                    HStack {
+                        Image(systemName: "clock.arrow.circlepath")
+                            .font(.system(size: 12))
+                            .foregroundColor(.secondary)
+                        Text(workingDirectory.isEmpty ? L10n.t("working_directory_hint") : workingDirectory)
+                            .truncationMode(.middle)
+                            .lineLimit(1)
+                            .foregroundColor(workingDirectory.isEmpty ? .secondary : .primary)
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                    .padding(.horizontal, 8)
+                    .padding(.vertical, 4)
+                    .background(Color(NSColor.textBackgroundColor))
+                    .cornerRadius(6)
+                }
+                .menuIndicator(.visible)
 
                 Button {
                     showDirectoryPicker = true
@@ -512,6 +549,7 @@ struct LaunchClaudeCodeView: View {
         effortLevel = savedEffortLevel
         disableAttributionHeader = savedDisableAttributionHeader
         rectifierEnabled = savedRectifierEnabled
+        recentDirectories = ClaudeCodeLauncher.loadRecentDirectories()
     }
 
     private func saveSettings() {
@@ -563,6 +601,10 @@ struct LaunchClaudeCodeView: View {
 
         do {
             try launcher.launchInTerminal(terminal: terminal, configuration: configuration)
+            // 记录工作目录到历史
+            if !workingDirectory.isEmpty {
+                ClaudeCodeLauncher.addRecentDirectory(workingDirectory)
+            }
             dismiss()
         } catch {
             isLaunching = false

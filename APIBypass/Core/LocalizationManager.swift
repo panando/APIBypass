@@ -255,6 +255,7 @@ struct L10n {
         "delete_template": [.chinese: "删除模板", .english: "Delete Template"],
         "delete_template_confirm": [.chinese: "确定要删除模板 \"{name}\" 吗？此操作无法撤销。", .english: "Are you sure you want to delete template \"{name}\"? This cannot be undone."],
         "restore_defaults": [.chinese: "恢复默认模板", .english: "Restore Default Templates"],
+        "custom_config": [.chinese: "自定义配置", .english: "Custom"],
 
         // 终端检测
         "terminal_already_running": [.chinese: "终端已在运行", .english: "Terminal Already Running"],

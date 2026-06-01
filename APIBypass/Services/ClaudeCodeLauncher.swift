@@ -30,6 +30,9 @@ struct LaunchTemplate: Codable, Identifiable, Equatable {
     var haikuModelProviderId: String?
     var subagentModel: String
     var subagentModelProviderId: String?
+    var effortLevel: String?
+    var disableAttributionHeader: Bool?
+    var rectifierEnabled: Bool?
 
     init(
         id: UUID = UUID(),
@@ -43,7 +46,10 @@ struct LaunchTemplate: Codable, Identifiable, Equatable {
         haikuModel: String = "",
         haikuModelProviderId: String? = nil,
         subagentModel: String = "",
-        subagentModelProviderId: String? = nil
+        subagentModelProviderId: String? = nil,
+        effortLevel: String? = nil,
+        disableAttributionHeader: Bool? = nil,
+        rectifierEnabled: Bool? = nil
     ) {
         self.id = id
         self.name = name
@@ -57,6 +63,9 @@ struct LaunchTemplate: Codable, Identifiable, Equatable {
         self.haikuModelProviderId = haikuModelProviderId
         self.subagentModel = subagentModel
         self.subagentModelProviderId = subagentModelProviderId
+        self.effortLevel = effortLevel
+        self.disableAttributionHeader = disableAttributionHeader
+        self.rectifierEnabled = rectifierEnabled
     }
 }
 
@@ -113,7 +122,10 @@ final class ClaudeCodeLauncher {
                 opusModel: "claude-opus-4-6",
                 sonnetModel: "claude-sonnet-4-6",
                 haikuModel: "claude-haiku-4-5-20251001",
-                subagentModel: "claude-sonnet-4-6"
+                subagentModel: "claude-sonnet-4-6",
+                effortLevel: "",
+                disableAttributionHeader: false,
+                rectifierEnabled: true
             ),
             LaunchTemplate(
                 name: "DeepSeek",
@@ -121,7 +133,10 @@ final class ClaudeCodeLauncher {
                 opusModel: "deepseek-v4",
                 sonnetModel: "deepseek-v4",
                 haikuModel: "deepseek-v4",
-                subagentModel: "deepseek-v4"
+                subagentModel: "deepseek-v4",
+                effortLevel: "",
+                disableAttributionHeader: false,
+                rectifierEnabled: true
             ),
             LaunchTemplate(
                 name: "MiMo",
@@ -129,7 +144,10 @@ final class ClaudeCodeLauncher {
                 opusModel: "mimo-v2.5",
                 sonnetModel: "mimo-v2.5",
                 haikuModel: "mimo-v2.5",
-                subagentModel: "mimo-v2.5"
+                subagentModel: "mimo-v2.5",
+                effortLevel: "",
+                disableAttributionHeader: false,
+                rectifierEnabled: true
             ),
         ]
     }

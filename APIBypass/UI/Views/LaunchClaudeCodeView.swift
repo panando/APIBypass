@@ -144,7 +144,7 @@ struct LaunchClaudeCodeView: View {
             headerView
 
             ScrollView {
-        VStack(alignment: .leading, spacing: 20) {
+        VStack(alignment: .leading, spacing: 28) {
                     // 提供商、终端、目录选择
                     selectionSection
 
@@ -308,15 +308,14 @@ struct LaunchClaudeCodeView: View {
                     }
                 }
                 .pickerStyle(.menu)
+                .labelsHidden()
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .offset(x: -8)
-                .onChange(of: selectedTerminalId) { _, _ in saveSettings() }
 
                 Spacer()
             }
 
             // 工作目录选择
-            HStack(spacing: 0) {
+            HStack(spacing: 4) {
                 Text(L10n.t("working_directory"))
                     .font(.headline)
                     .frame(width: 100, alignment: .leading)
@@ -353,7 +352,6 @@ struct LaunchClaudeCodeView: View {
                 .menuStyle(.borderedButton)
                 .menuIndicator(.visible)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .offset(x: -8)
 
                 Button {
                     showDirectoryPicker = true
@@ -398,10 +396,9 @@ struct LaunchClaudeCodeView: View {
                 .foregroundColor(.secondary)
 
             // 配置模板
-            HStack(spacing: 16) {
+            HStack(spacing: 12) {
                 Text(L10n.t("config_template"))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.system(.body, design: .monospaced))
                     .frame(width: 280, alignment: .leading)
 
                 Menu {
@@ -431,13 +428,12 @@ struct LaunchClaudeCodeView: View {
                         Label(L10n.t("restore_defaults"), systemImage: "arrow.counterclockwise")
                     }
                 } label: {
-                    Text(activeTemplateName ?? L10n.t("default_template"))
+                    Text(templateDisplayText)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }
                 .menuStyle(.borderedButton)
                 .menuIndicator(.visible)
-                .frame(width: 200, alignment: .leading)
-                .offset(x: -8)
+                .frame(width: 140, alignment: .leading)
 
                 if activeTemplateName != nil {
                     Button {
@@ -445,15 +441,19 @@ struct LaunchClaudeCodeView: View {
                         showRenameTemplateSheet = true
                     } label: {
                         Image(systemName: "pencil")
+                            .frame(width: 16, height: 16)
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
 
                     Button {
                         showDeleteTemplateConfirm = true
                     } label: {
                         Image(systemName: "trash")
+                            .frame(width: 16, height: 16)
                     }
                     .buttonStyle(.bordered)
+                    .controlSize(.small)
                 }
 
                 Spacer()
@@ -464,32 +464,37 @@ struct LaunchClaudeCodeView: View {
                 name: "ANTHROPIC_MODEL",
                 providerId: anthropicModelProviderBinding,
                 model: $savedAnthropicModel,
-                isRequired: true
+                isRequired: true,
+                onModelChange: clearActiveTemplate
             )
 
             // 其他模型配置
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
                 providerId: opusModelProviderBinding,
-                model: $savedOpusModel
+                model: $savedOpusModel,
+                onModelChange: clearActiveTemplate
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
                 providerId: sonnetModelProviderBinding,
-                model: $savedSonnetModel
+                model: $savedSonnetModel,
+                onModelChange: clearActiveTemplate
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
                 providerId: haikuModelProviderBinding,
-                model: $savedHaikuModel
+                model: $savedHaikuModel,
+                onModelChange: clearActiveTemplate
             )
 
             modelPickerRow(
                 name: "CLAUDE_CODE_SUBAGENT_MODEL",
                 providerId: subagentModelProviderBinding,
-                model: $savedSubagentModel
+                model: $savedSubagentModel,
+                onModelChange: clearActiveTemplate
             )
 
             // EFFORT_LEVEL
@@ -507,7 +512,10 @@ struct LaunchClaudeCodeView: View {
                 }
                 .labelsHidden()
                 .frame(width: 200, alignment: .leading)
-                .onChange(of: effortLevel) { _, _ in saveSettings() }
+                .onChange(of: effortLevel) { _, _ in
+                    saveSettings()
+                    clearActiveTemplate()
+                }
 
                 Spacer()
             }
@@ -532,7 +540,10 @@ struct LaunchClaudeCodeView: View {
                 Toggle("", isOn: $disableAttributionHeader)
                     .labelsHidden()
                     .toggleStyle(.switch)
-                    .onChange(of: disableAttributionHeader) { _, _ in saveSettings() }
+                    .onChange(of: disableAttributionHeader) { _, _ in
+                        saveSettings()
+                        clearActiveTemplate()
+                    }
 
                 Spacer()
             }
@@ -553,7 +564,10 @@ struct LaunchClaudeCodeView: View {
                 Toggle("", isOn: $rectifierEnabled)
                     .labelsHidden()
                     .toggleStyle(.switch)
-                    .onChange(of: rectifierEnabled) { _, _ in saveSettings() }
+                    .onChange(of: rectifierEnabled) { _, _ in
+                        saveSettings()
+                        clearActiveTemplate()
+                    }
 
                 Spacer()
             }
@@ -584,7 +598,7 @@ struct LaunchClaudeCodeView: View {
         }
     }
 
-    private func modelPickerRow(name: String, providerId: Binding<UUID?>, model: Binding<String>, isRequired: Bool = false) -> some View {
+    private func modelPickerRow(name: String, providerId: Binding<UUID?>, model: Binding<String>, isRequired: Bool = false, onModelChange: (() -> Void)? = nil) -> some View {
         HStack(spacing: 12) {
             HStack(spacing: 4) {
                 Text(name)
@@ -610,6 +624,7 @@ struct LaunchClaudeCodeView: View {
             .onChange(of: providerId.wrappedValue) { oldValue, newValue in
                 if oldValue != newValue {
                     model.wrappedValue = ""
+                    onModelChange?()
                 }
             }
 
@@ -630,10 +645,37 @@ struct LaunchClaudeCodeView: View {
 
             Spacer()
         }
+        .onChange(of: model.wrappedValue) { _, _ in
+            onModelChange?()
+        }
     }
 
     private func enabledMappings(provider: ProviderConfig) -> [ModelMapping] {
         configManager.mappingsForProvider(provider.id).filter { $0.isEnabled }
+    }
+
+    private var templateDisplayText: String {
+        if let name = activeTemplateName {
+            return name
+        }
+        // 检查当前值是否与某个模板匹配
+        for tmpl in templates {
+            if savedAnthropicModel == tmpl.anthropicModel &&
+                savedOpusModel == tmpl.opusModel &&
+                savedSonnetModel == tmpl.sonnetModel &&
+                savedHaikuModel == tmpl.haikuModel &&
+                savedSubagentModel == tmpl.subagentModel {
+                return tmpl.name
+            }
+        }
+        return L10n.t("custom_config")
+    }
+
+    private func clearActiveTemplate() {
+        if activeTemplateName != nil {
+            activeTemplateName = nil
+            UserDefaults.standard.removeObject(forKey: "launcher.activeTemplateName")
+        }
     }
 
     // MARK: - Error View
@@ -712,6 +754,9 @@ struct LaunchClaudeCodeView: View {
     }
 
     private func applyTemplate(_ tmpl: LaunchTemplate) {
+        // 先设置模板名称，避免 onChange 回调清空它
+        activeTemplateName = tmpl.name
+        UserDefaults.standard.set(tmpl.name, forKey: "launcher.activeTemplateName")
         savedAnthropicModel = tmpl.anthropicModel
         savedAnthropicModelProviderId = tmpl.anthropicModelProviderId
         savedOpusModel = tmpl.opusModel
@@ -722,8 +767,18 @@ struct LaunchClaudeCodeView: View {
         savedHaikuModelProviderId = tmpl.haikuModelProviderId
         savedSubagentModel = tmpl.subagentModel
         savedSubagentModelProviderId = tmpl.subagentModelProviderId
-        activeTemplateName = tmpl.name
-        UserDefaults.standard.set(tmpl.name, forKey: "launcher.activeTemplateName")
+        if let effort = tmpl.effortLevel {
+            effortLevel = effort
+            savedEffortLevel = effort
+        }
+        if let attr = tmpl.disableAttributionHeader {
+            disableAttributionHeader = attr
+            savedDisableAttributionHeader = attr
+        }
+        if let rect = tmpl.rectifierEnabled {
+            rectifierEnabled = rect
+            savedRectifierEnabled = rect
+        }
     }
 
     private func saveCurrentAsTemplate(name: String) {
@@ -738,7 +793,10 @@ struct LaunchClaudeCodeView: View {
             haikuModel: savedHaikuModel,
             haikuModelProviderId: savedHaikuModelProviderId,
             subagentModel: savedSubagentModel,
-            subagentModelProviderId: savedSubagentModelProviderId
+            subagentModelProviderId: savedSubagentModelProviderId,
+            effortLevel: effortLevel,
+            disableAttributionHeader: disableAttributionHeader,
+            rectifierEnabled: rectifierEnabled
         )
         templates.append(newTemplate)
         ClaudeCodeLauncher.saveTemplates(templates)

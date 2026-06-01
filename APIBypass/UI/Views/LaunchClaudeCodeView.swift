@@ -37,6 +37,7 @@ struct LaunchClaudeCodeView: View {
     @State private var templates: [LaunchTemplate] = []
     @State private var activeTemplateName: String? = nil
     @State private var isTemplateDirty: Bool = false
+    @State private var isApplyingTemplate: Bool = false
     @State private var showSaveTemplateSheet = false
     @State private var showRenameTemplateSheet = false
     @State private var showDeleteTemplateConfirm = false
@@ -316,54 +317,56 @@ struct LaunchClaudeCodeView: View {
             }
 
             // 工作目录选择
-            HStack(spacing: 4) {
+            HStack(spacing: 0) {
                 Text(L10n.t("working_directory"))
                     .font(.headline)
                     .frame(width: 100, alignment: .leading)
 
-                Menu {
-                    if recentDirectories.isEmpty {
-                        Text(L10n.t("no_recent_dirs"))
-                            .foregroundColor(.secondary)
-                    } else {
-                        ForEach(recentDirectories, id: \.self) { path in
-                            Button {
-                                workingDirectory = path
+                HStack(spacing: 4) {
+                    Menu {
+                        if recentDirectories.isEmpty {
+                            Text(L10n.t("no_recent_dirs"))
+                                .foregroundColor(.secondary)
+                        } else {
+                            ForEach(recentDirectories, id: \.self) { path in
+                                Button {
+                                    workingDirectory = path
+                                } label: {
+                                    Text(path)
+                                        .truncationMode(.middle)
+                                        .lineLimit(1)
+                                }
+                            }
+                            Divider()
+                            Button(role: .destructive) {
+                                recentDirectories = []
+                                ClaudeCodeLauncher.saveRecentDirectories([])
                             } label: {
-                                Text(path)
-                                    .truncationMode(.middle)
-                                    .lineLimit(1)
+                                Label(L10n.t("clear_history"), systemImage: "trash")
                             }
                         }
-                        Divider()
-                        Button(role: .destructive) {
-                            recentDirectories = []
-                            ClaudeCodeLauncher.saveRecentDirectories([])
-                        } label: {
-                            Label(L10n.t("clear_history"), systemImage: "trash")
-                        }
+                    } label: {
+                        Text(workingDirectory.isEmpty ? L10n.t("working_directory_hint") : workingDirectory)
+                            .truncationMode(.middle)
+                            .lineLimit(1)
+                            .foregroundColor(workingDirectory.isEmpty ? .secondary : .primary)
+                            .frame(maxWidth: .infinity, alignment: .leading)
                     }
-                } label: {
-                    Text(workingDirectory.isEmpty ? L10n.t("working_directory_hint") : workingDirectory)
-                        .truncationMode(.middle)
-                        .lineLimit(1)
-                        .foregroundColor(workingDirectory.isEmpty ? .secondary : .primary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .menuStyle(.borderedButton)
-                .menuIndicator(.visible)
-                .frame(width: 320, alignment: .leading)
+                    .menuStyle(.borderedButton)
+                    .menuIndicator(.visible)
+                    .frame(width: 320, alignment: .leading)
 
-                Button {
-                    showDirectoryPicker = true
-                } label: {
-                    Image(systemName: "folder")
+                    Button {
+                        showDirectoryPicker = true
+                    } label: {
+                        Image(systemName: "folder")
+                    }
+                    .buttonStyle(.bordered)
+                    .frame(width: 36)
                 }
-                .buttonStyle(.bordered)
-                .frame(width: 36)
+
+                Spacer()
             }
-
-            Spacer()
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
@@ -603,6 +606,10 @@ struct LaunchClaudeCodeView: View {
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
         .cornerRadius(10)
     }
 
@@ -651,6 +658,7 @@ struct LaunchClaudeCodeView: View {
             .frame(width: 140, alignment: .leading)
             .offset(x: -8)
             .onChange(of: providerId.wrappedValue) { oldValue, newValue in
+                guard !isApplyingTemplate else { return }
                 if oldValue != newValue {
                     model.wrappedValue = ""
                     onModelChange?()
@@ -675,6 +683,7 @@ struct LaunchClaudeCodeView: View {
             Spacer()
         }
         .onChange(of: model.wrappedValue) { _, _ in
+            guard !isApplyingTemplate else { return }
             onModelChange?()
         }
     }
@@ -796,7 +805,8 @@ struct LaunchClaudeCodeView: View {
     }
 
     private func applyTemplate(_ tmpl: LaunchTemplate) {
-        // 先设置模板名称，避免 onChange 回调修改 dirty 状态
+        // 标记正在应用模板，避免 onChange 回调干扰
+        isApplyingTemplate = true
         activeTemplateName = tmpl.name
         isTemplateDirty = false
         UserDefaults.standard.set(tmpl.name, forKey: "launcher.activeTemplateName")
@@ -822,6 +832,7 @@ struct LaunchClaudeCodeView: View {
             rectifierEnabled = rect
             savedRectifierEnabled = rect
         }
+        isApplyingTemplate = false
     }
 
     private func saveCurrentAsTemplate(name: String) {

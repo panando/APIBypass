@@ -545,6 +545,7 @@ struct LaunchClaudeCodeView: View {
                 .labelsHidden()
                 .frame(width: 200, alignment: .leading)
                 .onChange(of: effortLevel) { _, _ in
+                    guard !isApplyingTemplate else { return }
                     saveSettings()
                     markTemplateDirty()
                 }
@@ -573,6 +574,7 @@ struct LaunchClaudeCodeView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .onChange(of: disableAttributionHeader) { _, _ in
+                        guard !isApplyingTemplate else { return }
                         saveSettings()
                         markTemplateDirty()
                     }
@@ -597,6 +599,7 @@ struct LaunchClaudeCodeView: View {
                     .labelsHidden()
                     .toggleStyle(.switch)
                     .onChange(of: rectifierEnabled) { _, _ in
+                        guard !isApplyingTemplate else { return }
                         saveSettings()
                         markTemplateDirty()
                     }

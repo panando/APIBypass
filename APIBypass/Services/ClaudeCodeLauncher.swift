@@ -105,10 +105,41 @@ final class ClaudeCodeLauncher {
     private static let templatesKey = "launcher.templates"
     private static let recentDirectoriesKey = "launcher.recentDirectories"
 
+    static func defaultTemplates() -> [LaunchTemplate] {
+        [
+            LaunchTemplate(
+                name: "Claude Code Default",
+                anthropicModel: "claude-opus-4-6",
+                opusModel: "claude-opus-4-6",
+                sonnetModel: "claude-sonnet-4-6",
+                haikuModel: "claude-haiku-4-5-20251001",
+                subagentModel: "claude-sonnet-4-6"
+            ),
+            LaunchTemplate(
+                name: "DeepSeek",
+                anthropicModel: "deepseek-v4",
+                opusModel: "deepseek-v4",
+                sonnetModel: "deepseek-v4",
+                haikuModel: "deepseek-v4",
+                subagentModel: "deepseek-v4"
+            ),
+            LaunchTemplate(
+                name: "MiMo",
+                anthropicModel: "mimo-v2.5",
+                opusModel: "mimo-v2.5",
+                sonnetModel: "mimo-v2.5",
+                haikuModel: "mimo-v2.5",
+                subagentModel: "mimo-v2.5"
+            ),
+        ]
+    }
+
     static func loadTemplates() -> [LaunchTemplate] {
-        guard let data = UserDefaults.standard.data(forKey: templatesKey),
-              let decoded = try? JSONDecoder().decode([LaunchTemplate].self, from: data) else {
-            return []
+        guard let data = UserDefaults.standard.data(forKey: templatesKey) else {
+            return defaultTemplates()
+        }
+        guard let decoded = try? JSONDecoder().decode([LaunchTemplate].self, from: data) else {
+            return defaultTemplates()
         }
         return decoded
     }

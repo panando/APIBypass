@@ -148,69 +148,6 @@ struct LaunchClaudeCodeView: View {
                     // 提供商、终端、目录选择
                     selectionSection
 
-                    // 配置模板
-                    HStack(spacing: 16) {
-                        Text(L10n.t("config_template"))
-                            .font(.headline)
-                            .frame(width: 100, alignment: .leading)
-
-                        Menu {
-                            if templates.isEmpty {
-                                Text(L10n.t("no_templates"))
-                                    .foregroundColor(.secondary)
-                            } else {
-                                ForEach(templates) { tmpl in
-                                    Button {
-                                        applyTemplate(tmpl)
-                                    } label: {
-                                        HStack {
-                                            Text(tmpl.name)
-                                            if activeTemplateName == tmpl.name {
-                                                Image(systemName: "checkmark")
-                                            }
-                                        }
-                                    }
-                                }
-                            }
-                            Divider()
-                            Button {
-                                newTemplateName = ""
-                                showSaveTemplateSheet = true
-                            } label: {
-                                Label(L10n.t("save_as_template"), systemImage: "plus")
-                            }
-                        } label: {
-                            Text(activeTemplateName ?? L10n.t("default_template"))
-                                .frame(maxWidth: .infinity, alignment: .leading)
-                        }
-                        .menuIndicator(.visible)
-
-                        if activeTemplateName != nil {
-                            Button {
-                                renameText = activeTemplateName ?? ""
-                                showRenameTemplateSheet = true
-                            } label: {
-                                Image(systemName: "pencil")
-                            }
-                            .buttonStyle(.bordered)
-
-                            Button {
-                                showDeleteTemplateConfirm = true
-                            } label: {
-                                Image(systemName: "trash")
-                            }
-                            .buttonStyle(.bordered)
-                        }
-
-                        Spacer()
-                    }
-                    .padding(12)
-                    .background(Color(NSColor.controlBackgroundColor))
-                    .cornerRadius(8)
-
-                    Divider()
-                        .padding(.vertical, 4)
-
                     envVarsSection
                 }
                 .padding(.horizontal, 4)
@@ -360,7 +297,7 @@ struct LaunchClaudeCodeView: View {
     private var selectionSection: some View {
         VStack(spacing: 16) {
             // 终端选择
-            HStack(spacing: 16) {
+            HStack(spacing: 0) {
                 Text(L10n.t("select_terminal"))
                     .font(.headline)
                     .frame(width: 100, alignment: .leading)
@@ -379,7 +316,7 @@ struct LaunchClaudeCodeView: View {
             }
 
             // 工作目录选择
-            HStack(spacing: 16) {
+            HStack(spacing: 0) {
                 Text(L10n.t("working_directory"))
                     .font(.headline)
                     .frame(width: 100, alignment: .leading)
@@ -407,22 +344,16 @@ struct LaunchClaudeCodeView: View {
                         }
                     }
                 } label: {
-                    HStack {
-                        Image(systemName: "clock.arrow.circlepath")
-                            .font(.system(size: 12))
-                            .foregroundColor(.secondary)
-                        Text(workingDirectory.isEmpty ? L10n.t("working_directory_hint") : workingDirectory)
-                            .truncationMode(.middle)
-                            .lineLimit(1)
-                            .foregroundColor(workingDirectory.isEmpty ? .secondary : .primary)
-                    }
-                    .frame(maxWidth: .infinity, alignment: .leading)
-                    .padding(.horizontal, 8)
-                    .padding(.vertical, 4)
-                    .background(Color(NSColor.textBackgroundColor))
-                    .cornerRadius(6)
+                    Text(workingDirectory.isEmpty ? L10n.t("working_directory_hint") : workingDirectory)
+                        .truncationMode(.middle)
+                        .lineLimit(1)
+                        .foregroundColor(workingDirectory.isEmpty ? .secondary : .primary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                 }
+                .menuStyle(.borderedButton)
                 .menuIndicator(.visible)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .offset(x: -8)
 
                 Button {
                     showDirectoryPicker = true
@@ -465,6 +396,68 @@ struct LaunchClaudeCodeView: View {
             Text(L10n.t("model_settings"))
                 .font(.subheadline)
                 .foregroundColor(.secondary)
+
+            // 配置模板
+            HStack(spacing: 16) {
+                Text(L10n.t("config_template"))
+                    .font(.subheadline)
+                    .foregroundColor(.secondary)
+                    .frame(width: 280, alignment: .leading)
+
+                Menu {
+                    ForEach(templates) { tmpl in
+                        Button {
+                            applyTemplate(tmpl)
+                        } label: {
+                            HStack {
+                                Text(tmpl.name)
+                                if activeTemplateName == tmpl.name {
+                                    Image(systemName: "checkmark")
+                                }
+                            }
+                        }
+                    }
+                    Divider()
+                    Button {
+                        newTemplateName = ""
+                        showSaveTemplateSheet = true
+                    } label: {
+                        Label(L10n.t("save_as_template"), systemImage: "plus")
+                    }
+                    Divider()
+                    Button {
+                        restoreDefaults()
+                    } label: {
+                        Label(L10n.t("restore_defaults"), systemImage: "arrow.counterclockwise")
+                    }
+                } label: {
+                    Text(activeTemplateName ?? L10n.t("default_template"))
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+                .menuStyle(.borderedButton)
+                .menuIndicator(.visible)
+                .frame(width: 200, alignment: .leading)
+                .offset(x: -8)
+
+                if activeTemplateName != nil {
+                    Button {
+                        renameText = activeTemplateName ?? ""
+                        showRenameTemplateSheet = true
+                    } label: {
+                        Image(systemName: "pencil")
+                    }
+                    .buttonStyle(.bordered)
+
+                    Button {
+                        showDeleteTemplateConfirm = true
+                    } label: {
+                        Image(systemName: "trash")
+                    }
+                    .buttonStyle(.bordered)
+                }
+
+                Spacer()
+            }
 
             // ANTHROPIC_MODEL (必填)
             modelPickerRow(
@@ -769,6 +762,13 @@ struct LaunchClaudeCodeView: View {
                 UserDefaults.standard.set(newName, forKey: "launcher.activeTemplateName")
             }
         }
+    }
+
+    private func restoreDefaults() {
+        activeTemplateName = nil
+        UserDefaults.standard.removeObject(forKey: "launcher.activeTemplateName")
+        templates = ClaudeCodeLauncher.defaultTemplates()
+        ClaudeCodeLauncher.saveTemplates(templates)
     }
 
     private func launchClaudeCode() {

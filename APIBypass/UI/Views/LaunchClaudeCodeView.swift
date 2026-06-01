@@ -557,7 +557,8 @@ struct LaunchClaudeCodeView: View {
             selectedMapping: nil,
             customEnvVars: customEnvVars,
             workingDirectory: workDir,
-            disableAttributionHeader: disableAttributionHeader
+            disableAttributionHeader: disableAttributionHeader,
+            launchMode: .newWindow
         )
 
         do {

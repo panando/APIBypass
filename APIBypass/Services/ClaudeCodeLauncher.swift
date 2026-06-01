@@ -13,6 +13,56 @@ struct TerminalApp: Identifiable, Equatable {
     }
 }
 
+/// 模型配置模板 — 保存一组模型参数配置
+struct LaunchTemplate: Codable, Identifiable, Equatable {
+    let id: UUID
+    var name: String
+    var anthropicModel: String
+    var anthropicModelProviderId: String?
+    var opusModel: String
+    var opusModelProviderId: String?
+    var sonnetModel: String
+    var sonnetModelProviderId: String?
+    var haikuModel: String
+    var haikuModelProviderId: String?
+    var subagentModel: String
+    var subagentModelProviderId: String?
+
+    init(
+        id: UUID = UUID(),
+        name: String,
+        anthropicModel: String = "",
+        anthropicModelProviderId: String? = nil,
+        opusModel: String = "",
+        opusModelProviderId: String? = nil,
+        sonnetModel: String = "",
+        sonnetModelProviderId: String? = nil,
+        haikuModel: String = "",
+        haikuModelProviderId: String? = nil,
+        subagentModel: String = "",
+        subagentModelProviderId: String? = nil
+    ) {
+        self.id = id
+        self.name = name
+        self.anthropicModel = anthropicModel
+        self.anthropicModelProviderId = anthropicModelProviderId
+        self.opusModel = opusModel
+        self.opusModelProviderId = opusModelProviderId
+        self.sonnetModel = sonnetModel
+        self.sonnetModelProviderId = sonnetModelProviderId
+        self.haikuModel = haikuModel
+        self.haikuModelProviderId = haikuModelProviderId
+        self.subagentModel = subagentModel
+        self.subagentModelProviderId = subagentModelProviderId
+    }
+}
+
+/// 终端启动模式
+enum TerminalLaunchMode: String, Codable {
+    case newWindow
+    case newTab
+}
+
 /// Claude Code 启动器错误
 enum LauncherError: Error, LocalizedError {
     case claudeCodeNotFound
@@ -41,10 +91,52 @@ struct LaunchConfiguration {
     let customEnvVars: [String: String]
     let workingDirectory: URL?
     let disableAttributionHeader: Bool
+    let launchMode: TerminalLaunchMode
 }
 
 /// Claude Code 启动器
 final class ClaudeCodeLauncher {
+
+    // MARK: - Template Persistence
+
+    private static let templatesKey = "launcher.templates"
+    private static let recentDirectoriesKey = "launcher.recentDirectories"
+
+    static func loadTemplates() -> [LaunchTemplate] {
+        guard let data = UserDefaults.standard.data(forKey: templatesKey),
+              let decoded = try? JSONDecoder().decode([LaunchTemplate].self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    static func saveTemplates(_ templates: [LaunchTemplate]) {
+        if let data = try? JSONEncoder().encode(templates) {
+            UserDefaults.standard.set(data, forKey: templatesKey)
+        }
+    }
+
+    static func loadRecentDirectories() -> [String] {
+        guard let data = UserDefaults.standard.data(forKey: recentDirectoriesKey),
+              let decoded = try? JSONDecoder().decode([String].self, from: data) else {
+            return []
+        }
+        return decoded
+    }
+
+    static func saveRecentDirectories(_ dirs: [String]) {
+        if let data = try? JSONEncoder().encode(dirs) {
+            UserDefaults.standard.set(data, forKey: recentDirectoriesKey)
+        }
+    }
+
+    static func addRecentDirectory(_ path: String) {
+        var dirs = loadRecentDirectories()
+        dirs.removeAll { $0 == path }
+        dirs.insert(path, at: 0)
+        if dirs.count > 5 { dirs = Array(dirs.prefix(5)) }
+        saveRecentDirectories(dirs)
+    }
 
     // MARK: - 1M context detection
 

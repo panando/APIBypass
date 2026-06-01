@@ -36,6 +36,7 @@ struct LaunchClaudeCodeView: View {
     @State private var recentDirectories: [String] = []
     @State private var templates: [LaunchTemplate] = []
     @State private var activeTemplateName: String? = nil
+    @State private var isTemplateDirty: Bool = false
     @State private var showSaveTemplateSheet = false
     @State private var showRenameTemplateSheet = false
     @State private var showDeleteTemplateConfirm = false
@@ -309,7 +310,7 @@ struct LaunchClaudeCodeView: View {
                 }
                 .pickerStyle(.menu)
                 .labelsHidden()
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(width: 360, alignment: .leading)
 
                 Spacer()
             }
@@ -351,7 +352,7 @@ struct LaunchClaudeCodeView: View {
                 }
                 .menuStyle(.borderedButton)
                 .menuIndicator(.visible)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(width: 320, alignment: .leading)
 
                 Button {
                     showDirectoryPicker = true
@@ -359,7 +360,10 @@ struct LaunchClaudeCodeView: View {
                     Image(systemName: "folder")
                 }
                 .buttonStyle(.bordered)
+                .frame(width: 36)
             }
+
+            Spacer()
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
@@ -408,18 +412,32 @@ struct LaunchClaudeCodeView: View {
                         } label: {
                             HStack {
                                 Text(tmpl.name)
-                                if activeTemplateName == tmpl.name {
+                                if activeTemplateName == tmpl.name && !isTemplateDirty {
                                     Image(systemName: "checkmark")
                                 }
                             }
                         }
                     }
                     Divider()
-                    Button {
-                        newTemplateName = ""
-                        showSaveTemplateSheet = true
-                    } label: {
-                        Label(L10n.t("save_as_template"), systemImage: "plus")
+                    if activeTemplateName != nil && isTemplateDirty {
+                        Button {
+                            updateCurrentTemplate()
+                        } label: {
+                            Label(L10n.t("update_template"), systemImage: "checkmark.circle")
+                        }
+                        Button {
+                            newTemplateName = ""
+                            showSaveTemplateSheet = true
+                        } label: {
+                            Label(L10n.t("save_as_new_template"), systemImage: "plus")
+                        }
+                    } else {
+                        Button {
+                            newTemplateName = ""
+                            showSaveTemplateSheet = true
+                        } label: {
+                            Label(L10n.t("save_as_template"), systemImage: "plus")
+                        }
                     }
                     Divider()
                     Button {
@@ -435,7 +453,8 @@ struct LaunchClaudeCodeView: View {
                 .menuIndicator(.visible)
                 .frame(width: 140, alignment: .leading)
 
-                if activeTemplateName != nil {
+                // 右侧操作按钮
+                if activeTemplateName != nil && !isTemplateDirty {
                     Button {
                         renameText = activeTemplateName ?? ""
                         showRenameTemplateSheet = true
@@ -454,6 +473,16 @@ struct LaunchClaudeCodeView: View {
                     }
                     .buttonStyle(.bordered)
                     .controlSize(.small)
+                } else if activeTemplateName != nil && isTemplateDirty {
+                    Button {
+                        updateCurrentTemplate()
+                    } label: {
+                        Image(systemName: "checkmark.circle")
+                            .frame(width: 16, height: 16)
+                    }
+                    .buttonStyle(.bordered)
+                    .controlSize(.small)
+                    .help(L10n.t("update_template"))
                 }
 
                 Spacer()
@@ -465,7 +494,7 @@ struct LaunchClaudeCodeView: View {
                 providerId: anthropicModelProviderBinding,
                 model: $savedAnthropicModel,
                 isRequired: true,
-                onModelChange: clearActiveTemplate
+                onModelChange: markTemplateDirty
             )
 
             // 其他模型配置
@@ -473,28 +502,28 @@ struct LaunchClaudeCodeView: View {
                 name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
                 providerId: opusModelProviderBinding,
                 model: $savedOpusModel,
-                onModelChange: clearActiveTemplate
+                onModelChange: markTemplateDirty
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
                 providerId: sonnetModelProviderBinding,
                 model: $savedSonnetModel,
-                onModelChange: clearActiveTemplate
+                onModelChange: markTemplateDirty
             )
 
             modelPickerRow(
                 name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
                 providerId: haikuModelProviderBinding,
                 model: $savedHaikuModel,
-                onModelChange: clearActiveTemplate
+                onModelChange: markTemplateDirty
             )
 
             modelPickerRow(
                 name: "CLAUDE_CODE_SUBAGENT_MODEL",
                 providerId: subagentModelProviderBinding,
                 model: $savedSubagentModel,
-                onModelChange: clearActiveTemplate
+                onModelChange: markTemplateDirty
             )
 
             // EFFORT_LEVEL
@@ -514,7 +543,7 @@ struct LaunchClaudeCodeView: View {
                 .frame(width: 200, alignment: .leading)
                 .onChange(of: effortLevel) { _, _ in
                     saveSettings()
-                    clearActiveTemplate()
+                    markTemplateDirty()
                 }
 
                 Spacer()
@@ -542,7 +571,7 @@ struct LaunchClaudeCodeView: View {
                     .toggleStyle(.switch)
                     .onChange(of: disableAttributionHeader) { _, _ in
                         saveSettings()
-                        clearActiveTemplate()
+                        markTemplateDirty()
                     }
 
                 Spacer()
@@ -566,7 +595,7 @@ struct LaunchClaudeCodeView: View {
                     .toggleStyle(.switch)
                     .onChange(of: rectifierEnabled) { _, _ in
                         saveSettings()
-                        clearActiveTemplate()
+                        markTemplateDirty()
                     }
 
                 Spacer()
@@ -656,26 +685,39 @@ struct LaunchClaudeCodeView: View {
 
     private var templateDisplayText: String {
         if let name = activeTemplateName {
-            return name
-        }
-        // 检查当前值是否与某个模板匹配
-        for tmpl in templates {
-            if savedAnthropicModel == tmpl.anthropicModel &&
-                savedOpusModel == tmpl.opusModel &&
-                savedSonnetModel == tmpl.sonnetModel &&
-                savedHaikuModel == tmpl.haikuModel &&
-                savedSubagentModel == tmpl.subagentModel {
-                return tmpl.name
-            }
+            return isTemplateDirty ? "\(name) *" : name
         }
         return L10n.t("custom_config")
     }
 
-    private func clearActiveTemplate() {
+    private func markTemplateDirty() {
         if activeTemplateName != nil {
-            activeTemplateName = nil
-            UserDefaults.standard.removeObject(forKey: "launcher.activeTemplateName")
+            isTemplateDirty = true
         }
+    }
+
+    private func updateCurrentTemplate() {
+        guard let name = activeTemplateName,
+              let index = templates.firstIndex(where: { $0.name == name }) else { return }
+        templates[index] = LaunchTemplate(
+            id: templates[index].id,
+            name: name,
+            anthropicModel: savedAnthropicModel,
+            anthropicModelProviderId: savedAnthropicModelProviderId,
+            opusModel: savedOpusModel,
+            opusModelProviderId: savedOpusModelProviderId,
+            sonnetModel: savedSonnetModel,
+            sonnetModelProviderId: savedSonnetModelProviderId,
+            haikuModel: savedHaikuModel,
+            haikuModelProviderId: savedHaikuModelProviderId,
+            subagentModel: savedSubagentModel,
+            subagentModelProviderId: savedSubagentModelProviderId,
+            effortLevel: effortLevel,
+            disableAttributionHeader: disableAttributionHeader,
+            rectifierEnabled: rectifierEnabled
+        )
+        ClaudeCodeLauncher.saveTemplates(templates)
+        isTemplateDirty = false
     }
 
     // MARK: - Error View
@@ -754,8 +796,9 @@ struct LaunchClaudeCodeView: View {
     }
 
     private func applyTemplate(_ tmpl: LaunchTemplate) {
-        // 先设置模板名称，避免 onChange 回调清空它
+        // 先设置模板名称，避免 onChange 回调修改 dirty 状态
         activeTemplateName = tmpl.name
+        isTemplateDirty = false
         UserDefaults.standard.set(tmpl.name, forKey: "launcher.activeTemplateName")
         savedAnthropicModel = tmpl.anthropicModel
         savedAnthropicModelProviderId = tmpl.anthropicModelProviderId
@@ -800,6 +843,10 @@ struct LaunchClaudeCodeView: View {
         )
         templates.append(newTemplate)
         ClaudeCodeLauncher.saveTemplates(templates)
+        // 保存后激活新模板
+        activeTemplateName = name
+        isTemplateDirty = false
+        UserDefaults.standard.set(name, forKey: "launcher.activeTemplateName")
     }
 
     private func deleteTemplate(_ tmpl: LaunchTemplate) {
@@ -807,6 +854,7 @@ struct LaunchClaudeCodeView: View {
         ClaudeCodeLauncher.saveTemplates(templates)
         if activeTemplateName == tmpl.name {
             activeTemplateName = nil
+            isTemplateDirty = false
             UserDefaults.standard.removeObject(forKey: "launcher.activeTemplateName")
         }
     }
@@ -824,6 +872,7 @@ struct LaunchClaudeCodeView: View {
 
     private func restoreDefaults() {
         activeTemplateName = nil
+        isTemplateDirty = false
         UserDefaults.standard.removeObject(forKey: "launcher.activeTemplateName")
         templates = ClaudeCodeLauncher.defaultTemplates()
         ClaudeCodeLauncher.saveTemplates(templates)

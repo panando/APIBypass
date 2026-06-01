@@ -302,15 +302,19 @@ final class HTTPServer: ObservableObject {
 
         let body = ResponseBody(contentLength: nil) { writer in
             do {
+                print("[SSE] 开始发送流式请求到上游...")
                 let streamResult = try await self.networkService.sendStream(request: upstreamRequest)
+                print("[SSE] 上游连接成功，开始接收流数据...")
 
                 if needsConversion {
                     let streamTranslator = StreamTranslator()
                     let convertedStream: AsyncThrowingStream<String, Error>
+                    print("[SSE] 需要格式转换: \(upstreamFormat) → \(clientFormat)")
                     switch (upstreamFormat, clientFormat) {
                     case (.openai, .anthropic):
                         convertedStream = streamTranslator.translateOpenAIToAnthropic(bytes: streamResult.bytes, model: model)
                     case (.anthropic, .openai):
+                        print("[SSE] 使用 translateAnthropicToOpenAI 转换器")
                         convertedStream = streamTranslator.translateAnthropicToOpenAI(bytes: streamResult.bytes, model: model)
                     case (.responses, .anthropic), (.responses, .openai), (.anthropic, .responses), (.openai, .responses):
                         print("[SSE] Responses streaming format translation not yet fully implemented, forwarding raw stream")

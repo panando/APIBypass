@@ -1,3 +1,45 @@
+# APIBypass v0.5.6
+
+## What's New
+
+### SSE Compatibility Fix
+- **Fixed SSE parsing for non-standard providers**: Resolved an issue where some API providers (e.g., MiMo) return SSE events without blank line separators, causing complete response failure. The decoder now correctly handles both standard and non-standard SSE formats.
+
+### Extended Thinking Support
+- **Anthropic → OpenAI thinking conversion**: When converting Anthropic streaming responses to OpenAI format, `thinking_delta` blocks are now mapped to OpenAI's native `reasoning_content` field, ensuring seamless display in OpenAI-compatible clients.
+- **Redacted thinking handling**: `redacted_thinking` blocks are converted to a placeholder message in `reasoning_content`.
+
+### Claude Code Launcher Improvements
+- **Simplified default templates**: Reduced from 3 preset templates to 1 empty "Default" template for cleaner initial state.
+- **Unified UI styling**: Terminal selection section now matches the environment variables section with consistent border styling.
+
+## Changelog
+
+- fix: SSE decoder compatibility with non-standard SSE format (no blank line separators)
+- feat: convert Anthropic `thinking_delta` to OpenAI `reasoning_content` in streaming translation
+- feat: handle `redacted_thinking` blocks in Anthropic → OpenAI conversion
+- feat: add `signature_delta` handling (ignored for single-turn, needed for multi-turn continuity)
+- refactor: simplify default templates to single empty "Default" template
+- style: unify terminal selection section border with environment variables section
+- chore: add debug logging for SSE stream processing
+
+## Download
+
+- [APIBypass-0.5.6.dmg](https://github.com/panando/APIBypass/releases/tag/v0.5.6)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.5.6
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.5.3
 
 ## What's New

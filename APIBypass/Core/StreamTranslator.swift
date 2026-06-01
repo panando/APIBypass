@@ -220,6 +220,7 @@ final class StreamTranslator {
                             // Emit initial chunk with role
                             let chunk = oaiChunk(id: chunkId, model: model, created: created,
                                                  delta: ["role": "assistant"])
+                            print("[SSEConverter] message_start -> OpenAI chunk")
                             continuation.yield(chunk)
 
                         case "content_block_start":
@@ -236,17 +237,31 @@ final class StreamTranslator {
                                         "function": ["name": name, "arguments": ""]
                                     ]]])
                                 continuation.yield(chunk)
-                            }
+                            } else if blockType == "redacted_thinking" {
+                                    let chunk = oaiChunk(id: chunkId, model: model, created: created,
+                                                         delta: ["reasoning_content": "(推理内容已隐藏)"])
+                                    continuation.yield(chunk)
+                                }
 
                         case "content_block_delta":
                             let delta = obj["delta"] as? [String: Any] ?? [:]
                             switch delta["type"] as? String {
                             case "text_delta":
                                 if let text = delta["text"] as? String {
+                                    print("[SSEConverter] text_delta: \(text.prefix(50))")
                                     let chunk = oaiChunk(id: chunkId, model: model, created: created,
                                                          delta: ["content": text])
                                     continuation.yield(chunk)
                                 }
+                            case "thinking_delta":
+                                if let thinking = delta["thinking"] as? String {
+                                    let chunk = oaiChunk(id: chunkId, model: model, created: created,
+                                                         delta: ["reasoning_content": thinking])
+                                    continuation.yield(chunk)
+                                }
+                            case "signature_delta":
+                                // signature 仅在多轮对话中需要传递，此处忽略
+                                break
                             case "input_json_delta":
                                 if let json = delta["partial_json"] as? String {
                                     let chunk = oaiChunk(id: chunkId, model: model, created: created,
@@ -259,6 +274,9 @@ final class StreamTranslator {
                             default:
                                 break
                             }
+
+                        case "content_block_stop":
+                            break
 
                         case "message_delta":
                             let d = obj["delta"] as? [String: Any] ?? [:]
@@ -285,6 +303,7 @@ final class StreamTranslator {
                             continuation.yield(oaiSSE(data: chunkObj))
 
                         case "message_stop":
+                            print("[SSEConverter] message_stop -> [DONE]")
                             continuation.yield("data: [DONE]\n\n")
 
                         default:
@@ -292,8 +311,10 @@ final class StreamTranslator {
                         }
                     }
 
+                    print("[SSEConverter] 流处理完成")
                     continuation.finish()
                 } catch {
+                    print("[SSEConverter] 流处理错误: \(error)")
                     continuation.finish(throwing: error)
                 }
             }
@@ -374,8 +395,10 @@ private enum SSEDecoder {
         AsyncThrowingStream { continuation in
             Task {
                 do {
+                    print("[SSEDecoder] 开始解码 SSE 流...")
                     var currentEvent: String?
                     var dataLines: [String] = []
+                    var eventCount = 0
 
                     for try await line in bytes.lines {
                         let trimmed = line.trimmingCharacters(in: .newlines)
@@ -386,6 +409,8 @@ private enum SSEDecoder {
                             // Empty line = event boundary
                             if !dataLines.isEmpty {
                                 let data = dataLines.joined(separator: "\n")
+                                eventCount += 1
+                                print("[SSEDecoder] 事件 #\(eventCount): event=\(currentEvent ?? "nil"), data=\(data.prefix(100))")
                                 continuation.yield(SSEEvent(event: currentEvent, data: data))
                             }
                             currentEvent = nil
@@ -394,6 +419,14 @@ private enum SSEDecoder {
                         }
 
                         if clean.hasPrefix("event:") {
+                            // 如果已经有积攒的 data，先 yield（处理没有空行分隔的情况）
+                            if !dataLines.isEmpty {
+                                let data = dataLines.joined(separator: "\n")
+                                eventCount += 1
+                                print("[SSEDecoder] 事件 #\(eventCount) (无空行): event=\(currentEvent ?? "nil"), data=\(data.prefix(100))")
+                                continuation.yield(SSEEvent(event: currentEvent, data: data))
+                                dataLines = []
+                            }
                             currentEvent = String(clean.dropFirst(6)).trimmingCharacters(in: .whitespaces)
                         } else if clean.hasPrefix("data:") {
                             dataLines.append(String(clean.dropFirst(5)).trimmingCharacters(in: .whitespaces))
@@ -402,6 +435,8 @@ private enum SSEDecoder {
 
                     // Flush remaining
                     if !dataLines.isEmpty {
+                        eventCount += 1
+                        print("[SSEDecoder] 事件 #\(eventCount) (最终): event=\(currentEvent ?? "nil"), data=\(dataLines.joined(separator: "\n").prefix(100))")
                         continuation.yield(SSEEvent(event: currentEvent, data: dataLines.joined(separator: "\n")))
                     }
 

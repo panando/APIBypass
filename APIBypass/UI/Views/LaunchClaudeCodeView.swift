@@ -370,6 +370,10 @@ struct LaunchClaudeCodeView: View {
         }
         .padding(16)
         .background(Color(NSColor.controlBackgroundColor))
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
+        )
         .cornerRadius(10)
     }
 

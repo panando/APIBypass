@@ -1,4 +1,5 @@
 import Foundation
+import AppKit
 
 /// 终端应用配置
 struct TerminalApp: Identifiable, Equatable {
@@ -7,6 +8,8 @@ struct TerminalApp: Identifiable, Equatable {
     let bundleId: String?
     let path: String?
     let launchCommand: (String, [String: String], String?) -> String
+    let launchWindowCommand: ((String, [String: String], String?) -> String)?
+    let launchTabCommand: ((String, [String: String], String?) -> String)?
 
     static func == (lhs: TerminalApp, rhs: TerminalApp) -> Bool {
         lhs.id == rhs.id
@@ -177,6 +180,16 @@ final class ClaudeCodeLauncher {
                     let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                     let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
                     return "tell application \"Terminal\"\nactivate\ndo script \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell"
+                },
+                launchWindowCommand: { claudePath, envVars, workDir in
+                    let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                    let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                    return "tell application \"Terminal\"\nactivate\ndo script \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell"
+                },
+                launchTabCommand: { claudePath, envVars, workDir in
+                    let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                    let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                    return "tell application \"Terminal\"\nactivate\ntell application \"System Events\" to keystroke \"t\" using command down\ndo script \"\(cdCommand)\(envExports) && \(claudePath)\" in front window\nend tell"
                 }
             ))
         }
@@ -197,6 +210,16 @@ final class ClaudeCodeLauncher {
                         let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                         let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
                         return "tell application \"iTerm2\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
+                    },
+                    launchWindowCommand: { claudePath, envVars, workDir in
+                        let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                        return "tell application \"iTerm2\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
+                    },
+                    launchTabCommand: { claudePath, envVars, workDir in
+                        let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                        return "tell application \"iTerm2\"\nactivate\ntell current window\ncreate tab with default profile\ntell current session\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell\nend tell"
                     }
                 ))
                 break
@@ -219,7 +242,9 @@ final class ClaudeCodeLauncher {
                         let envString = envVars.map { "\($0.key)=\'\($0.value)\'" }.joined(separator: " ")
                         let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
                         return "tell application \"Alacritty\" to activate\ndo shell script \"\(envString) \(cdCommand)\(claudePath) &\""
-                    }
+                    },
+                    launchWindowCommand: nil,
+                    launchTabCommand: nil
                 ))
                 break
             }
@@ -241,7 +266,9 @@ final class ClaudeCodeLauncher {
                         let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                         let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
                         return "tell application \"kitty\"\nactivate\nend tell\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
-                    }
+                    },
+                    launchWindowCommand: nil,
+                    launchTabCommand: nil
                 ))
                 break
             }
@@ -259,7 +286,9 @@ final class ClaudeCodeLauncher {
                     let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                     let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
                     return "tell application \"Warp\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
-                }
+                },
+                launchWindowCommand: nil,
+                launchTabCommand: nil
             ))
         }
 
@@ -275,11 +304,21 @@ final class ClaudeCodeLauncher {
                     let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                     let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
                     return "tell application \"Hyper\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
-                }
+                },
+                launchWindowCommand: nil,
+                launchTabCommand: nil
             ))
         }
 
         return terminals
+    }
+
+    /// 检测指定终端是否已有实例在运行
+    static func isTerminalRunning(_ terminal: TerminalApp) -> Bool {
+        guard let bundleId = terminal.bundleId else { return false }
+        return !NSRunningApplication.runningApplications(
+            withBundleIdentifier: bundleId
+        ).isEmpty
     }
 
     // MARK: - Claude Code 查找
@@ -390,8 +429,24 @@ final class ClaudeCodeLauncher {
         // 工作目录
         let workDir = configuration.workingDirectory?.path
 
-        // 生成 AppleScript 命令
-        let script = terminal.launchCommand(claudePath, envVars, workDir)
+        // 根据 launchMode 选择对应的命令闭包
+        let command: String
+        switch configuration.launchMode {
+        case .newTab:
+            if let tabCmd = terminal.launchTabCommand {
+                command = tabCmd(claudePath, envVars, workDir)
+            } else {
+                command = terminal.launchCommand(claudePath, envVars, workDir)
+            }
+        case .newWindow:
+            if let windowCmd = terminal.launchWindowCommand {
+                command = windowCmd(claudePath, envVars, workDir)
+            } else {
+                command = terminal.launchCommand(claudePath, envVars, workDir)
+            }
+        }
+
+        let script = command
 
         // 执行 AppleScript
         let task = Process()

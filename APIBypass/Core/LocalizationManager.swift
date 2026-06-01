@@ -240,6 +240,16 @@ struct L10n {
         "param_top_p": [.chinese: "Top P", .english: "Top P"],
         "param_frequency_penalty": [.chinese: "频率惩罚", .english: "Frequency Penalty"],
         "param_presence_penalty": [.chinese: "存在惩罚", .english: "Presence Penalty"],
+
+        // Template management
+        "config_template": [.chinese: "配置模板", .english: "Config Template"],
+        "no_templates": [.chinese: "暂无模板", .english: "No Templates"],
+        "save_as_template": [.chinese: "保存为模板", .english: "Save as Template"],
+        "default_template": [.chinese: "默认", .english: "Default"],
+        "template_name": [.chinese: "模板名称", .english: "Template Name"],
+        "rename_template": [.chinese: "重命名模板", .english: "Rename Template"],
+        "delete_template": [.chinese: "删除模板", .english: "Delete Template"],
+        "delete_template_confirm": [.chinese: "确定要删除模板 \"{name}\" 吗？此操作无法撤销。", .english: "Are you sure you want to delete template \"{name}\"? This cannot be undone."],
     ]
 }
 

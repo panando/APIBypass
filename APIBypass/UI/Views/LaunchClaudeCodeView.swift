@@ -34,6 +34,13 @@ struct LaunchClaudeCodeView: View {
     @State private var disableAttributionHeader: Bool = false
     @State private var rectifierEnabled: Bool = true
     @State private var recentDirectories: [String] = []
+    @State private var templates: [LaunchTemplate] = []
+    @State private var activeTemplateName: String? = nil
+    @State private var showSaveTemplateSheet = false
+    @State private var showRenameTemplateSheet = false
+    @State private var showDeleteTemplateConfirm = false
+    @State private var newTemplateName = ""
+    @State private var renameText = ""
 
     @State private var isLaunching = false
     @State private var errorMessage: String?
@@ -139,6 +146,66 @@ struct LaunchClaudeCodeView: View {
                     // 提供商、终端、目录选择
                     selectionSection
 
+                    // 配置模板
+                    HStack(spacing: 16) {
+                        Text(L10n.t("config_template"))
+                            .font(.headline)
+                            .frame(width: 100, alignment: .leading)
+
+                        Menu {
+                            if templates.isEmpty {
+                                Text(L10n.t("no_templates"))
+                                    .foregroundColor(.secondary)
+                            } else {
+                                ForEach(templates) { tmpl in
+                                    Button {
+                                        applyTemplate(tmpl)
+                                    } label: {
+                                        HStack {
+                                            Text(tmpl.name)
+                                            if activeTemplateName == tmpl.name {
+                                                Image(systemName: "checkmark")
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                            Divider()
+                            Button {
+                                newTemplateName = ""
+                                showSaveTemplateSheet = true
+                            } label: {
+                                Label(L10n.t("save_as_template"), systemImage: "plus")
+                            }
+                        } label: {
+                            Text(activeTemplateName ?? L10n.t("default_template"))
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                        }
+                        .menuIndicator(.visible)
+
+                        if activeTemplateName != nil {
+                            Button {
+                                renameText = activeTemplateName ?? ""
+                                showRenameTemplateSheet = true
+                            } label: {
+                                Image(systemName: "pencil")
+                            }
+                            .buttonStyle(.bordered)
+
+                            Button {
+                                showDeleteTemplateConfirm = true
+                            } label: {
+                                Image(systemName: "trash")
+                            }
+                            .buttonStyle(.bordered)
+                        }
+
+                        Spacer()
+                    }
+                    .padding(12)
+                    .background(Color(NSColor.controlBackgroundColor))
+                    .cornerRadius(8)
+
                     Divider()
                         .padding(.vertical, 4)
 
@@ -177,6 +244,73 @@ struct LaunchClaudeCodeView: View {
             case .failure:
                 break
             }
+        }
+        .sheet(isPresented: $showSaveTemplateSheet) {
+            VStack(spacing: 16) {
+                Text(L10n.t("save_as_template"))
+                    .font(.headline)
+                TextField(L10n.t("template_name"), text: $newTemplateName)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 250)
+                HStack(spacing: 12) {
+                    Button(L10n.t("cancel")) {
+                        showSaveTemplateSheet = false
+                    }
+                    .keyboardShortcut(.escape)
+                    Button(L10n.t("save")) {
+                        let name = newTemplateName.trimmingCharacters(in: .whitespaces)
+                        if !name.isEmpty {
+                            templates.removeAll { $0.name == name }
+                            saveCurrentAsTemplate(name: name)
+                            activeTemplateName = name
+                            UserDefaults.standard.set(name, forKey: "launcher.activeTemplateName")
+                            showSaveTemplateSheet = false
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(newTemplateName.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .keyboardShortcut(.return)
+                }
+            }
+            .padding(24)
+            .frame(width: 350, height: 150)
+        }
+        .sheet(isPresented: $showRenameTemplateSheet) {
+            VStack(spacing: 16) {
+                Text(L10n.t("rename_template"))
+                    .font(.headline)
+                TextField(L10n.t("template_name"), text: $renameText)
+                    .textFieldStyle(.roundedBorder)
+                    .frame(width: 250)
+                HStack(spacing: 12) {
+                    Button(L10n.t("cancel")) {
+                        showRenameTemplateSheet = false
+                    }
+                    .keyboardShortcut(.escape)
+                    Button(L10n.t("save")) {
+                        let newName = renameText.trimmingCharacters(in: .whitespaces)
+                        if !newName.isEmpty, let target = templates.first(where: { $0.name == activeTemplateName }) {
+                            renameTemplate(target, to: newName)
+                            showRenameTemplateSheet = false
+                        }
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .disabled(renameText.trimmingCharacters(in: .whitespaces).isEmpty)
+                    .keyboardShortcut(.return)
+                }
+            }
+            .padding(24)
+            .frame(width: 350, height: 150)
+        }
+        .alert(L10n.t("delete_template"), isPresented: $showDeleteTemplateConfirm) {
+            Button(L10n.t("cancel"), role: .cancel) {}
+            Button(L10n.t("delete"), role: .destructive) {
+                if let target = templates.first(where: { $0.name == activeTemplateName }) {
+                    deleteTemplate(target)
+                }
+            }
+        } message: {
+            Text(L10n.format("delete_template_confirm", activeTemplateName ?? ""))
         }
     }
 
@@ -550,6 +684,11 @@ struct LaunchClaudeCodeView: View {
         disableAttributionHeader = savedDisableAttributionHeader
         rectifierEnabled = savedRectifierEnabled
         recentDirectories = ClaudeCodeLauncher.loadRecentDirectories()
+        templates = ClaudeCodeLauncher.loadTemplates()
+        if let savedName = UserDefaults.standard.string(forKey: "launcher.activeTemplateName"),
+           templates.contains(where: { $0.name == savedName }) {
+            activeTemplateName = savedName
+        }
     }
 
     private func saveSettings() {
@@ -558,6 +697,59 @@ struct LaunchClaudeCodeView: View {
         savedEffortLevel = effortLevel
         savedDisableAttributionHeader = disableAttributionHeader
         savedRectifierEnabled = rectifierEnabled
+    }
+
+    private func applyTemplate(_ tmpl: LaunchTemplate) {
+        savedAnthropicModel = tmpl.anthropicModel
+        savedAnthropicModelProviderId = tmpl.anthropicModelProviderId
+        savedOpusModel = tmpl.opusModel
+        savedOpusModelProviderId = tmpl.opusModelProviderId
+        savedSonnetModel = tmpl.sonnetModel
+        savedSonnetModelProviderId = tmpl.sonnetModelProviderId
+        savedHaikuModel = tmpl.haikuModel
+        savedHaikuModelProviderId = tmpl.haikuModelProviderId
+        savedSubagentModel = tmpl.subagentModel
+        savedSubagentModelProviderId = tmpl.subagentModelProviderId
+        activeTemplateName = tmpl.name
+        UserDefaults.standard.set(tmpl.name, forKey: "launcher.activeTemplateName")
+    }
+
+    private func saveCurrentAsTemplate(name: String) {
+        let newTemplate = LaunchTemplate(
+            name: name,
+            anthropicModel: savedAnthropicModel,
+            anthropicModelProviderId: savedAnthropicModelProviderId,
+            opusModel: savedOpusModel,
+            opusModelProviderId: savedOpusModelProviderId,
+            sonnetModel: savedSonnetModel,
+            sonnetModelProviderId: savedSonnetModelProviderId,
+            haikuModel: savedHaikuModel,
+            haikuModelProviderId: savedHaikuModelProviderId,
+            subagentModel: savedSubagentModel,
+            subagentModelProviderId: savedSubagentModelProviderId
+        )
+        templates.append(newTemplate)
+        ClaudeCodeLauncher.saveTemplates(templates)
+    }
+
+    private func deleteTemplate(_ tmpl: LaunchTemplate) {
+        templates.removeAll { $0.id == tmpl.id }
+        ClaudeCodeLauncher.saveTemplates(templates)
+        if activeTemplateName == tmpl.name {
+            activeTemplateName = nil
+            UserDefaults.standard.removeObject(forKey: "launcher.activeTemplateName")
+        }
+    }
+
+    private func renameTemplate(_ tmpl: LaunchTemplate, to newName: String) {
+        if let index = templates.firstIndex(where: { $0.id == tmpl.id }) {
+            templates[index].name = newName
+            ClaudeCodeLauncher.saveTemplates(templates)
+            if activeTemplateName == tmpl.name {
+                activeTemplateName = newName
+                UserDefaults.standard.set(newName, forKey: "launcher.activeTemplateName")
+            }
+        }
     }
 
     private func launchClaudeCode() {

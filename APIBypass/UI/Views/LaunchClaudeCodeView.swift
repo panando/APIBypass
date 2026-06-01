@@ -832,7 +832,10 @@ struct LaunchClaudeCodeView: View {
             rectifierEnabled = rect
             savedRectifierEnabled = rect
         }
-        isApplyingTemplate = false
+        // 延迟重置标志，确保 SwiftUI 视图更新完成后再重置
+        DispatchQueue.main.async {
+            isApplyingTemplate = false
+        }
     }
 
     private func saveCurrentAsTemplate(name: String) {

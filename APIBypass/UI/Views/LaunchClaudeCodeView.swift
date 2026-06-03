@@ -943,12 +943,21 @@ struct LaunchClaudeCodeView: View {
 
         // 检测终端是否已运行
         if ClaudeCodeLauncher.isTerminalRunning(terminal) {
-            isLaunching = false
-            pendingTerminal = terminal
-            showTerminalRunningAlert = true
-            return
+            // 检测终端是否有可见窗口
+            if ClaudeCodeLauncher.hasVisibleWindow(terminal) {
+                // 有可见窗口 - 显示选择对话框（新建标签页/新建窗口/取消）
+                isLaunching = false
+                pendingTerminal = terminal
+                showTerminalRunningAlert = true
+                return
+            } else {
+                // 无可见窗口 - 直接新建窗口，无需选择
+                doLaunch(terminal: terminal, provider: defaultProvider, mode: .newWindow)
+                return
+            }
         }
 
+        // 终端未运行 - 直接新建窗口启动
         doLaunch(terminal: terminal, provider: defaultProvider, mode: .newWindow)
     }
 

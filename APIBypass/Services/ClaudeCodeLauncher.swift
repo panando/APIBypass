@@ -236,17 +236,17 @@ final class ClaudeCodeLauncher {
                     launchCommand: { claudePath, envVars, workDir in
                         let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                         let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
-                        return "tell application \"iTerm2\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
+                        return "tell application \"iTerm\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
                     },
                     launchWindowCommand: { claudePath, envVars, workDir in
                         let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                         let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
-                        return "tell application \"iTerm2\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
+                        return "tell application \"iTerm\"\nactivate\ncreate window with default profile\ntell current session of current window\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell"
                     },
                     launchTabCommand: { claudePath, envVars, workDir in
                         let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
                         let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
-                        return "tell application \"iTerm2\"\nactivate\ntell current window\ncreate tab with default profile\ntell current session\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell\nend tell"
+                        return "tell application \"iTerm\"\nactivate\ntell current window\ncreate tab with default profile\ntell current session\nwrite text \"\(cdCommand)\(envExports) && \(claudePath)\"\nend tell\nend tell\nend tell"
                     }
                 ))
                 break
@@ -346,6 +346,28 @@ final class ClaudeCodeLauncher {
         return !NSRunningApplication.runningApplications(
             withBundleIdentifier: bundleId
         ).isEmpty
+    }
+
+    /// 检测终端是否有可见窗口（通过 CGWindowList 避免 AppleScript 调用）
+    static func hasVisibleWindow(_ terminal: TerminalApp) -> Bool {
+        guard let bundleId = terminal.bundleId else { return false }
+        guard let app = NSRunningApplication.runningApplications(withBundleIdentifier: bundleId).first else { return false }
+
+        let pid = app.processIdentifier
+        let options: CGWindowListOption = [.optionOnScreenOnly, .excludeDesktopElements]
+        guard let windowList = CGWindowListCopyWindowInfo(options, kCGNullWindowID) as? [[String: Any]] else {
+            return false
+        }
+
+        for window in windowList {
+            if let ownerPID = window[kCGWindowOwnerPID as String] as? pid_t, ownerPID == pid {
+                // 确保是应用窗口（非菜单栏图标等 layer < 0 的元素）
+                if let layer = window[kCGWindowLayer as String] as? Int32, layer >= 0 {
+                    return true
+                }
+            }
+        }
+        return false
     }
 
     // MARK: - Claude Code 查找

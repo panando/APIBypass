@@ -23,12 +23,48 @@ final class StreamTranslator {
                 do {
                     var messageStarted = false
                     var messageId = "msg_apibypass"
+                    var inThinkingBlock = false
+                    var thinkingBlockIndex = -1
                     var inTextBlock = false
                     var textBlockIndex = -1
                     var toolStates: [Int: (id: String, name: String, args: String)] = [:]
                     var nextBlockIndex = 0
                     var usageChunk: [String: Any]?
                     var finishReason: String?
+
+                    /// Stop current thinking block (if any) and emit content_block_stop
+                    func stopThinking() {
+                        guard inThinkingBlock else { return }
+                        inThinkingBlock = false
+                        let stopBlock = anthropicSSE(
+                            event: "content_block_stop",
+                            data: ["type": "content_block_stop", "index": thinkingBlockIndex]
+                        )
+                        continuation.yield(stopBlock)
+                        // Emit signature delta (dummy for non-Anthropic models)
+                        let sigEvent = anthropicSSE(
+                            event: "content_block_delta",
+                            data: ["type": "content_block_delta", "index": thinkingBlockIndex, "delta": ["type": "signature_delta", "signature": "Eq4EAC8KAQw="]]
+                        )
+                        continuation.yield(sigEvent)
+                    }
+
+                    /// Stop current text block (if any)
+                    func stopText() {
+                        guard inTextBlock else { return }
+                        inTextBlock = false
+                        let stopBlock = anthropicSSE(
+                            event: "content_block_stop",
+                            data: ["type": "content_block_stop", "index": textBlockIndex]
+                        )
+                        continuation.yield(stopBlock)
+                    }
+
+                    /// Stop any active content block
+                    func stopActiveBlock() {
+                        if inThinkingBlock { stopThinking() }
+                        if inTextBlock { stopText() }
+                    }
 
                     for try await event in SSEDecoder.decode(bytes: bytes) {
                         let data = event.data
@@ -76,8 +112,29 @@ final class StreamTranslator {
                             _ = delta["role"] as? String
                         }
 
+                        // Reasoning/thinking content (OpenAI format: reasoning_content)
+                        if let reasoning = delta["reasoning_content"] as? String, !reasoning.isEmpty {
+                            if !inThinkingBlock {
+                                stopActiveBlock()
+                                inThinkingBlock = true
+                                thinkingBlockIndex = nextBlockIndex
+                                nextBlockIndex += 1
+                                let startBlock = anthropicSSE(
+                                    event: "content_block_start",
+                                    data: ["type": "content_block_start", "index": thinkingBlockIndex, "content_block": ["type": "thinking", "thinking": ""]]
+                                )
+                                continuation.yield(startBlock)
+                            }
+                            let deltaEvent = anthropicSSE(
+                                event: "content_block_delta",
+                                data: ["type": "content_block_delta", "index": thinkingBlockIndex, "delta": ["type": "thinking_delta", "thinking": reasoning]]
+                            )
+                            continuation.yield(deltaEvent)
+                        }
+
                         // Text content
                         if let content = delta["content"] as? String, !content.isEmpty {
+                            stopThinking()
                             if !inTextBlock {
                                 inTextBlock = true
                                 textBlockIndex = nextBlockIndex
@@ -106,14 +163,7 @@ final class StreamTranslator {
 
                                 if let id = id, toolStates[index] == nil {
                                     // New tool call
-                                    if inTextBlock {
-                                        inTextBlock = false
-                                        let stopBlock = anthropicSSE(
-                                            event: "content_block_stop",
-                                            data: ["type": "content_block_stop", "index": textBlockIndex]
-                                        )
-                                        continuation.yield(stopBlock)
-                                    }
+                                    stopActiveBlock()
                                     let blockIdx = nextBlockIndex
                                     nextBlockIndex += 1
                                     toolStates[index] = (id: id, name: name ?? "", args: "")
@@ -148,13 +198,7 @@ final class StreamTranslator {
                     }
 
                     // Close blocks
-                    if inTextBlock {
-                        let stopBlock = anthropicSSE(
-                            event: "content_block_stop",
-                            data: ["type": "content_block_stop", "index": textBlockIndex]
-                        )
-                        continuation.yield(stopBlock)
-                    }
+                    stopActiveBlock()
                     let sortedToolIndices = toolStates.keys.sorted()
                     for idx in sortedToolIndices {
                         // Emit stop for each tool block

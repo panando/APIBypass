@@ -197,6 +197,7 @@ final class FormatTranslator {
         }
 
         // thinking → enable_thinking + thinking_budget
+        // 仅在 thinking 明确启用时才添加字段，避免发送上游不认识的字段
         if let thinking = json["thinking"] as? [String: Any] {
             let type = thinking["type"] as? String ?? ""
             if type == "enabled" {
@@ -204,8 +205,6 @@ final class FormatTranslator {
                 if let budget = thinking["budget_tokens"] as? Int {
                     out["thinking_budget"] = budget
                 }
-            } else {
-                out["enable_thinking"] = false
             }
         }
 
@@ -220,6 +219,8 @@ final class FormatTranslator {
         out.removeValue(forKey: "thinking")
         out.removeValue(forKey: "metadata")
         out.removeValue(forKey: "top_k")
+        out.removeValue(forKey: "context_management")
+        out.removeValue(forKey: "output_config")
 
         return out
     }
@@ -318,6 +319,15 @@ final class FormatTranslator {
 
         if let choices = json["choices"] as? [[String: Any]],
            let message = choices.first?["message"] as? [String: Any] {
+
+            // Reasoning/thinking content (OpenAI: reasoning_content → Anthropic: thinking block)
+            if let reasoning = message["reasoning_content"] as? String, !reasoning.isEmpty {
+                content.append([
+                    "type": "thinking",
+                    "thinking": reasoning,
+                    "signature": "Eq4EAC8KAQw="
+                ])
+            }
 
             // Text content
             if let text = message["content"] as? String, !text.isEmpty {

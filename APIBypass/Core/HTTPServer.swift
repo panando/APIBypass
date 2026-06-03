@@ -478,6 +478,7 @@ final class HTTPServer: ObservableObject {
                 let errorResponse: [String: Any]
                 if case ProxyError.upstreamError(let code, let data) = error {
                     let bodyStr = String(data: data ?? Data(), encoding: .utf8) ?? "unknown"
+                    print("[SSE] upstream error body: \(bodyStr)")
                     errorResponse = [
                         "error": [
                             "message": "Upstream \(code): \(bodyStr)",

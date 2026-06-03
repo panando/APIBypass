@@ -4,6 +4,55 @@ import HTTPTypes
 import NIOCore
 import ServiceLifecycle
 
+// MARK: - 流控与并发控制工具
+
+/// 异步信号量，用于控制并发访问
+actor AsyncSemaphore {
+    private var value: Int
+    private var waiters: [CheckedContinuation<Void, Never>] = []
+
+    init(value: Int) {
+        self.value = value
+    }
+
+    /// 获取信号量，如果不可用则挂起
+    func acquire() async {
+        if value > 0 {
+            value -= 1
+            return
+        }
+
+        await withCheckedContinuation { continuation in
+            waiters.append(continuation)
+        }
+    }
+
+    /// 释放信号量
+    func release() {
+        if let waiter = waiters.first {
+            waiters.removeFirst()
+            waiter.resume()
+        } else {
+            value += 1
+        }
+    }
+
+    /// 尝试获取信号量，如果不可用立即返回 false
+    func tryAcquire() -> Bool {
+        if value > 0 {
+            value -= 1
+            return true
+        }
+        return false
+    }
+
+    /// 当前可用许可数
+    var availablePermits: Int { value }
+
+    /// 等待中的任务数
+    var waitingCount: Int { waiters.count }
+}
+
 @MainActor
 final class HTTPServer: ObservableObject {
     private let configManager: ConfigManager
@@ -15,44 +64,63 @@ final class HTTPServer: ObservableObject {
 
     let port: Int
 
+    // MARK: - 并发控制
+
+    /// 最大并发连接数
+    private let maxConcurrentConnections: Int
+    /// 连接信号量
+    private var connectionSemaphore: AsyncSemaphore?
+    /// 当前活跃连接数
+    private var activeConnections: Int = 0
+    private let connectionLock = NSLock()
+
     static var storedPort: Int {
         get { UserDefaults.standard.integer(forKey: "serverPort") }
         set { UserDefaults.standard.set(newValue, forKey: "serverPort") }
     }
 
-    init(configManager: ConfigManager, keychain: KeychainService = .shared) {
+    init(
+        configManager: ConfigManager,
+        keychain: KeychainService = .shared,
+        maxConcurrentConnections: Int = 100
+    ) {
         self.configManager = configManager
         self.keychain = keychain
         self.proxyEngine = ProxyEngine()
         self.networkService = NetworkService()
         let saved = UserDefaults.standard.integer(forKey: "serverPort")
         self.port = saved > 0 ? saved : 8390
+
+        // 并发连接限制配置
+        self.maxConcurrentConnections = maxConcurrentConnections
+        self.connectionSemaphore = AsyncSemaphore(value: maxConcurrentConnections)
     }
 
     func start() async throws {
         let router = Router()
 
-        // OpenAI 兼容端点
+        // OpenAI 兼容端点（带并发限制）
         router.post("/v1/chat/completions") { [weak self] request, context in
             guard let self = self else {
                 return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
             }
-            return try await self.handleProxyRequest(request, context, format: .openai)
+            return try await self.handleRequestWithConcurrencyLimit(request, context, format: .openai)
         }
 
-        // Anthropic 端点
+        // Anthropic 端点（带并发限制）
         router.post("/v1/messages") { [weak self] request, context in
             guard let self = self else {
                 return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
             }
-            return try await self.handleProxyRequest(request, context, format: .anthropic)
+            return try await self.handleRequestWithConcurrencyLimit(request, context, format: .anthropic)
         }
 
+        // Responses 端点（带并发限制）
         router.post("/v1/responses") { [weak self] request, context in
             guard let self = self else {
                 return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
             }
-            return try await self.handleProxyRequest(request, context, format: .responses)
+            return try await self.handleRequestWithConcurrencyLimit(request, context, format: .responses)
         }
 
         // 模型列表端点
@@ -93,6 +161,72 @@ final class HTTPServer: ObservableObject {
         await serviceGroup?.triggerGracefulShutdown()
         serviceGroup = nil
         app = nil
+    }
+
+    // MARK: - 并发控制方法
+
+    /// 带并发限制的请求处理器
+    private func handleRequestWithConcurrencyLimit(
+        _ request: Request,
+        _ context: BasicRequestContext,
+        format: APIFormat
+    ) async throws -> Response {
+        // 检查是否可以立即处理
+        guard let semaphore = connectionSemaphore else {
+            // 如果信号量未初始化，直接处理
+            return try await handleProxyRequest(request, context, format: format)
+        }
+
+        // 尝试获取连接许可
+        if await !semaphore.tryAcquire() {
+            // 连接数已满，返回 503 服务不可用
+            let errorResponse: [String: Any] = [
+                "error": [
+                    "message": "Server is at capacity. Please try again later.",
+                    "type": "rate_limit_error",
+                    "code": 503
+                ]
+            ]
+            let errorData = try JSONSerialization.data(withJSONObject: errorResponse)
+            return Response(
+                status: .serviceUnavailable,
+                headers: [.contentType: "application/json"],
+                body: .init(byteBuffer: ByteBuffer(data: errorData))
+            )
+        }
+
+        // 已获取许可，处理请求
+        incrementActiveConnections()
+        do {
+            let response = try await handleProxyRequest(request, context, format: format)
+            decrementActiveConnections()
+            await semaphore.release()
+            return response
+        } catch {
+            decrementActiveConnections()
+            await semaphore.release()
+            throw error
+        }
+    }
+
+    private func incrementActiveConnections() {
+        connectionLock.lock()
+        activeConnections += 1
+        connectionLock.unlock()
+    }
+
+    private func decrementActiveConnections() {
+        connectionLock.lock()
+        activeConnections = max(0, activeConnections - 1)
+        connectionLock.unlock()
+    }
+
+    /// 获取当前活跃连接数
+    var currentActiveConnections: Int {
+        connectionLock.lock()
+        let count = activeConnections
+        connectionLock.unlock()
+        return count
     }
 
     private func handleProxyRequest(
@@ -287,7 +421,7 @@ final class HTTPServer: ObservableObject {
         }
     }
 
-    /// 处理流式请求
+    /// 处理流式请求（带背压控制）
     private func handleStreamingRequest(
         upstreamRequest: URLRequest,
         needsConversion: Bool,
@@ -318,18 +452,8 @@ final class HTTPServer: ObservableObject {
                         convertedStream = streamTranslator.translateAnthropicToOpenAI(bytes: streamResult.bytes, model: model)
                     case (.responses, .anthropic), (.responses, .openai), (.anthropic, .responses), (.openai, .responses):
                         print("[SSE] Responses streaming format translation not yet fully implemented, forwarding raw stream")
-                        var buffer = ByteBuffer()
-                        buffer.reserveCapacity(1024)
-                        for try await byte in streamResult.bytes {
-                            buffer.writeInteger(byte)
-                            if byte == UInt8(ascii: "\n") {
-                                try await writer.write(buffer)
-                                buffer.clear()
-                            }
-                        }
-                        if buffer.readableBytes > 0 {
-                            try await writer.write(buffer)
-                        }
+                        // 使用优化的批量读取
+                        try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer)
                         try await writer.finish(nil)
                         return
                     default:
@@ -345,40 +469,85 @@ final class HTTPServer: ObservableObject {
                     }
                     try await writer.finish(nil)
                 } else {
-                    var buffer = ByteBuffer()
-                    buffer.reserveCapacity(1024)
-
-                    for try await byte in streamResult.bytes {
-                        buffer.writeInteger(byte)
-                        if byte == UInt8(ascii: "\n") {
-                            try await writer.write(buffer)
-                            buffer.clear()
-                        }
-                    }
-                    if buffer.readableBytes > 0 {
-                        try await writer.write(buffer)
-                    }
+                    // 使用优化的批量读取（无格式转换）
+                    try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer)
                     try await writer.finish(nil)
                 }
             } catch {
                 print("[SSE] 流传输错误: \(error)")
-                let errorJSON: String
+                let errorResponse: [String: Any]
                 if case ProxyError.upstreamError(let code, let data) = error {
                     let bodyStr = String(data: data ?? Data(), encoding: .utf8) ?? "unknown"
-                    errorJSON = "{\"error\":{\"message\":\"Upstream \(code): \(bodyStr)\",\"type\":\"upstream_error\"}}"
+                    errorResponse = [
+                        "error": [
+                            "message": "Upstream \(code): \(bodyStr)",
+                            "type": "upstream_error"
+                        ]
+                    ]
                 } else {
-                    errorJSON = "{\"error\":{\"message\":\"\(error.localizedDescription)\",\"type\":\"proxy_error\"}}"
+                    errorResponse = [
+                        "error": [
+                            "message": error.localizedDescription,
+                            "type": "proxy_error"
+                        ]
+                    ]
                 }
-                let sseError = "data: \(errorJSON)\n\ndata: [DONE]\n\n"
-                if let errorData = sseError.data(using: .utf8) {
-                    let buf = ByteBuffer(data: errorData)
-                    try await writer.write(buf)
+                if let errorData = try? JSONSerialization.data(withJSONObject: errorResponse),
+                   let errorJSON = String(data: errorData, encoding: .utf8) {
+                    let sseError = "data: \(errorJSON)\n\ndata: [DONE]\n\n"
+                    if let sseData = sseError.data(using: .utf8) {
+                        let buf = ByteBuffer(data: sseData)
+                        try await writer.write(buf)
+                    }
                 }
-                try await writer.finish(nil)
             }
         }
 
         return Response(status: .ok, headers: headers, body: body)
+    }
+
+    /// 带背压控制的流式传输
+    private func streamWithBackpressure(
+        bytes: URLSession.AsyncBytes,
+        writer: inout any ResponseBodyWriter
+    ) async throws {
+        // 使用更大的缓冲区 (64KB) 进行批量读取
+        let bufferSize = 65536
+        var buffer = ByteBuffer()
+        buffer.reserveCapacity(bufferSize)
+
+        // 使用 Task 检查点来避免阻塞
+        var byteCount = 0
+        let checkpointInterval = 8192  // 每 8KB 检查一次背压
+        var doneReceived = false  // 追踪是否收到 [DONE]
+
+        for try await byte in bytes {
+            buffer.writeInteger(byte)
+            byteCount += 1
+
+            // 遇到换行符或缓冲区满时写入
+            if byte == UInt8(ascii: "\n") || buffer.readableBytes >= bufferSize {
+                // 检查是否是 [DONE] 标记
+                if let line = String(bytes: buffer.readableBytesView, encoding: .utf8),
+                   line.contains("[DONE]") {
+                    try await writer.write(buffer)
+                    doneReceived = true
+                    break  // 收到 [DONE] 后停止处理
+                }
+                try await writer.write(buffer)
+                buffer.clear()
+            }
+
+            // 定期让出线程，避免阻塞
+            if byteCount % checkpointInterval == 0 {
+                await Task.yield()
+            }
+        }
+
+        // 写入剩余数据（仅在未收到 [DONE] 时）
+        if !doneReceived && buffer.readableBytes > 0 {
+            try await writer.write(buffer)
+        }
     }
 
     private func sendWithRectifier(

@@ -13,9 +13,36 @@ enum ProxyError: Error {
 
 final class ProxyEngine {
 
+    /// 本地模型专属参数，上游云端 API 通常不支持
+    private let localModelParams: Set<String> = [
+        "num_ctx",      // Ollama: 上下文窗口大小
+        "num_gpu",      // Ollama: GPU 层数
+        "num_thread",   // Ollama: 线程数
+        "num_batch",    // Ollama: 批处理大小
+        "num_keep",     // Ollama: 保持的 token 数
+        "mirostat",     // Ollama: Mirostat 采样
+        "mirostat_eta", // Ollama: Mirostat 学习率
+        "mirostat_tau", // Ollama: Mirostat 目标熵
+        "numa",         // Ollama: NUMA 支持
+        "f16_kv",       // Ollama: KV cache 精度
+        "logits_all",   // Ollama: 返回所有 logits
+        "vocab_only",   // Ollama: 仅加载词表
+        "use_mmap",     // Ollama: 内存映射
+        "use_mlock",    // Ollama: 锁定内存
+        "n_gpu_layers", // LM Studio: GPU 层数
+        "n_ctx",        // LM Studio: 上下文大小
+        "n_batch",      // LM Studio: 批处理大小
+        "n_threads",    // LM Studio: 线程数
+    ]
+
     func transformRequest(data: Data, mapping: ModelMapping, format: APIFormat) throws -> Data {
         guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ProxyError.invalidJSON
+        }
+
+        // 移除本地模型专属参数（上游不支持）
+        for param in localModelParams {
+            json.removeValue(forKey: param)
         }
 
         // Replace model name

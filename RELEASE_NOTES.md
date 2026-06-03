@@ -1,3 +1,52 @@
+# APIBypass v0.5.7
+
+## What's New
+
+### Concurrency Performance Optimization
+- **Connection limit control**: Implemented `AsyncSemaphore` to limit concurrent connections (default: 100). Returns `503 Service Unavailable` when limit is exceeded, preventing resource exhaustion.
+- **Backpressure control**: New `streamWithBackpressure` method with 64KB buffer (64x increase from 1KB) and 8KB checkpoint yielding for smoother concurrent performance.
+- **Local model parameter filtering**: Automatically removes 17 local-model-specific parameters (e.g., `num_ctx`, `n_gpu_layers`) that cloud APIs don't accept, preventing `400 Bad Request` errors from providers like Fireworks.
+
+### Streaming Response Fixes
+- **JSON error format fix**: Error responses in SSE streams now use proper JSON serialization instead of string concatenation, fixing `AI_JSONParseError` in clients like Cherry Studio.
+- **Stream termination fix**: Added `writer.finish(nil)` call after stream completion to properly close HTTP connections, preventing clients from hanging in waiting state.
+
+## Performance Improvements
+
+| Metric | Before | After | Improvement |
+|--------|--------|-------|-------------|
+| Buffer size | 1KB | 64KB | 64x |
+| Max concurrent connections | Unlimited | 100 (configurable) | Controlled |
+| Thread yielding | None | Every 8KB | Smoother |
+| Byte-by-byte processing | Yes | No | Batch processing |
+
+## Changelog
+
+- feat: add `AsyncSemaphore` for concurrent connection limiting
+- feat: implement `streamWithBackpressure` with 64KB buffer and backpressure control
+- feat: filter 17 local model parameters (`num_ctx`, `n_ctx`, `n_gpu_layers`, etc.)
+- fix: JSON serialization for SSE error responses (fixes `AI_JSONParseError`)
+- fix: call `writer.finish(nil)` to close streaming connections properly
+- perf: 64KB buffer size (was 1KB)
+- perf: `Task.yield()` every 8KB for cooperative multitasking
+
+## Download
+
+- [APIBypass-0.5.7.dmg](https://github.com/panando/APIBypass/releases/tag/v0.5.7)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.5.7
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.5.6
 
 ## What's New

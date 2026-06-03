@@ -20,3 +20,9 @@ DerivedData/
 Package.resolved
 *.dmg
 docs/
+
+# Tool configs
+.claude/
+.codegraph/
+.gemini/
+.mcp.json

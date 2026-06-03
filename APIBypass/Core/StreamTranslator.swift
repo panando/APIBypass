@@ -441,7 +441,6 @@ private enum SSEDecoder {
                 do {
                     print("[SSEDecoder] 开始解码 SSE 流...")
                     var currentEvent: String?
-                    var dataLines: [String] = []
                     var eventCount = 0
 
                     for try await line in bytes.lines {
@@ -450,40 +449,25 @@ private enum SSEDecoder {
                         let clean = trimmed.hasSuffix("\r") ? String(trimmed.dropLast()) : trimmed
 
                         if clean.isEmpty {
-                            // Empty line = event boundary
-                            if !dataLines.isEmpty {
-                                let data = dataLines.joined(separator: "\n")
-                                eventCount += 1
-                                print("[SSEDecoder] 事件 #\(eventCount): event=\(currentEvent ?? "nil"), data=\(data.prefix(100))")
-                                continuation.yield(SSEEvent(event: currentEvent, data: data))
-                            }
+                            // Empty line = event boundary (标准 SSE 格式)
                             currentEvent = nil
-                            dataLines = []
                             continue
                         }
 
                         if clean.hasPrefix("event:") {
-                            // 如果已经有积攒的 data，先 yield（处理没有空行分隔的情况）
-                            if !dataLines.isEmpty {
-                                let data = dataLines.joined(separator: "\n")
-                                eventCount += 1
-                                print("[SSEDecoder] 事件 #\(eventCount) (无空行): event=\(currentEvent ?? "nil"), data=\(data.prefix(100))")
-                                continuation.yield(SSEEvent(event: currentEvent, data: data))
-                                dataLines = []
-                            }
                             currentEvent = String(clean.dropFirst(6)).trimmingCharacters(in: .whitespaces)
                         } else if clean.hasPrefix("data:") {
-                            dataLines.append(String(clean.dropFirst(5)).trimmingCharacters(in: .whitespaces))
+                            // 收到 data 行后立即 yield 事件（不等待空行）
+                            let data = String(clean.dropFirst(5)).trimmingCharacters(in: .whitespaces)
+                            eventCount += 1
+                            print("[SSEDecoder] 事件 #\(eventCount): event=\(currentEvent ?? "nil"), data=\(data.prefix(100))")
+                            continuation.yield(SSEEvent(event: currentEvent, data: data))
+                            // 重置 event 类型，但不需要等待空行
+                            currentEvent = nil
                         }
                     }
 
-                    // Flush remaining
-                    if !dataLines.isEmpty {
-                        eventCount += 1
-                        print("[SSEDecoder] 事件 #\(eventCount) (最终): event=\(currentEvent ?? "nil"), data=\(dataLines.joined(separator: "\n").prefix(100))")
-                        continuation.yield(SSEEvent(event: currentEvent, data: dataLines.joined(separator: "\n")))
-                    }
-
+                    print("[SSEDecoder] 流结束，共解码 \(eventCount) 个事件")
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

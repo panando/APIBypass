@@ -46,6 +46,10 @@ struct MenuBarView: View {
             }
             .disabled(configManager.providers.isEmpty)
 
+            Button(L10n.t("help")) {
+                openHelpWindow()
+            }
+
             Divider()
 
             Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
@@ -134,6 +138,30 @@ struct MenuBarView: View {
         window.identifier = NSUserInterfaceItemIdentifier("launch-claude-window")
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: LaunchClaudeCodeView(configManager: configManager))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func openHelpWindow() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
+        if let existingWindow = NSApplication.shared.windows.first(where: {
+            $0.identifier?.rawValue == "help-window"
+        }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            styleMask: [.titled, .closable, .resizable, .miniaturizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("help_window_title")
+        window.identifier = NSUserInterfaceItemIdentifier("help-window")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: HelpView())
         window.center()
         window.makeKeyAndOrderFront(nil)
     }

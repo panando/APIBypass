@@ -27,7 +27,7 @@ final class StreamTranslator {
                     var thinkingBlockIndex = -1
                     var inTextBlock = false
                     var textBlockIndex = -1
-                    var toolStates: [Int: (id: String, name: String, args: String)] = [:]
+                    var toolStates: [Int: (id: String, name: String, args: String, blockIdx: Int)] = [:]
                     var nextBlockIndex = 0
                     var usageChunk: [String: Any]?
                     var finishReason: String?
@@ -166,7 +166,7 @@ final class StreamTranslator {
                                     stopActiveBlock()
                                     let blockIdx = nextBlockIndex
                                     nextBlockIndex += 1
-                                    toolStates[index] = (id: id, name: name ?? "", args: "")
+                                    toolStates[index] = (id: id, name: name ?? "", args: "", blockIdx: blockIdx)
                                     let startTool = anthropicSSE(
                                         event: "content_block_start",
                                         data: ["type": "content_block_start", "index": blockIdx, "content_block": ["type": "tool_use", "id": id, "name": name ?? "", "input": [:]]]
@@ -180,10 +180,9 @@ final class StreamTranslator {
                                     if !arguments.isEmpty {
                                         state.args += arguments
                                         toolStates[index] = state
-                                        let blockIdx = nextBlockIndex - 1
                                         let deltaTool = anthropicSSE(
                                             event: "content_block_delta",
-                                            data: ["type": "content_block_delta", "index": blockIdx, "delta": ["type": "input_json_delta", "partial_json": arguments]]
+                                            data: ["type": "content_block_delta", "index": state.blockIdx, "delta": ["type": "input_json_delta", "partial_json": arguments]]
                                         )
                                         continuation.yield(deltaTool)
                                     }
@@ -201,12 +200,11 @@ final class StreamTranslator {
                     stopActiveBlock()
                     let sortedToolIndices = toolStates.keys.sorted()
                     for idx in sortedToolIndices {
-                        // Emit stop for each tool block
-                        // Find the block index by ordering
-                        let blockIdx = idx  // approximate
+                        // Emit stop for each tool block using the stored block index
+                        guard let state = toolStates[idx] else { continue }
                         let stopTool = anthropicSSE(
                             event: "content_block_stop",
-                            data: ["type": "content_block_stop", "index": blockIdx]
+                            data: ["type": "content_block_stop", "index": state.blockIdx]
                         )
                         continuation.yield(stopTool)
                     }

@@ -48,6 +48,8 @@ struct L10n {
         "configure": [.chinese: "配置...", .english: "Configure..."],
         "settings": [.chinese: "设置...", .english: "Settings..."],
         "quit": [.chinese: "退出", .english: "Quit"],
+        "bypass_mode": [.chinese: "✓ 纯代理模式", .english: "✓ Bypass Mode"],
+        "bypass_mode_off": [.chinese: "纯代理模式", .english: "Bypass Mode"],
         "port": [.chinese: "端口", .english: "Port"],
         "version": [.chinese: "版本", .english: "Version"],
 

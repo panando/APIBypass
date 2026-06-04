@@ -278,7 +278,9 @@ final class HTTPServer: ObservableObject {
         case .anthropic: upstreamFormat = .anthropic
         case .openaiResponses: upstreamFormat = .responses
         }
-        let needsConversion = format != upstreamFormat
+        // 读取 bypassMode 状态
+        let bypassMode = UserDefaults.standard.bool(forKey: "bypassMode")
+        let needsConversion = !bypassMode && (format != upstreamFormat)
         let effectiveFormat = needsConversion ? upstreamFormat : format
 
         // 转换请求（参数注入 + 模型名替换）
@@ -349,7 +351,8 @@ final class HTTPServer: ObservableObject {
         )
 
         // 日志: 转换后请求
-        print("\n📤 转发到上游 API\(isStreaming ? " [流式模式]" : "")\(needsConversion ? " [格式转换: \(format) → \(upstreamFormat)]" : "")")
+        let modeTag = bypassMode ? " [纯代理模式]" : (needsConversion ? " [格式转换: \(format) → \(upstreamFormat)]" : "")
+        print("\n📤 转发到上游 API\(isStreaming ? " [流式模式]" : "")\(modeTag)")
         print("────────────────────────────────────────────────────────────")
         print("上游 URL: \(upstreamURL.absoluteString)")
         print("实际模型: \(mapping.actualModel)")

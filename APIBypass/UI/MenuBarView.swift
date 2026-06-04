@@ -8,6 +8,7 @@ struct MenuBarView: View {
     let onStop: () -> Void
 
     @ObservedObject private var l10n = LocalizationManager.shared
+    @AppStorage("bypassMode") var bypassMode: Bool = false
 
     var body: some View {
         VStack {
@@ -26,6 +27,12 @@ struct MenuBarView: View {
 
             Divider()
 
+            Button(bypassMode ? L10n.t("bypass_mode") : L10n.t("bypass_mode_off")) {
+                bypassMode.toggle()
+            }
+
+            Divider()
+
             Button(L10n.t("configure")) {
                 openConfigWindow()
             }
@@ -38,6 +45,8 @@ struct MenuBarView: View {
                 openLaunchClaudeCodeWindow()
             }
             .disabled(configManager.providers.isEmpty)
+
+            Divider()
 
             Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
                 if isRunning {

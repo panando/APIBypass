@@ -31,6 +31,11 @@ struct MenuBarView: View {
                 bypassMode.toggle()
             }
 
+            Button(L10n.t("launch_claude_code")) {
+                openLaunchClaudeCodeWindow()
+            }
+            .disabled(configManager.providers.isEmpty)
+
             Divider()
 
             Button(L10n.t("configure")) {
@@ -40,11 +45,6 @@ struct MenuBarView: View {
             Button(L10n.t("settings")) {
                 openSettingsWindow()
             }
-
-            Button(L10n.t("launch_claude_code")) {
-                openLaunchClaudeCodeWindow()
-            }
-            .disabled(configManager.providers.isEmpty)
 
             Button(L10n.t("help")) {
                 openHelpWindow()

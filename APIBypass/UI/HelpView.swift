@@ -113,6 +113,9 @@ struct HelpView: View {
 
             Text(L10n.t("help_model_mapping_fields"))
                 .foregroundColor(.secondary)
+
+            Text(L10n.t("help_model_mapping_reasoning"))
+                .foregroundColor(.secondary)
         }
     }
 

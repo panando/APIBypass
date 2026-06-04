@@ -279,7 +279,7 @@ struct L10n {
         // 帮助内容 - 模型映射
         "help_model_mapping_title": [.chinese: "模型映射", .english: "Model Mapping"],
         "help_model_mapping_desc": [.chinese: "模型映射允许您将客户端请求的模型名映射到上游提供商的实际模型名。例如，客户端请求「gpt-4」，实际可映射到「claude-sonnet-4-6」。", .english: "Model mapping allows you to map the model name requested by the client to the actual model name of the upstream provider. For example, the client requests \"gpt-4\", which can be mapped to \"claude-sonnet-4-6\"."],
-        "help_model_mapping_fields": [.chinese: "每条映射规则包含：客户端模型名、实际模型名、API 接口类型（OpenAI / Anthropic / OpenAI Response API）、Base URL、API Key、推理模式覆盖等。", .english: "Each mapping rule includes: incoming model name, actual model name, API format (OpenAI / Anthropic / OpenAI Response API), Base URL, API Key, reasoning mode override, etc."],
+        "help_model_mapping_fields": [.chinese: "每条映射规则包含：客户端模型名、实际模型名、API 接口类型（OpenAI / Anthropic / OpenAI Response API）、Base URL、API Key、推理模式覆盖等。「更改默认推理模式」通过 enable_thinking 参数设置；如果模型提供商使用其他字段定义思考模式，请在「自定义参数」中自行添加。", .english: "Each mapping rule includes: incoming model name, actual model name, API format (OpenAI / Anthropic / OpenAI Response API), Base URL, API Key, reasoning mode override, etc. Reasoning Mode Override is set via the enable_thinking parameter; if your provider uses a different field for thinking mode, add it in Custom Parameters."],
 
         // 帮助内容 - 参数注入
         "help_param_injection_title": [.chinese: "参数注入", .english: "Parameter Injection"],
@@ -289,7 +289,7 @@ struct L10n {
         // 帮助内容 - 启动 Claude Code
         "help_launcher_title": [.chinese: "启动 Claude Code", .english: "Launch Claude Code"],
         "help_launcher_desc": [.chinese: "通过启动器可以一键启动 Claude Code 并自动注入必要的环境变量，包括 ANTHROPIC_API_KEY、CLAUDE_MODEL、ANTHROPIC_BASE_URL 等。", .english: "The launcher allows you to start Claude Code with one click and automatically inject necessary environment variables, including ANTHROPIC_API_KEY, CLAUDE_MODEL, ANTHROPIC_BASE_URL, etc."],
-        "help_launcher_features": [.chinese: "支持选择终端应用、工作目录、手动添加额外环境变量，以及自动从钥匙串读取 API Token。", .english: "Supports selecting terminal application, working directory, manually adding extra environment variables, and automatically reading API tokens from Keychain."],
+        "help_launcher_features": [.chinese: "支持选择终端应用、工作目录、手动添加额外环境变量，以及自动从钥匙串读取 API Key。", .english: "Supports selecting terminal application, working directory, manually adding extra environment variables, and automatically reading API Key from Keychain."],
 
         // 帮助内容 - 纯代理模式
         "help_bypass_title": [.chinese: "纯代理模式", .english: "Bypass Mode"],

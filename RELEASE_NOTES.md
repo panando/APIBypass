@@ -1,3 +1,32 @@
+# APIBypass v0.6.2
+
+## Bug Fixes
+
+- **Fixed app activation timing**: Moved `activationPolicy` setup from `init()` to `onAppear` to ensure proper app initialization and prevent potential launch issues
+- **Fixed Toggle-in-Button crash**: Moved Toggle control outside of Button to prevent SwiftUI rendering crash
+
+## Changelog
+
+- fix: move activationPolicy setup from init() to onAppear
+- fix: move Toggle outside Button to prevent crash
+
+## Download
+
+- [APIBypass-0.6.2.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.2)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.2
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.6.1
 
 ## What's New
@@ -348,6 +377,7 @@ swift build -c release
 
 ## Previous Releases
 
+- [v0.6.1](https://github.com/panando/APIBypass/releases/tag/v0.6.1) - Built-in Help Window, UI improvements
 - [v0.5.2](https://github.com/panando/APIBypass/releases/tag/v0.5.2) - OpenAI Responses API, Claude Code compatibility fixes, URL building improvements
 - [v0.5.1](https://github.com/panando/APIBypass/releases/tag/v0.5.1) - Build warnings cleanup
 - [v0.5.0](https://github.com/panando/APIBypass/releases/tag/v0.5.0) - API format translation, Claude Code launcher, i18n

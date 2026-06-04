@@ -48,10 +48,20 @@ struct L10n {
         "configure": [.chinese: "配置...", .english: "Configure..."],
         "settings": [.chinese: "设置...", .english: "Settings..."],
         "quit": [.chinese: "退出", .english: "Quit"],
+        "help": [.chinese: "帮助", .english: "Help"],
         "bypass_mode": [.chinese: "✓ 纯代理模式", .english: "✓ Bypass Mode"],
         "bypass_mode_off": [.chinese: "纯代理模式", .english: "Bypass Mode"],
         "port": [.chinese: "端口", .english: "Port"],
         "version": [.chinese: "版本", .english: "Version"],
+        "help_window_title": [.chinese: "APIBypass 帮助", .english: "APIBypass Help"],
+        "help_quick_start": [.chinese: "快速入门", .english: "Quick Start"],
+        "help_model_mapping": [.chinese: "模型映射", .english: "Model Mapping"],
+        "help_parameter_injection": [.chinese: "参数注入", .english: "Parameter Injection"],
+        "help_launcher": [.chinese: "启动 Claude Code", .english: "Launch Claude Code"],
+        "help_bypass_mode": [.chinese: "纯代理模式", .english: "Bypass Mode"],
+        "help_settings": [.chinese: "设置", .english: "Settings"],
+        "help_faq": [.chinese: "常见问题", .english: "FAQ"],
+        "help_menu_bar": [.chinese: "菜单栏", .english: "Menu Bar"],
 
         // 设置面板
         "settings_title": [.chinese: "设置", .english: "Settings"],
@@ -246,6 +256,59 @@ struct L10n {
         // 工作目录历史
         "no_recent_dirs": [.chinese: "暂无历史目录", .english: "No Recent Directories"],
         "clear_history": [.chinese: "清除历史", .english: "Clear History"],
+
+        // 帮助内容 - 快速入门
+        "help_quick_start_title": [.chinese: "欢迎使用 APIBypass", .english: "Welcome to APIBypass"],
+        "help_quick_start_desc": [.chinese: "APIBypass 是一款 API 模型映射代理工具，可拦截客户端请求并注入自定义参数，实现无缝切换模型提供商。", .english: "APIBypass is an API model mapping proxy that intercepts client requests and injects custom parameters for seamless model provider switching."],
+        "help_quick_start_step1": [.chinese: "点击菜单栏图标，选择「配置...」打开配置窗口", .english: "Click the menu bar icon and select \"Configure...\" to open the config window"],
+        "help_quick_start_step2": [.chinese: "创建至少一个提供商（Provider）和一条模型映射规则", .english: "Create at least one provider and one model mapping rule"],
+        "help_quick_start_step3": [.chinese: "启动服务后，将客户端 API 地址指向本服务即可", .english: "Start the server and point your client API address to this service"],
+        "help_quick_start_note": [.chinese: "注意：默认服务端口为 8390，可在「设置」中修改。", .english: "Note: The default server port is 8390, which can be changed in \"Settings.\""],
+
+        // 帮助内容 - 菜单栏
+        "help_menu_bar_desc": [.chinese: "点击菜单栏中的 APIBypass 图标可查看以下选项：", .english: "Click the APIBypass icon in the menu bar to see the following options:"],
+        "help_menu_status": [.chinese: "服务状态 - 显示当前服务是否运行及监听的端口", .english: "Server Status - Shows whether the server is running and the listening port"],
+        "help_menu_bypass": [.chinese: "纯代理模式 - 切换是否 bypass API 格式转换", .english: "Bypass Mode - Toggle whether to bypass API format conversion"],
+        "help_menu_configure": [.chinese: "配置... - 打开配置窗口，管理模型映射和提供商", .english: "Configure... - Open the config window to manage model mappings and providers"],
+        "help_menu_settings": [.chinese: "设置... - 打开设置窗口，切换语言和修改端口", .english: "Settings... - Open the settings window to switch language and change port"],
+        "help_menu_launcher": [.chinese: "启动 Claude Code - 打开启动器，配置环境变量后一键启动 Claude Code", .english: "Launch Claude Code - Open the launcher to configure environment variables and launch Claude Code"],
+        "help_menu_control": [.chinese: "启动/停止服务 - 控制代理服务的启停", .english: "Start/Stop Server - Control the proxy server start and stop"],
+        "help_menu_quit": [.chinese: "退出 - 关闭 APP", .english: "Quit - Close the app"],
+        "help_menu_help": [.chinese: "帮助 - 打开本帮助窗口", .english: "Help - Open this help window"],
+
+        // 帮助内容 - 模型映射
+        "help_model_mapping_title": [.chinese: "模型映射", .english: "Model Mapping"],
+        "help_model_mapping_desc": [.chinese: "模型映射允许您将客户端请求的模型名映射到上游提供商的实际模型名。例如，客户端请求「gpt-4」，实际可映射到「claude-sonnet-4-6」。", .english: "Model mapping allows you to map the model name requested by the client to the actual model name of the upstream provider. For example, the client requests \"gpt-4\", which can be mapped to \"claude-sonnet-4-6\"."],
+        "help_model_mapping_fields": [.chinese: "每条映射规则包含：客户端模型名、实际模型名、API 接口类型（OpenAI / Anthropic / OpenAI Response API）、Base URL、API Key、推理模式覆盖等。", .english: "Each mapping rule includes: incoming model name, actual model name, API format (OpenAI / Anthropic / OpenAI Response API), Base URL, API Key, reasoning mode override, etc."],
+
+        // 帮助内容 - 参数注入
+        "help_param_injection_title": [.chinese: "参数注入", .english: "Parameter Injection"],
+        "help_param_injection_desc": [.chinese: "参数注入功能允许您在转发请求时自动添加或覆盖特定参数。支持注入温度（temperature）、最大Token数（max_tokens）、Top P、频率惩罚和存在惩罚。", .english: "Parameter injection allows you to automatically add or override specific parameters when forwarding requests. Supports injection of temperature, max_tokens, Top P, frequency penalty, and presence penalty."],
+        "help_custom_params": [.chinese: "此外，您还可以通过「自定义参数」添加任意 JSON 字段，例如 enable_thinking、thinking 等。", .english: "Additionally, you can add any JSON fields via \"Custom Parameters\", such as enable_thinking, thinking, etc."],
+
+        // 帮助内容 - 启动 Claude Code
+        "help_launcher_title": [.chinese: "启动 Claude Code", .english: "Launch Claude Code"],
+        "help_launcher_desc": [.chinese: "通过启动器可以一键启动 Claude Code 并自动注入必要的环境变量，包括 ANTHROPIC_API_KEY、CLAUDE_MODEL、ANTHROPIC_BASE_URL 等。", .english: "The launcher allows you to start Claude Code with one click and automatically inject necessary environment variables, including ANTHROPIC_API_KEY, CLAUDE_MODEL, ANTHROPIC_BASE_URL, etc."],
+        "help_launcher_features": [.chinese: "支持选择终端应用、工作目录、手动添加额外环境变量，以及自动从钥匙串读取 API Token。", .english: "Supports selecting terminal application, working directory, manually adding extra environment variables, and automatically reading API tokens from Keychain."],
+
+        // 帮助内容 - 纯代理模式
+        "help_bypass_title": [.chinese: "纯代理模式", .english: "Bypass Mode"],
+        "help_bypass_desc": [.chinese: "开启纯代理模式后，APP 将完全透传上下游之间的请求和响应，不做任何 API 格式转换。适用于上游提供商原生支持客户端 API 格式的场景。", .english: "When Bypass Mode is enabled, the app will transparently pass all requests and responses between client and upstream without any API format conversion. Suitable when the upstream provider natively supports the client's API format."],
+        "help_bypass_note": [.chinese: "注意：纯代理模式下，模型映射配置（参数注入、自定义参数、推理模式等）仍然生效。", .english: "Note: In Bypass Mode, model mapping configurations (parameter injection, custom parameters, reasoning mode, etc.) still take effect."],
+
+        // 帮助内容 - 设置
+        "help_settings_title": [.chinese: "设置", .english: "Settings"],
+        "help_settings_desc": [.chinese: "在「设置」窗口中，您可以：", .english: "In the \"Settings\" window, you can:"],
+        "help_settings_lang": [.chinese: "切换界面语言（中文/英文）", .english: "Switch interface language (Chinese/English)"],
+        "help_settings_port": [.chinese: "修改服务监听端口（修改后需重启服务）", .english: "Change the server listening port (requires server restart)"],
+
+        // 帮助内容 - 常见问题
+        "help_faq_q1": [.chinese: "Q: 为什么请求返回 404？", .english: "Q: Why does the request return 404?"],
+        "help_faq_a1": [.chinese: "A: 请检查模型映射中的「客户端模型名」是否与请求中的 model 字段匹配，且该配置已启用。", .english: "A: Please check if the \"Incoming Model\" in the model mapping matches the model field in the request, and ensure the configuration is enabled."],
+        "help_faq_q2": [.chinese: "Q: 如何修改服务端口？", .english: "Q: How do I change the server port?"],
+        "help_faq_a2": [.chinese: "A: 在「设置」窗口中修改端口，保存后停止并重新启动服务即可生效。", .english: "A: Change the port in the \"Settings\" window, then stop and restart the server to apply."],
+        "help_faq_q3": [.chinese: "Q: 纯代理模式和普通模式有什么区别？", .english: "Q: What is the difference between Bypass Mode and normal mode?"],
+        "help_faq_a3": [.chinese: "A: 普通模式下，APP 会在 OpenAI 和 Anthropic API 格式之间进行转换。纯代理模式则完全透传，不做任何转换。", .english: "A: In normal mode, the app converts between OpenAI and Anthropic API formats. Bypass Mode transparently passes through without any conversion."],
 
         // 配置模板 / Template management
         "config_template": [.chinese: "配置模板", .english: "Config Template"],

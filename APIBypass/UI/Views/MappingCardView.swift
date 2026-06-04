@@ -75,50 +75,52 @@ struct MappingCardView: View {
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             // Card header
-            Button(action: {
-                if isExpanded && hasChanges {
-                    showUnsavedAlert = true
-                } else {
-                    let newValue = !isExpanded
-                    if newValue {
-                        loadMappingData()
+            HStack(spacing: 12) {
+                Toggle("", isOn: $isEnabled)
+                    .toggleStyle(.switch)
+                    .labelsHidden()
+                    .onChange(of: isEnabled) { _, newValue in
+                        if originalMapping != nil {
+                            quickSaveEnabled(newValue)
+                        }
                     }
-                    isExpanded = newValue
-                }
-            }) {
-                HStack(spacing: 12) {
-                    Toggle("", isOn: $isEnabled)
-                        .toggleStyle(.switch)
-                        .labelsHidden()
-                        .onChange(of: isEnabled) { _, newValue in
-                            if originalMapping != nil {
-                                quickSaveEnabled(newValue)
-                            }
+
+                Button(action: {
+                    if isExpanded && hasChanges {
+                        showUnsavedAlert = true
+                    } else {
+                        let newValue = !isExpanded
+                        if newValue {
+                            loadMappingData()
+                        }
+                        isExpanded = newValue
+                    }
+                }) {
+                    HStack(spacing: 12) {
+                        Circle()
+                            .fill(mapping.isEnabled ? Color.green : Color.gray)
+                            .frame(width: 8, height: 8)
+
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(mapping.name)
+                                .font(.body)
+                            Text("\(mapping.incomingModel) → \(mapping.actualModel)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
 
-                    Circle()
-                        .fill(mapping.isEnabled ? Color.green : Color.gray)
-                        .frame(width: 8, height: 8)
+                        Spacer()
 
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(mapping.name)
-                            .font(.body)
-                        Text("\(mapping.incomingModel) → \(mapping.actualModel)")
-                            .font(.caption)
+                        Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .foregroundColor(.secondary)
+                            .font(.caption)
                     }
-
-                    Spacer()
-
-                    Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
-                        .foregroundColor(.secondary)
-                        .font(.caption)
+                    .contentShape(Rectangle())
                 }
-                .padding(.horizontal, 12)
-                .padding(.vertical, 10)
-                .contentShape(Rectangle())
+                .buttonStyle(.plain)
             }
-            .buttonStyle(.plain)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 10)
 
             // Expanded content
             if isExpanded {

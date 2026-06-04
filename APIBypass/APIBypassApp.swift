@@ -7,10 +7,6 @@ struct APIBypassApp: App {
     @State private var isRunning = false
     @State private var didAutoStart = false
 
-    init() {
-        NSApplication.shared.setActivationPolicy(.regular)
-    }
-
     private func menuBarIcon(running: Bool) -> NSImage? {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
               let baseImage = NSImage(contentsOf: url) else { return nil }
@@ -60,6 +56,7 @@ struct APIBypassApp: App {
             }
         }
         .onAppear {
+            NSApplication.shared.setActivationPolicy(.regular)
             if !didAutoStart {
                 didAutoStart = true
                 startServer()

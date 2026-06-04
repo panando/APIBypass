@@ -74,6 +74,11 @@ API keys stored in macOS Keychain, no plaintext in config files. All traffic sta
 - Smart detection: only translates when client format ≠ upstream provider format
 - Supports `/v1/chat/completions` (OpenAI), `/v1/messages` (Anthropic), `/v1/responses` (OpenAI Responses API)
 
+### Bypass Mode
+- One-click toggle in the menu bar to enable pure proxy mode
+- When activated, requests pass through transparently without API format conversion, while still preserving model mapping and parameter injection
+- Useful when upstream provider natively supports the same format as the client — eliminates unnecessary translation overhead
+
 ### Claude Code Launcher
 - One-click launch from menu bar with all environment variables pre-configured
 - **Multi-provider model assignment**: assign different providers to Opus, Sonnet, Haiku, and Subagent roles in a single session

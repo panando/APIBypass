@@ -1,3 +1,85 @@
+# APIBypass v0.6.1
+
+## What's New
+
+### Built-in Help Window
+- **Comprehensive in-app help**: Added a "Help" option in the menu bar that opens a native SwiftUI help window with sidebar navigation covering:
+  - Quick Start guide
+  - Menu bar options explained
+  - Model Mapping concepts and configuration
+  - Parameter Injection and Custom Parameters
+  - Claude Code Launcher usage
+  - Bypass Mode details and when to use it
+  - Settings overview
+  - Frequently Asked Questions (FAQ)
+- **Bilingual Help**: Help content automatically follows the app's current language setting (Chinese / English)
+
+### UI Improvements
+- **Improved menu grouping**: Moved "Launch Claude Code" into the same menu group as "Bypass Mode" for better logical organization
+
+### Bug Fixes
+- Clarified help documentation: reasoning mode is controlled via `enable_thinking` by default; providers using different fields should use Custom Parameters
+- Fixed terminology: "API Token" → "API Key" in the Claude Code Launcher help section
+
+## Changelog
+
+- feat: add built-in Help window with `NavigationSplitView` and sidebar navigation
+- feat: add bilingual help content for all major features
+- feat: add `HelpView` with 8 sections of documentation
+- ui: move "Launch Claude Code" menu item into the Bypass Mode group
+- fix: clarify reasoning mode documentation (`enable_thinking` default behavior)
+- fix: correct "API Token" to "API Key" in launcher help text
+
+## Download
+
+- [APIBypass-0.6.1.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.1)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.1
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
+# APIBypass v0.6.0
+
+## What's New
+
+### Bypass Mode (Pure Proxy)
+- **One-click toggle**: Added a "Bypass Mode" option in the menu bar to enable pure proxy mode
+- **Transparent passthrough**: When activated, the app passes all requests and responses between client and upstream without any API format conversion, while still preserving model mapping configurations (parameter injection, custom parameters, reasoning toggle, etc.)
+- **Use case**: Ideal when the upstream provider natively supports the same API format as the client, eliminating unnecessary translation overhead
+- **Full feature compatibility**: High concurrency remains fully supported — bypass mode only skips the format conversion step, all other features (model mapping, parameter injection, API key retrieval, streaming) continue to work normally
+
+## Changelog
+
+- feat: add bypass mode toggle in menu bar
+- feat: implement bypass mode in HTTPServer — skips format conversion when enabled
+- feat: preserve model mapping and parameter injection in bypass mode
+
+## Download
+
+- [APIBypass-0.6.0.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.0)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.0
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.5.7
 
 ## What's New

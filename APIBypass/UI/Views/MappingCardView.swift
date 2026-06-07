@@ -79,6 +79,7 @@ struct MappingCardView: View {
                 Toggle("", isOn: $isEnabled)
                     .toggleStyle(.switch)
                     .labelsHidden()
+                    .frame(width: 36, height: 20)
                     .onChange(of: isEnabled) { _, newValue in
                         if originalMapping != nil {
                             quickSaveEnabled(newValue)

@@ -97,6 +97,7 @@ struct MappingDetailView: View {
                         Toggle("", isOn: $isEnabled)
                             .toggleStyle(.switch)
                             .labelsHidden()
+                            .frame(width: 36, height: 20)
                     }
                     Text(isEnabled ? L10n.t("config_enabled") : L10n.t("config_disabled"))
                         .font(.caption)
@@ -188,6 +189,7 @@ struct MappingDetailView: View {
                         Toggle("", isOn: $thinkingOverrideEnabled)
                             .toggleStyle(.switch)
                             .labelsHidden()
+                            .frame(width: 36, height: 20)
                     }
 
                     Text(L10n.t("reasoning_hint"))
@@ -201,6 +203,7 @@ struct MappingDetailView: View {
                             Toggle("", isOn: $thinkingEnabled)
                                 .toggleStyle(.switch)
                                 .labelsHidden()
+                                .frame(width: 36, height: 20)
                                 .disabled(!thinkingOverrideEnabled)
                         }
                         if thinkingEnabled,
@@ -272,6 +275,7 @@ struct MappingDetailView: View {
                         Toggle("", isOn: $customFieldsEnabled)
                             .toggleStyle(.switch)
                             .labelsHidden()
+                            .frame(width: 36, height: 20)
                     }
 
                     VStack(spacing: 8) {

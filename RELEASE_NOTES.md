@@ -1,3 +1,30 @@
+# APIBypass v0.6.3
+
+## Bug Fixes
+
+- **Fixed layout recursion crash when selecting provider in List**: Added explicit frame constraints to `Toggle.toggleStyle(.switch)` to prevent `NSSwitch intrinsicContentSize` calculation from creating circular layout dependency in nested `ScrollView → VStack → ForEach → MappingCardView → HStack → Toggle` structure on macOS 26.5.1. Previously, clicking between providers in the sidebar caused `LayoutEngineBox.sizeThatFits` to recurse 13+ levels, corrupting heap memory and triggering `EXC_BAD_ACCESS (SIGBUS)`.
+
+## Changelog
+
+- fix: prevent layout recursion crash when selecting provider in List
+
+## Download
+
+- [APIBypass-0.6.3.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.3)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.3
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.6.2
 
 ## Bug Fixes
@@ -377,6 +404,8 @@ swift build -c release
 
 ## Previous Releases
 
+- [v0.6.3](https://github.com/panando/APIBypass/releases/tag/v0.6.3) - Layout recursion crash fix
+- [v0.6.2](https://github.com/panando/APIBypass/releases/tag/v0.6.2) - Activation fix, Toggle-in-Button crash fix
 - [v0.6.1](https://github.com/panando/APIBypass/releases/tag/v0.6.1) - Built-in Help Window, UI improvements
 - [v0.5.2](https://github.com/panando/APIBypass/releases/tag/v0.5.2) - OpenAI Responses API, Claude Code compatibility fixes, URL building improvements
 - [v0.5.1](https://github.com/panando/APIBypass/releases/tag/v0.5.1) - Build warnings cleanup

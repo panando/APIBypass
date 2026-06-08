@@ -252,8 +252,20 @@ final class HTTPServer: ObservableObject {
 
         // 解析模型名称
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
-              let model = json["model"] as? String,
-              let mapping = configManager.findMapping(for: model) else {
+              let model = json["model"] as? String else {
+            let errorData = #"{"error": "Invalid request: missing model field"}"#.data(using: .utf8)!
+            return Response(
+                status: .badRequest,
+                body: .init(byteBuffer: ByteBuffer(data: errorData))
+            )
+        }
+
+        // 从主线程获取映射配置（线程安全）
+        let mapping = await MainActor.run {
+            configManager.findMapping(for: model)
+        }
+
+        guard let mapping else {
             let errorData = #"{"error": "Model not found or no mapping configured"}"#.data(using: .utf8)!
             return Response(
                 status: .badRequest,
@@ -261,8 +273,12 @@ final class HTTPServer: ObservableObject {
             )
         }
 
-        // 获取提供商配置
-        guard let provider = configManager.findProvider(for: mapping.providerConfigId) else {
+        // 从主线程获取提供商配置（线程安全）
+        let provider = await MainActor.run {
+            configManager.findProvider(for: mapping.providerConfigId)
+        }
+
+        guard let provider else {
             let errorData = #"{"error": "Provider not found for this mapping"}"#.data(using: .utf8)!
             return Response(
                 status: .badRequest,

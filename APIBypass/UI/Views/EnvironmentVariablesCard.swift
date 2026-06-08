@@ -48,7 +48,7 @@ struct EnvironmentVariablesCard: View {
                 EnvironmentVariableRow(
                     envVar: $envVar,
                     baseURL: baseURL,
-                    mappings: configManager.mappingsForProvider(providerId)
+                    mappings: configManager.mappings.filter { $0.providerConfigId == providerId }
                 )
             }
         }

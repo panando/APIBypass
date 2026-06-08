@@ -3,7 +3,7 @@ import SwiftUI
 struct MappingListView: View {
     @ObservedObject var configManager: ConfigManager
     @Binding var selectedMappingId: UUID?
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     var onCopy: ((ModelMapping) -> Void)?
     var onDelete: ((ModelMapping) -> Void)?
@@ -18,7 +18,7 @@ struct MappingListView: View {
                     VStack(alignment: .leading) {
                         Text(mapping.name)
                             .font(.headline)
-                        let providerName = configManager.findProvider(for: mapping.providerConfigId)?.name ?? L10n.t("provider_missing")
+                        let providerName = configManager.providers.first { $0.id == mapping.providerConfigId }?.name ?? L10n.t("provider_missing")
                         Text("\(mapping.incomingModel) → \(mapping.actualModel) · \(providerName)")
                             .font(.caption)
                             .foregroundColor(.secondary)

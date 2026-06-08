@@ -101,12 +101,12 @@ struct ConfigWindow: View {
             }
             Button(L10n.t("delete"), role: .destructive) {
                 if let provider = providerToDelete {
-                    let relatedMappings = configManager.mappingsForProvider(provider.id)
-                    for mapping in relatedMappings {
-                        configManager.delete(mapping.id)
-                    }
-                    configManager.deleteProvider(provider.id)
+                    let relatedMappings = configManager.mappings.filter { $0.providerConfigId == provider.id }
                     Task {
+                        for mapping in relatedMappings {
+                            await configManager.delete(mapping.id)
+                        }
+                        await configManager.deleteProvider(provider.id)
                         try? await keychain.delete(forKey: provider.id.uuidString)
                     }
                     if selectedProviderId == provider.id {
@@ -117,7 +117,7 @@ struct ConfigWindow: View {
             }
         } message: {
             if let provider = providerToDelete {
-                let count = configManager.mappingsForProvider(provider.id).count
+                let count = configManager.mappings.filter { $0.providerConfigId == provider.id }.count
                 if count > 0 {
                     Text("\(L10n.t("confirm_delete_provider_msg"))「\(provider.name)」\(L10n.t("confirm_delete_provider_hint_prefix"))\(count)\(L10n.t("confirm_delete_provider_hint_suffix"))")
                 } else {
@@ -177,7 +177,9 @@ struct ConfigWindow: View {
                         providerRow(provider)
                     }
                     .onMove { source, destination in
-                        configManager.moveProvider(from: source, to: destination)
+                        Task {
+                            await configManager.moveProvider(from: source, to: destination)
+                        }
                     }
                 } header: {
                     EmptyView()
@@ -253,7 +255,7 @@ struct ConfigWindow: View {
 
     private func deleteSelected() {
         if let pid = selectedProviderId,
-           let provider = configManager.findProvider(for: pid) {
+           let provider = configManager.providers.first(where: { $0.id == pid }) {
             providerToDelete = provider
             showDeleteProviderConfirmation = true
         }
@@ -264,7 +266,7 @@ struct ConfigWindow: View {
     @ViewBuilder
     private var detailView: some View {
         if let pid = selectedProviderId,
-           configManager.findProvider(for: pid) != nil {
+           configManager.providers.contains(where: { $0.id == pid }) {
             ProviderDetailView(
                 configManager: configManager,
                 providerId: pid,
@@ -316,7 +318,7 @@ struct ConfigWindow: View {
                                 .font(.caption)
                                 .foregroundColor(.secondary)
                                 .lineLimit(1)
-                            if let provider = configManager.findProvider(for: mapping.providerConfigId) {
+                            if let provider = configManager.providers.first(where: { $0.id == mapping.providerConfigId }) {
                                 Text(provider.name)
                                     .font(.caption2)
                                     .foregroundColor(.secondary)
@@ -363,25 +365,25 @@ struct ConfigWindow: View {
             environmentVariables: provider.environmentVariables
         )
 
-        configManager.addProvider(newProvider)
-
+        let mappingsToCopy = configManager.mappings.filter { $0.providerConfigId == provider.id }
         Task {
+            await configManager.addProvider(newProvider)
+
             if let apiKey = try? await keychain.retrieve(forKey: provider.id.uuidString) {
                 try? await keychain.save(apiKey, forKey: newProvider.id.uuidString)
             }
-        }
 
-        let mappingsToCopy = configManager.mappingsForProvider(provider.id)
-        for mapping in mappingsToCopy {
-            let newMapping = ModelMapping(
-                name: mapping.name,
-                incomingModel: mapping.incomingModel,
-                actualModel: mapping.actualModel,
-                providerConfigId: newProvider.id,
-                parameters: mapping.parameters,
-                isEnabled: mapping.isEnabled
-            )
-            configManager.add(newMapping)
+            for mapping in mappingsToCopy {
+                let newMapping = ModelMapping(
+                    name: mapping.name,
+                    incomingModel: mapping.incomingModel,
+                    actualModel: mapping.actualModel,
+                    providerConfigId: newProvider.id,
+                    parameters: mapping.parameters,
+                    isEnabled: mapping.isEnabled
+                )
+                await configManager.add(newMapping)
+            }
         }
 
         selectedProviderId = newProvider.id

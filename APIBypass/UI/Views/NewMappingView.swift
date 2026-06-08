@@ -110,7 +110,7 @@ struct NewMappingView: View {
                 }
 
                 if let pid = selectedProviderId,
-                   let provider = configManager.findProvider(for: pid) {
+                   let provider = configManager.providers.first(where: { $0.id == pid }) {
                     HStack {
                         Text("")
                             .frame(width: 100, alignment: .trailing)
@@ -194,7 +194,7 @@ struct NewMappingView: View {
                 }
                 if thinkingEnabled,
                    let pid = selectedProviderId,
-                   let provider = configManager.findProvider(for: pid),
+                   let provider = configManager.providers.first(where: { $0.id == pid }),
                    provider.apiProvider == .anthropic {
                     HStack {
                         Text(L10n.t("thinking_budget"))
@@ -300,7 +300,9 @@ struct NewMappingView: View {
             parameters: buildParameters()
         )
 
-        configManager.add(mapping)
+        Task {
+            await configManager.add(mapping)
+        }
         dismiss()
     }
 

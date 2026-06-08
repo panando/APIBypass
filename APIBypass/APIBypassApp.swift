@@ -70,7 +70,7 @@ struct APIBypassApp: App {
         isTransitioning = true
         print("[APIBypass] startServer() called")
         Task {
-            let newServer = HTTPServer(configManager: configManager)
+            let newServer = HTTPServer()
             do {
                 print("[APIBypass] calling newServer.start()...")
                 try await newServer.start()

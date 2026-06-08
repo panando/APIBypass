@@ -66,7 +66,7 @@ struct LaunchClaudeCodeView: View {
             get: {
                 guard let idString = savedAnthropicModelProviderId,
                       let id = UUID(uuidString: idString),
-                      configManager.findProvider(for: id) != nil else {
+                      configManager.providers.contains(where: { $0.id == id }) else {
                     return nil
                 }
                 return id
@@ -80,7 +80,7 @@ struct LaunchClaudeCodeView: View {
             get: {
                 guard let idString = savedOpusModelProviderId,
                       let id = UUID(uuidString: idString),
-                      configManager.findProvider(for: id) != nil else {
+                      configManager.providers.contains(where: { $0.id == id }) else {
                     return nil
                 }
                 return id
@@ -94,7 +94,7 @@ struct LaunchClaudeCodeView: View {
             get: {
                 guard let idString = savedSonnetModelProviderId,
                       let id = UUID(uuidString: idString),
-                      configManager.findProvider(for: id) != nil else {
+                      configManager.providers.contains(where: { $0.id == id }) else {
                     return nil
                 }
                 return id
@@ -108,7 +108,7 @@ struct LaunchClaudeCodeView: View {
             get: {
                 guard let idString = savedHaikuModelProviderId,
                       let id = UUID(uuidString: idString),
-                      configManager.findProvider(for: id) != nil else {
+                      configManager.providers.contains(where: { $0.id == id }) else {
                     return nil
                 }
                 return id
@@ -122,7 +122,7 @@ struct LaunchClaudeCodeView: View {
             get: {
                 guard let idString = savedSubagentModelProviderId,
                       let id = UUID(uuidString: idString),
-                      configManager.findProvider(for: id) != nil else {
+                      configManager.providers.contains(where: { $0.id == id }) else {
                     return nil
                 }
                 return id
@@ -256,13 +256,15 @@ struct LaunchClaudeCodeView: View {
         .alert(L10n.t("terminal_already_running"), isPresented: $showTerminalRunningAlert) {
             Button(L10n.t("new_tab")) {
                 if let terminal = pendingTerminal,
-                   let provider = anthropicModelProviderBinding.wrappedValue.flatMap({ configManager.findProvider(for: $0) }) {
+                   let providerId = anthropicModelProviderBinding.wrappedValue,
+                   let provider = configManager.providers.first(where: { $0.id == providerId }) {
                     doLaunch(terminal: terminal, provider: provider, mode: .newTab)
                 }
             }
             Button(L10n.t("new_window")) {
                 if let terminal = pendingTerminal,
-                   let provider = anthropicModelProviderBinding.wrappedValue.flatMap({ configManager.findProvider(for: $0) }) {
+                   let providerId = anthropicModelProviderBinding.wrappedValue,
+                   let provider = configManager.providers.first(where: { $0.id == providerId }) {
                     doLaunch(terminal: terminal, provider: provider, mode: .newWindow)
                 }
             }
@@ -672,7 +674,9 @@ struct LaunchClaudeCodeView: View {
                 }
             }
 
-            let selectedProvider = providerId.wrappedValue.flatMap { configManager.findProvider(for: $0) }
+            let selectedProvider = providerId.wrappedValue.flatMap { id in
+                configManager.providers.first(where: { $0.id == id })
+            }
             Picker("", selection: model) {
                 Text(isRequired ? L10n.t("please_select") : L10n.t("none")).tag("")
                 if let provider = selectedProvider {
@@ -696,7 +700,7 @@ struct LaunchClaudeCodeView: View {
     }
 
     private func enabledMappings(provider: ProviderConfig) -> [ModelMapping] {
-        configManager.mappingsForProvider(provider.id).filter { $0.isEnabled }
+        configManager.mappings.filter { $0.providerConfigId == provider.id && $0.isEnabled }
     }
 
     private var templateDisplayText: String {
@@ -933,7 +937,8 @@ struct LaunchClaudeCodeView: View {
             errorMessage = L10n.t("no_terminal_selected")
             return
         }
-        guard let defaultProvider = anthropicModelProviderBinding.wrappedValue.flatMap({ configManager.findProvider(for: $0) }) else {
+        guard let providerId = anthropicModelProviderBinding.wrappedValue,
+              let defaultProvider = configManager.providers.first(where: { $0.id == providerId }) else {
             errorMessage = L10n.t("no_provider_selected")
             return
         }

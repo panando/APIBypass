@@ -93,8 +93,8 @@ struct NewProviderView: View {
             environmentVariables: ProviderConfig.defaultEnvironmentVariables()
         )
 
-        configManager.addProvider(provider)
         Task {
+            await configManager.addProvider(provider)
             try? await keychain.save(apiKey, forKey: provider.id.uuidString)
         }
         onCreated?(provider)

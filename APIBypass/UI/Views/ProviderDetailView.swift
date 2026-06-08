@@ -43,7 +43,7 @@ struct ProviderDetailView: View {
     }
 
     private var relatedMappings: [ModelMapping] {
-        configManager.mappingsForProvider(providerId)
+        configManager.mappings.filter { $0.providerConfigId == providerId }
     }
 
     var body: some View {
@@ -176,7 +176,9 @@ struct ProviderDetailView: View {
                                             expandedMappingId = nil
                                             mappingWithChanges = nil
                                         }
-                                        configManager.delete(mapping.id)
+                                        Task {
+                                            await configManager.delete(mapping.id)
+                                        }
                                     },
                                     onHasChangesChange: { hasChanges in
                                         if hasChanges {
@@ -189,7 +191,9 @@ struct ProviderDetailView: View {
                                 )
                             }
                             .onMove { source, destination in
-                                configManager.moveMapping(providerId: providerId, from: source, to: destination)
+                                Task {
+                                    await configManager.moveMapping(providerId: providerId, from: source, to: destination)
+                                }
                             }
                         }
                     }
@@ -257,7 +261,7 @@ struct ProviderDetailView: View {
     }
 
     private func loadProviderData() {
-        guard let provider = configManager.findProvider(for: providerId) else { return }
+        guard let provider = configManager.providers.first(where: { $0.id == providerId }) else { return }
         name = provider.name
         apiProvider = provider.apiProvider
         baseURL = provider.baseURL.absoluteString
@@ -280,7 +284,7 @@ struct ProviderDetailView: View {
     }
 
     private func saveChanges() {
-        guard let provider = configManager.findProvider(for: providerId) else { return }
+        guard let provider = configManager.providers.first(where: { $0.id == providerId }) else { return }
 
         let updatedProvider = ProviderConfig(
             id: provider.id,
@@ -290,10 +294,10 @@ struct ProviderDetailView: View {
             environmentVariables: provider.environmentVariables
         )
 
-        configManager.updateProvider(updatedProvider)
+        Task {
+            await configManager.updateProvider(updatedProvider)
 
-        if !apiKey.isEmpty {
-            Task {
+            if !apiKey.isEmpty {
                 try? await keychain.save(apiKey, forKey: providerId.uuidString)
             }
         }

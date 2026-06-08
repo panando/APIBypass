@@ -151,7 +151,7 @@ struct MappingDetailView: View {
 
                         // 提供商无效警告
                         if let pid = selectedProviderId,
-                           configManager.findProvider(for: pid) == nil {
+                           configManager.providers.first(where: { $0.id == pid }) == nil {
                             HStack {
                                 Image(systemName: "exclamationmark.triangle.fill")
                                     .foregroundColor(.red)
@@ -164,7 +164,7 @@ struct MappingDetailView: View {
 
                         // 显示当前提供商信息（只读）
                         if let pid = selectedProviderId,
-                           let provider = configManager.findProvider(for: pid) {
+                           let provider = configManager.providers.first(where: { $0.id == pid }) {
                             HStack {
                                 Text("")
                                     .frame(width: 100, alignment: .trailing)
@@ -208,7 +208,7 @@ struct MappingDetailView: View {
                         }
                         if thinkingEnabled,
                            let pid = selectedProviderId,
-                           let provider = configManager.findProvider(for: pid),
+                           let provider = configManager.providers.first(where: { $0.id == pid }),
                            provider.apiProvider == .anthropic {
                             HStack {
                                 Text(L10n.t("thinking_budget"))
@@ -461,7 +461,9 @@ struct MappingDetailView: View {
             isEnabled: isEnabled
         )
 
-        configManager.update(updatedMapping)
+        Task {
+            await configManager.update(updatedMapping)
+        }
         onSave?()
         showSaveConfirmation = true
     }

@@ -80,7 +80,7 @@ struct MappingEditForm: View {
                     }
 
                     if let pid = selectedProviderId,
-                       configManager.findProvider(for: pid) == nil {
+                       configManager.providers.first(where: { $0.id == pid }) == nil {
                         HStack {
                             Image(systemName: "exclamationmark.triangle.fill")
                                 .foregroundColor(.red)
@@ -92,7 +92,7 @@ struct MappingEditForm: View {
                     }
 
                     if let pid = selectedProviderId,
-                       let provider = configManager.findProvider(for: pid) {
+                       let provider = configManager.providers.first(where: { $0.id == pid }) {
                         HStack {
                             Text("")
                                 .frame(width: 100, alignment: .trailing)
@@ -136,7 +136,7 @@ struct MappingEditForm: View {
                     }
                     if thinkingEnabled,
                        let pid = selectedProviderId,
-                       let provider = configManager.findProvider(for: pid),
+                       let provider = configManager.providers.first(where: { $0.id == pid }),
                        provider.apiProvider == .anthropic {
                         HStack {
                             Text(L10n.t("thinking_budget"))

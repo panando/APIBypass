@@ -53,9 +53,8 @@ actor AsyncSemaphore {
     var waitingCount: Int { waiters.count }
 }
 
-@MainActor
 final class HTTPServer: ObservableObject {
-    private let configManager: ConfigManager
+    private let store = ConfigDataStore.shared
     private let keychain: KeychainService
     private let proxyEngine: ProxyEngine
     private let networkService: NetworkService
@@ -81,11 +80,9 @@ final class HTTPServer: ObservableObject {
     }
 
     init(
-        configManager: ConfigManager,
         keychain: KeychainService = .shared,
         maxConcurrentConnections: Int = 100
     ) {
-        self.configManager = configManager
         self.keychain = keychain
         self.proxyEngine = ProxyEngine()
         self.networkService = NetworkService()
@@ -125,11 +122,10 @@ final class HTTPServer: ObservableObject {
         }
 
         // 模型列表端点
-        router.get("/v1/models") { request, context in
-            let models = await MainActor.run {
-                self.configManager.mappings.map { mapping in
-                    ["id": mapping.incomingModel, "object": "model"]
-                }
+        router.get("/v1/models") { [weak self] request, context in
+            let mappings = await self?.store.getMappings() ?? []
+            let models = mappings.map { mapping in
+                ["id": mapping.incomingModel, "object": "model"]
             }
             let response: [String: Any] = ["object": "list", "data": models]
             let data = try JSONSerialization.data(withJSONObject: response)
@@ -147,7 +143,7 @@ final class HTTPServer: ObservableObject {
         self.app = newApp
 
         // 在后台启动服务
-        serverTask = Task { @MainActor in
+        serverTask = Task {
             do {
                 let group = ServiceGroup(
                     configuration: .init(services: [newApp], logger: newApp.logger)
@@ -264,10 +260,8 @@ final class HTTPServer: ObservableObject {
             )
         }
 
-        // 从主线程获取映射配置（线程安全）
-        let mapping = await MainActor.run {
-            configManager.findMapping(for: model)
-        }
+        // 从 ConfigDataStore 获取映射配置（线程安全）
+        let mapping = await store.findMapping(for: model)
 
         guard let mapping else {
             let errorData = #"{"error": "Model not found or no mapping configured"}"#.data(using: .utf8)!
@@ -277,10 +271,8 @@ final class HTTPServer: ObservableObject {
             )
         }
 
-        // 从主线程获取提供商配置（线程安全）
-        let provider = await MainActor.run {
-            configManager.findProvider(for: mapping.providerConfigId)
-        }
+        // 从 ConfigDataStore 获取提供商配置（线程安全）
+        let provider = await store.findProvider(for: mapping.providerConfigId)
 
         guard let provider else {
             let errorData = #"{"error": "Provider not found for this mapping"}"#.data(using: .utf8)!

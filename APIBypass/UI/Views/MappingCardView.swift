@@ -277,7 +277,9 @@ struct MappingCardView: View {
     private func quickSaveEnabled(_ enabled: Bool) {
         guard var current = configManager.mappings.first(where: { $0.id == mapping.id }) else { return }
         current.isEnabled = enabled
-        configManager.update(current)
+        Task {
+            await configManager.update(current)
+        }
         onSave?()
     }
 
@@ -303,7 +305,9 @@ struct MappingCardView: View {
         current.isEnabled = isEnabled
         current.parameters = buildParameters()
 
-        configManager.update(current)
+        Task {
+            await configManager.update(current)
+        }
         originalMapping = current
         onHasChangesChange?(false)
         onSave?()

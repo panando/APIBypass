@@ -262,8 +262,10 @@ struct ProviderDetailView: View {
         apiProvider = provider.apiProvider
         baseURL = provider.baseURL.absoluteString
 
-        if let key = try? keychain.retrieve(forKey: providerId.uuidString) {
-            apiKey = key
+        Task {
+            if let key = try? await keychain.retrieve(forKey: providerId.uuidString) {
+                apiKey = key
+            }
         }
 
         loadOriginalData()
@@ -291,7 +293,9 @@ struct ProviderDetailView: View {
         configManager.updateProvider(updatedProvider)
 
         if !apiKey.isEmpty {
-            try? keychain.save(apiKey, forKey: providerId.uuidString)
+            Task {
+                try? await keychain.save(apiKey, forKey: providerId.uuidString)
+            }
         }
 
         onSave?()

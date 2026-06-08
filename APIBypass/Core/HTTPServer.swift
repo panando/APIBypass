@@ -61,6 +61,7 @@ final class HTTPServer: ObservableObject {
     private let networkService: NetworkService
     private var app: Application<RouterResponder<BasicRequestContext>>?
     private var serviceGroup: ServiceGroup?
+    private var serverTask: Task<Void, Never>?
 
     let port: Int
 
@@ -146,7 +147,7 @@ final class HTTPServer: ObservableObject {
         self.app = newApp
 
         // 在后台启动服务
-        Task { @MainActor in
+        serverTask = Task { @MainActor in
             do {
                 let group = ServiceGroup(
                     configuration: .init(services: [newApp], logger: newApp.logger)
@@ -161,6 +162,9 @@ final class HTTPServer: ObservableObject {
 
     func stop() async {
         await serviceGroup?.triggerGracefulShutdown()
+        // 等待后台任务完成
+        await serverTask?.value
+        serverTask = nil
         serviceGroup = nil
         app = nil
     }
@@ -333,7 +337,7 @@ final class HTTPServer: ObservableObject {
         // 获取 API Key
         let apiKey: String
         do {
-            apiKey = try keychain.retrieve(forKey: mapping.providerConfigId.uuidString)
+            apiKey = try await keychain.retrieve(forKey: mapping.providerConfigId.uuidString)
         } catch {
             let errorData = #"{"error": "API key not configured"}"#.data(using: .utf8)!
             return Response(

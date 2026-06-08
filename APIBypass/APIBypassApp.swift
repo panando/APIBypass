@@ -6,6 +6,7 @@ struct APIBypassApp: App {
     @State private var server: HTTPServer?
     @State private var isRunning = false
     @State private var didAutoStart = false
+    @State private var isTransitioning = false
 
     private func menuBarIcon(running: Bool) -> NSImage? {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
@@ -65,6 +66,8 @@ struct APIBypassApp: App {
     }
 
     private func startServer() {
+        guard !isTransitioning, server == nil else { return }
+        isTransitioning = true
         print("[APIBypass] startServer() called")
         Task {
             let newServer = HTTPServer(configManager: configManager)
@@ -77,14 +80,18 @@ struct APIBypassApp: App {
             } catch {
                 print("[APIBypass] Failed to start server: \(error)")
             }
+            isTransitioning = false
         }
     }
 
     private func stopServer() {
+        guard !isTransitioning, server != nil else { return }
+        isTransitioning = true
         Task {
             await server?.stop()
             server = nil
             isRunning = false
+            isTransitioning = false
         }
     }
 }

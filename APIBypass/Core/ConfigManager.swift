@@ -273,8 +273,10 @@ final class ConfigManager: ObservableObject {
             for oldMapping in groupMappings {
                 let oldKey = oldMapping.id.uuidString
                 let newKey = provider.id.uuidString
-                if let apiKey = try? KeychainService.shared.retrieve(forKey: oldKey) {
-                    try? KeychainService.shared.save(apiKey, forKey: newKey)
+                Task {
+                    if let apiKey = try? await KeychainService.shared.retrieve(forKey: oldKey) {
+                        try? await KeychainService.shared.save(apiKey, forKey: newKey)
+                    }
                 }
 
                 let newMapping = ModelMapping(

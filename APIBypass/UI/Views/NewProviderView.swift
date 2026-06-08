@@ -94,7 +94,9 @@ struct NewProviderView: View {
         )
 
         configManager.addProvider(provider)
-        try? keychain.save(apiKey, forKey: provider.id.uuidString)
+        Task {
+            try? await keychain.save(apiKey, forKey: provider.id.uuidString)
+        }
         onCreated?(provider)
         dismiss()
     }

@@ -72,7 +72,9 @@ struct ConfigWindow: View {
         }
         .onAppear {
             let providerIds = configManager.providers.map { $0.id.uuidString }
-            keychain.preloadKeys(for: providerIds)
+            Task {
+                await keychain.preloadKeys(for: providerIds)
+            }
         }
     }
 
@@ -104,7 +106,9 @@ struct ConfigWindow: View {
                         configManager.delete(mapping.id)
                     }
                     configManager.deleteProvider(provider.id)
-                    try? keychain.delete(forKey: provider.id.uuidString)
+                    Task {
+                        try? await keychain.delete(forKey: provider.id.uuidString)
+                    }
                     if selectedProviderId == provider.id {
                         selectedProviderId = nil
                     }
@@ -361,8 +365,10 @@ struct ConfigWindow: View {
 
         configManager.addProvider(newProvider)
 
-        if let apiKey = try? keychain.retrieve(forKey: provider.id.uuidString) {
-            try? keychain.save(apiKey, forKey: newProvider.id.uuidString)
+        Task {
+            if let apiKey = try? await keychain.retrieve(forKey: provider.id.uuidString) {
+                try? await keychain.save(apiKey, forKey: newProvider.id.uuidString)
+            }
         }
 
         let mappingsToCopy = configManager.mappingsForProvider(provider.id)

@@ -1,14 +1,16 @@
 import Foundation
 import Security
 
-final class KeychainService {
+actor KeychainService {
     static let shared = KeychainService()
 
-    private let service = "com.apibypass.apikey"
+    private let service: String
     private let storageKey = "all-api-keys"
     private var cache: [String: String] = [:]
 
-    private init() {}
+    internal init(service: String = "com.apibypass.apikey") {
+        self.service = service
+    }
 
     func save(_ value: String, forKey key: String) throws {
         // 更新缓存

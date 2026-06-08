@@ -32,7 +32,7 @@ struct MappingEditForm: View {
 
     @State private var showNewProviderSheet = false
     @FocusState private var isIncomingModelFocused: Bool
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     var body: some View {
         VStack(spacing: 12) {

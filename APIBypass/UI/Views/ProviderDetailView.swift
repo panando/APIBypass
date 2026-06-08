@@ -10,7 +10,7 @@ struct ProviderDetailView: View {
     var forceResetTrigger: Int = 0
     var saveTrigger: Int = 0
 
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     @State private var name: String = ""
     @State private var apiProvider: APIProvider = .openai
@@ -237,17 +237,12 @@ struct ProviderDetailView: View {
                 pendingMappingId = nil
             }
             Button(L10n.t("save_and_switch")) {
-                // 触发保存
                 mappingSaveTrigger += 1
-                // 延迟切换，让保存完成
-                Task { @MainActor in
-                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
-                    if let id = pendingMappingId {
-                        mappingWithChanges = nil
-                        expandedMappingId = id
-                    }
-                    pendingMappingId = nil
+                if let id = pendingMappingId {
+                    mappingWithChanges = nil
+                    expandedMappingId = id
                 }
+                pendingMappingId = nil
             }
         } message: {
             Text(L10n.t("unsaved_changes_msg"))

@@ -7,7 +7,7 @@ struct MenuBarView: View {
     let onStart: () -> Void
     let onStop: () -> Void
 
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
     @AppStorage("bypassMode") var bypassMode: Bool = false
 
     var body: some View {

@@ -1,13 +1,20 @@
 import SwiftUI
 
 struct SettingsView: View {
-    @ObservedObject var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
     @AppStorage("serverPort") private var serverPort: Int = 8390
 
     private var portString: Binding<String> {
         Binding<String>(
             get: { String(serverPort) },
             set: { if let v = Int($0) { serverPort = v } }
+        )
+    }
+
+    private var languageBinding: Binding<AppLanguage> {
+        Binding<AppLanguage>(
+            get: { l10n.currentLanguage },
+            set: { l10n.currentLanguage = $0 }
         )
     }
 
@@ -19,7 +26,7 @@ struct SettingsView: View {
                     .font(.subheadline)
                     .foregroundColor(.secondary)
 
-                Picker("", selection: $l10n.currentLanguage) {
+                Picker("", selection: languageBinding) {
                     ForEach(AppLanguage.allCases, id: \.self) { lang in
                         Text(lang.displayName).tag(lang)
                     }

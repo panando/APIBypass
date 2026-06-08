@@ -13,7 +13,7 @@ struct MappingCardView: View {
     // 外部触发保存
     var externalSaveTrigger: Int = 0
 
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     @State private var showUnsavedAlert = false
     @State private var showDeleteConfirmation = false
@@ -82,9 +82,7 @@ struct MappingCardView: View {
                     .frame(width: 36, height: 20)
                     .onChange(of: isEnabled) { _, newValue in
                         if originalMapping != nil {
-                            Task { @MainActor in
-                                quickSaveEnabled(newValue)
-                            }
+                            quickSaveEnabled(newValue)
                         }
                     }
 
@@ -215,17 +213,12 @@ struct MappingCardView: View {
         }
         .onAppear {
             loadMappingData()
-            // 延迟通知，确保状态已同步
-            DispatchQueue.main.async {
-                onHasChangesChange?(false)
-            }
+            onHasChangesChange?(false)
         }
         .onChange(of: mapping.id) { _, _ in
             // 当 mapping 改变时（例如新创建的映射出现在列表中），重新加载数据
             loadMappingData()
-            DispatchQueue.main.async {
-                onHasChangesChange?(false)
-            }
+            onHasChangesChange?(false)
         }
         .onChange(of: hasChanges) { _, newValue in
             onHasChangesChange?(newValue)

@@ -17,7 +17,7 @@ struct MappingDetailView: View {
     var forceResetTrigger: Int = 0
     var saveTrigger: Int = 0
 
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     @State private var name: String = ""
     @State private var incomingModel: String = ""

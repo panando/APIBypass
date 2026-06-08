@@ -6,7 +6,7 @@ struct NewProviderView: View {
     var onCreated: ((ProviderConfig) -> Void)? = nil
 
     @Environment(\.dismiss) var dismiss
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     @State private var name = ""
     @State private var apiProvider: APIProvider = .openai

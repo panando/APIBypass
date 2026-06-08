@@ -20,7 +20,7 @@ struct ConfigWindow: View {
     @State private var forceResetTrigger = 0
     @State private var saveAndSwitchTrigger = 0
 
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
     private let keychain = KeychainService.shared
 
     var body: some View {

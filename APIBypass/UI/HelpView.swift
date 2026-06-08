@@ -21,7 +21,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
 
 struct HelpView: View {
     @State private var selectedSection: HelpSection = .quickStart
-    @ObservedObject private var l10n = LocalizationManager.shared
+    private let l10n = LocalizationManager.shared
 
     var body: some View {
         NavigationSplitView {

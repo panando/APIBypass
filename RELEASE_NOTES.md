@@ -1,3 +1,43 @@
+# APIBypass v0.6.4
+
+## Bug Fixes
+
+- **Fixed thread safety crashes on macOS 26.5.1**: Implemented actor-based architecture for `KeychainService` and `ConfigDataStore` to eliminate data races between SwiftUI rendering (main thread) and HTTP request handling (background threads). Previous architecture had unsynchronized dictionary access causing memory corruption and `EXC_BAD_ACCESS` crashes.
+
+- **Fixed JSON serialization crash in FormatTranslator**: Removed invalid `NSJSONSerialization.dataWithJSONObject:` call with `String` argument. `NSJSONSerialization` only accepts `NSArray` or `NSDictionary` as top-level objects. The `system` field in Anthropic API now correctly receives a plain string.
+
+- **Fixed save button incorrectly enabled on provider selection**: Fixed async timing issue where `loadOriginalData()` was called before keychain finished loading, causing `hasChanges` to always be `true` on initial provider selection.
+
+- **Fixed MainActor isolation for ConfigManager**: Ensured thread-safe access to `ConfigManager` in HTTP handlers by properly isolating UI-bound properties on `@MainActor` while background HTTP handlers access the data store directly.
+
+## Changelog
+
+- fix: implement actor-based ConfigDataStore for thread safety
+- fix: make KeychainService thread-safe using Swift actor
+- fix: prevent Toggle layout recursion crash on macOS 26.5.1
+- fix: remove @ObservedObject wrapper for LocalizationManager singleton
+- fix: ensure thread-safe access to ConfigManager in HTTP handlers
+- fix: ensure MainActor isolation for thread-safe configManager access
+- fix: remove invalid JSON serialization for system field in FormatTranslator
+- fix: wait for keychain load before setting original state in ProviderDetailView
+
+## Download
+
+- [APIBypass-0.6.4.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.4)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.4
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.6.3
 
 ## Bug Fixes

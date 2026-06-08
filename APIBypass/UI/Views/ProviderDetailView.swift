@@ -270,9 +270,8 @@ struct ProviderDetailView: View {
             if let key = try? await keychain.retrieve(forKey: providerId.uuidString) {
                 apiKey = key
             }
+            loadOriginalData()
         }
-
-        loadOriginalData()
     }
 
     private func loadOriginalData() {

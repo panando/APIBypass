@@ -264,10 +264,7 @@ final class FormatTranslator {
         }
 
         if !systemTexts.isEmpty {
-            let joined = systemTexts.joined(separator: "\n\n")
-            if let data = try? JSONSerialization.data(withJSONObject: joined) {
-                out["system"] = try? JSONSerialization.jsonObject(with: data)
-            }
+            out["system"] = systemTexts.joined(separator: "\n\n")
         }
         out["messages"] = anthropicMessages
 

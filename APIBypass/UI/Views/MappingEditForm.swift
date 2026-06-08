@@ -117,7 +117,7 @@ struct MappingEditForm: View {
                     Toggle("", isOn: $thinkingOverrideEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .frame(width: 36, height: 20)
+                        .fixedSize()
                 }
 
                 Text(L10n.t("reasoning_hint"))
@@ -131,7 +131,7 @@ struct MappingEditForm: View {
                         Toggle("", isOn: $thinkingEnabled)
                             .toggleStyle(.switch)
                             .labelsHidden()
-                            .frame(width: 36, height: 20)
+                            .fixedSize()
                             .disabled(!thinkingOverrideEnabled)
                     }
                     if thinkingEnabled,
@@ -203,7 +203,7 @@ struct MappingEditForm: View {
                     Toggle("", isOn: $customFieldsEnabled)
                         .toggleStyle(.switch)
                         .labelsHidden()
-                        .frame(width: 36, height: 20)
+                        .fixedSize()
                 }
 
                 VStack(spacing: 8) {

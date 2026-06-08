@@ -79,10 +79,13 @@ struct MappingCardView: View {
                 Toggle("", isOn: $isEnabled)
                     .toggleStyle(.switch)
                     .labelsHidden()
-                    .frame(width: 36, height: 20)
+                    .fixedSize()
                     .onChange(of: isEnabled) { _, newValue in
                         if originalMapping != nil {
-                            quickSaveEnabled(newValue)
+                            // Defer to next run loop to avoid modifying @Published during SwiftUI render pass
+                            DispatchQueue.main.async {
+                                quickSaveEnabled(newValue)
+                            }
                         }
                     }
 

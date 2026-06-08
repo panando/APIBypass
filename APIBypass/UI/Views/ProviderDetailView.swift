@@ -240,7 +240,8 @@ struct ProviderDetailView: View {
                 // 触发保存
                 mappingSaveTrigger += 1
                 // 延迟切换，让保存完成
-                DispatchQueue.main.asyncAfter(deadline: .now() + 0.1) {
+                Task { @MainActor in
+                    try? await Task.sleep(nanoseconds: 100_000_000) // 0.1 seconds
                     if let id = pendingMappingId {
                         mappingWithChanges = nil
                         expandedMappingId = id

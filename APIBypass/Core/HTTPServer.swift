@@ -125,8 +125,10 @@ final class HTTPServer: ObservableObject {
 
         // 模型列表端点
         router.get("/v1/models") { request, context in
-            let models = await self.configManager.mappings.map { mapping in
-                ["id": mapping.incomingModel, "object": "model"]
+            let models = await MainActor.run {
+                self.configManager.mappings.map { mapping in
+                    ["id": mapping.incomingModel, "object": "model"]
+                }
             }
             let response: [String: Any] = ["object": "list", "data": models]
             let data = try JSONSerialization.data(withJSONObject: response)

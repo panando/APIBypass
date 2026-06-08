@@ -82,7 +82,9 @@ struct MappingCardView: View {
                     .frame(width: 36, height: 20)
                     .onChange(of: isEnabled) { _, newValue in
                         if originalMapping != nil {
-                            quickSaveEnabled(newValue)
+                            Task { @MainActor in
+                                quickSaveEnabled(newValue)
+                            }
                         }
                     }
 

@@ -309,12 +309,12 @@ final class ClaudeCodeLauncher {
             }
         }
 
-        // Warp / Warpl
+        // Warp / Warple
         let warpPaths = [
             "/Applications/Warp.app",
             NSHomeDirectory() + "/Applications/Warp.app",
-            "/Applications/Warpl.app",
-            NSHomeDirectory() + "/Applications/Warpl.app"
+            "/Applications/Warple.app",
+            NSHomeDirectory() + "/Applications/Warple.app"
         ]
         for path in warpPaths {
             if FileManager.default.fileExists(atPath: path) {
@@ -519,13 +519,13 @@ final class ClaudeCodeLauncher {
 
         let script = command
 
-        // Warp/Warpl 特殊处理：在工作目录写临时脚本 + open -a 打开（无需辅助功能权限）
-        if terminal.id == "warp" || terminal.id == "warpl" {
+        // Warp/Warple 特殊处理：在工作目录写临时脚本 + open -a 打开（无需辅助功能权限）
+        if terminal.id == "warp" || terminal.id == "warple" {
             let appName = terminal.name
 
             // 构建启动脚本内容
             let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: "\n")
-            // 脚本写到工作目录，这样 Warpl 打开时终端自然就在正确目录
+            // 脚本写到工作目录，这样 Warple 打开时终端自然就在正确目录
             // 脚本执行时 rm -- "$0" 自删除
             let scriptContent = "#!/bin/bash\nrm -- \"$0\"\n\(envExports)\nexec \(claudePath)"
 
@@ -534,7 +534,7 @@ final class ClaudeCodeLauncher {
             try? scriptContent.write(toFile: scriptPath, atomically: true, encoding: .utf8)
             try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath)
 
-            // open -a Warpl script.sh — 在终端中打开并执行脚本
+            // open -a Warple script.sh — 在终端中打开并执行脚本
             let openTask = Process()
             openTask.executableURL = URL(fileURLWithPath: "/usr/bin/open")
             openTask.arguments = ["-a", appName, scriptPath]

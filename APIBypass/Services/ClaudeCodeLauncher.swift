@@ -301,22 +301,41 @@ final class ClaudeCodeLauncher {
             }
         }
 
-        // Warp
-        let warpPath = "/Applications/Warp.app"
-        if FileManager.default.fileExists(atPath: warpPath) {
-            terminals.append(TerminalApp(
-                id: "warp",
-                name: "Warp",
-                bundleId: "dev.warp.Warp-Stable",
-                path: warpPath,
-                launchCommand: { claudePath, envVars, workDir in
-                    let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
-                    let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
-                    return "tell application \"Warp\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
-                },
-                launchWindowCommand: nil,
-                launchTabCommand: nil
-            ))
+        // Warp / Warpl (支持不同版本)
+        let warpPaths = [
+            "/Applications/Warp.app",
+            NSHomeDirectory() + "/Applications/Warp.app",
+            "/Applications/Warpl.app",
+            NSHomeDirectory() + "/Applications/Warpl.app"
+        ]
+        for path in warpPaths {
+            if FileManager.default.fileExists(atPath: path) {
+                // 动态读取应用名称和 bundle ID
+                let appName = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
+                let plistPath = (path as NSString).appendingPathComponent("Contents/Info.plist")
+                let bundleId = (try? String(contentsOf: URL(fileURLWithPath: plistPath), encoding: .utf8))
+                    .flatMap { plist in
+                        let pattern = #"<key>CFBundleIdentifier</key>\s*<string>([^<]+)</string>"#
+                        return try? NSRegularExpression(pattern: pattern)
+                            .firstMatch(in: plist, range: NSRange(plist.startIndex..., in: plist))
+                            .flatMap { Range($0.range(at: 1), in: plist) }
+                            .map { String(plist[$0]) }
+                    }
+                terminals.append(TerminalApp(
+                    id: appName.lowercased(),
+                    name: appName,
+                    bundleId: bundleId,
+                    path: path,
+                    launchCommand: { claudePath, envVars, workDir in
+                        let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
+                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
+                        return "tell application \"\(appName)\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
+                    },
+                    launchWindowCommand: nil,
+                    launchTabCommand: nil
+                ))
+                break
+            }
         }
 
         // Hyper

@@ -81,6 +81,7 @@ enum LauncherError: Error, LocalizedError {
     case terminalNotFound
     case launchFailed(String)
     case keychainReadFailed(String)
+    case accessibilityDenied
 
     var errorDescription: String? {
         switch self {
@@ -92,7 +93,14 @@ enum LauncherError: Error, LocalizedError {
             return "\(L10n.t("launcher_failed")): \(message)"
         case .keychainReadFailed(let message):
             return "\(L10n.t("launcher_keychain_failed")): \(message)"
+        case .accessibilityDenied:
+            return L10n.t("launcher_accessibility_denied")
         }
+    }
+
+    var isAccessibilityError: Bool {
+        if case .accessibilityDenied = self { return true }
+        return false
     }
 }
 
@@ -301,7 +309,7 @@ final class ClaudeCodeLauncher {
             }
         }
 
-        // Warp / Warpl (支持不同版本)
+        // Warp / Warpl
         let warpPaths = [
             "/Applications/Warp.app",
             NSHomeDirectory() + "/Applications/Warp.app",
@@ -310,7 +318,6 @@ final class ClaudeCodeLauncher {
         ]
         for path in warpPaths {
             if FileManager.default.fileExists(atPath: path) {
-                // 动态读取应用名称和 bundle ID
                 let appName = URL(fileURLWithPath: path).deletingPathExtension().lastPathComponent
                 let plistPath = (path as NSString).appendingPathComponent("Contents/Info.plist")
                 let bundleId = (try? String(contentsOf: URL(fileURLWithPath: plistPath), encoding: .utf8))
@@ -326,11 +333,7 @@ final class ClaudeCodeLauncher {
                     name: appName,
                     bundleId: bundleId,
                     path: path,
-                    launchCommand: { claudePath, envVars, workDir in
-                        let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: " && ")
-                        let cdCommand = workDir != nil ? "cd '\(workDir!)' && " : ""
-                        return "tell application \"\(appName)\" to activate\ndo shell script \"\(cdCommand)\(envExports) && \(claudePath) &\""
-                    },
+                    launchCommand: { _, _, _ in "" },
                     launchWindowCommand: nil,
                     launchTabCommand: nil
                 ))
@@ -516,7 +519,56 @@ final class ClaudeCodeLauncher {
 
         let script = command
 
-        // 执行 AppleScript
+        // Warp/Warpl 特殊处理：在工作目录写临时脚本 + open -a 打开（无需辅助功能权限）
+        if terminal.id == "warp" || terminal.id == "warpl" {
+            let appName = terminal.name
+
+            // 构建启动脚本内容
+            let envExports = envVars.map { "export \($0.key)='\($0.value)'" }.joined(separator: "\n")
+            // 脚本写到工作目录，这样 Warpl 打开时终端自然就在正确目录
+            // 脚本执行时 rm -- "$0" 自删除
+            let scriptContent = "#!/bin/bash\nrm -- \"$0\"\n\(envExports)\nexec \(claudePath)"
+
+            let scriptDir = workDir ?? NSHomeDirectory()
+            let scriptPath = (scriptDir as NSString).appendingPathComponent(".apibypass_launch.sh")
+            try? scriptContent.write(toFile: scriptPath, atomically: true, encoding: .utf8)
+            try? FileManager.default.setAttributes([.posixPermissions: 0o755], ofItemAtPath: scriptPath)
+
+            // open -a Warpl script.sh — 在终端中打开并执行脚本
+            let openTask = Process()
+            openTask.executableURL = URL(fileURLWithPath: "/usr/bin/open")
+            openTask.arguments = ["-a", appName, scriptPath]
+            do {
+                try openTask.run()
+                openTask.waitUntilExit()
+            } catch {
+                throw LauncherError.launchFailed(error.localizedDescription)
+            }
+
+            return
+        }
+
+        // 先检测辅助功能权限（快速探测，不等主脚本完成）
+        let needsKeystroke = script.contains("keystroke") || script.contains("key code")
+        if needsKeystroke {
+            let checkTask = Process()
+            checkTask.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
+            checkTask.arguments = ["-e", "tell application \"System Events\" to get name of first process"]
+            let checkPipe = Pipe()
+            checkTask.standardError = checkPipe
+            checkTask.standardOutput = Pipe()
+            try checkTask.run()
+            checkTask.waitUntilExit()
+            if checkTask.terminationStatus != 0 {
+                let errData = checkPipe.fileHandleForReading.readDataToEndOfFile()
+                let errStr = String(data: errData, encoding: .utf8) ?? ""
+                if errStr.contains("不允许发送按键") || errStr.contains("not allowed to send keystrokes") || errStr.contains("1002") {
+                    throw LauncherError.accessibilityDenied
+                }
+            }
+        }
+
+        // 执行 AppleScript（fire-and-forget，不阻塞等待）
         let task = Process()
         task.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
         task.arguments = ["-e", script]

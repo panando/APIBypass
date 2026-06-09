@@ -234,6 +234,8 @@ struct L10n {
         "launcher_claude_not_found": [.chinese: "未找到 Claude Code", .english: "Claude Code not found"],
         "launcher_failed": [.chinese: "启动失败", .english: "Launch failed"],
         "launcher_keychain_failed": [.chinese: "Keychain 读取失败", .english: "Keychain read failed"],
+        "launcher_accessibility_denied": [.chinese: "需要辅助功能权限：请前往「系统设置 > 隐私与安全性 > 辅助功能」，将本应用添加到允许列表", .english: "Accessibility permission required: go to System Settings > Privacy & Security > Accessibility and add this app to the allowed list"],
+        "launcher_open_accessibility": [.chinese: "打开系统设置", .english: "Open System Settings"],
 
         // API Provider types
         "provider_type_openai": [.chinese: "OpenAI Chat API", .english: "OpenAI Chat API"],

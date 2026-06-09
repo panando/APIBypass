@@ -48,6 +48,7 @@ struct LaunchClaudeCodeView: View {
 
     @State private var isLaunching = false
     @State private var errorMessage: String?
+    @State private var isAccessibilityError = false
 
     private var availableTerminals: [TerminalApp] {
         ClaudeCodeLauncher.availableTerminals()
@@ -157,7 +158,7 @@ struct LaunchClaudeCodeView: View {
 
             // 错误信息
             if let error = errorMessage {
-                errorView(message: error)
+                errorView(message: error, isAccessibilityError: isAccessibilityError)
             }
 
             // 底部按钮
@@ -167,6 +168,9 @@ struct LaunchClaudeCodeView: View {
         .frame(minWidth: 700, idealWidth: 750, minHeight: 720, idealHeight: 800)
         .onAppear {
             loadSavedSettings()
+        }
+        .onDisappear {
+            saveSettings()
         }
         .onReceive(NotificationCenter.default.publisher(for: .launchClaudeCodeWindowDidShow)) { _ in
             loadSavedSettings()
@@ -314,6 +318,10 @@ struct LaunchClaudeCodeView: View {
                 .pickerStyle(.menu)
                 .labelsHidden()
                 .frame(width: 360, alignment: .leading)
+                .onChange(of: selectedTerminalId) { _, _ in
+                    guard !isApplyingTemplate else { return }
+                    saveSettings()
+                }
 
                 Spacer()
             }
@@ -377,6 +385,10 @@ struct LaunchClaudeCodeView: View {
                 .stroke(Color(nsColor: .separatorColor), lineWidth: 1)
         )
         .cornerRadius(10)
+        .onChange(of: workingDirectory) { _, _ in
+            guard !isApplyingTemplate else { return }
+            saveSettings()
+        }
     }
 
     // MARK: - Environment Variables Section
@@ -742,16 +754,28 @@ struct LaunchClaudeCodeView: View {
 
     // MARK: - Error View
 
-    private func errorView(message: String) -> some View {
-        HStack(spacing: 8) {
-            Image(systemName: "exclamationmark.triangle.fill")
-                .foregroundColor(.orange)
-            Text(message)
-                .font(.callout)
-                .foregroundColor(.secondary)
+    private func errorView(message: String, isAccessibilityError: Bool = false) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            HStack(spacing: 8) {
+                Image(systemName: "exclamationmark.triangle.fill")
+                    .foregroundColor(.orange)
+                Text(message)
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+            if isAccessibilityError {
+                Button {
+                    NSWorkspace.shared.open(URL(string: "x-apple.systempreferences:com.apple.preference.security?Privacy_Accessibility")!)
+                } label: {
+                    Text(L10n.t("launcher_open_accessibility"))
+                        .font(.callout)
+                }
+                .buttonStyle(.borderedProminent)
+                .controlSize(.small)
+            }
         }
         .padding(12)
-        .frame(maxWidth: .infinity)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color.orange.opacity(0.1))
         .cornerRadius(8)
     }
@@ -969,6 +993,7 @@ struct LaunchClaudeCodeView: View {
     private func doLaunch(terminal: TerminalApp, provider: ProviderConfig, mode: TerminalLaunchMode) {
         isLaunching = true
         errorMessage = nil
+        isAccessibilityError = false
 
         var customEnvVars: [String: String] = [
             "ANTHROPIC_BASE_URL": localBaseURL,
@@ -1001,9 +1026,15 @@ struct LaunchClaudeCodeView: View {
                 ClaudeCodeLauncher.addRecentDirectory(workingDirectory)
             }
             isLaunching = false
+            isAccessibilityError = false
             dismiss()
+        } catch let error as LauncherError {
+            isLaunching = false
+            isAccessibilityError = error.isAccessibilityError
+            errorMessage = error.localizedDescription
         } catch {
             isLaunching = false
+            isAccessibilityError = false
             errorMessage = error.localizedDescription
         }
     }

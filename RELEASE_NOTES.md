@@ -1,3 +1,42 @@
+# APIBypass v0.6.5
+
+## What's New
+
+### Warp/Warpl Terminal Support
+- **Added Warp and Warpl terminal detection**: The Claude Code Launcher now detects both `Warp.app` and `Warpl.app` installations. App name and bundle ID are read dynamically from the app's `Info.plist`, ensuring compatibility across different versions.
+- **No accessibility permission required**: Warp/Warpl launch uses a temporary shell script written to the working directory + `open -a` command. The script auto-deletes itself on execution. No System Events keystroke access needed.
+
+### UI Fixes
+- **Fixed terminal/working directory selection not persisting**: Terminal and working directory selections were not saved when changed. Added `onChange` handlers for both fields and `onDisappear` auto-save on window close.
+- **Added accessibility permission error UI**: When other terminals (e.g., Terminal.app new tab) require accessibility permission but it's not granted, the error message now includes a button to open System Settings > Accessibility.
+
+## Changelog
+
+- feat: add dynamic detection for Warp/Warpl terminal
+- feat: add Warp/Warpl launch via temporary script + `open -a` (no accessibility permission needed)
+- fix: persist terminal selection on change
+- fix: persist working directory selection on change
+- fix: auto-save settings on launcher window close
+- feat: add accessibility permission error with System Settings button
+- feat: add `LauncherError.accessibilityDenied` error type
+
+## Download
+
+- [APIBypass-0.6.5.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.5)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.5
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.6.4
 
 ## Bug Fixes

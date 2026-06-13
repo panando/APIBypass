@@ -380,6 +380,55 @@ struct L10n {
         "codex_plugin_entry_unlock": [.chinese: "插件入口解锁", .english: "Plugin Entry Unlock"],
         "codex_reasoning_override": [.chinese: "覆盖推理配置", .english: "Reasoning Override"],
         "help_codex_adaptor": [.chinese: "Codex Adaptor", .english: "Codex Adaptor"],
+
+        // Codex Adaptor - Server tab
+        "codex_runtime_status": [.chinese: "运行状态", .english: "Runtime Status"],
+        "codex_proxy_server": [.chinese: "代理服务器", .english: "Proxy Server"],
+        "codex_proxy_port": [.chinese: "代理端口", .english: "Proxy Port"],
+        "codex_proxy_url": [.chinese: "代理 URL", .english: "Proxy URL"],
+        "codex_requires_restart": [.chinese: "需要重启生效", .english: "Requires restart to apply"],
+        "codex_auto_configured": [.chinese: "自动配置", .english: "Auto-configured"],
+        "codex_select_section": [.chinese: "请选择一个分区", .english: "Select a section"],
+
+        // Codex Adaptor - Reasoning
+        "codex_enable_thinking": [.chinese: "启用思考（推理）", .english: "Enable Thinking (Reasoning)"],
+        "codex_thinking_desc": [.chinese: "注入思考模式参数到请求中", .english: "Inject thinking mode parameter into requests"],
+        "codex_enable_effort": [.chinese: "启用推理努力级别", .english: "Enable Reasoning Effort"],
+        "codex_effort_desc": [.chinese: "转发推理努力级别参数到上游", .english: "Forward reasoning effort level parameter to upstream"],
+        "codex_reasoning_auto_footer": [.chinese: "未设置覆盖时使用自动检测。代理根据提供商名称和 Base URL 推断参数。", .english: "Auto-detection is used when no override is set. The proxy infers parameters from the provider name and base URL."],
+        "codex_output_format_desc": [.chinese: "上游 API 返回推理文本的格式", .english: "How the upstream API returns reasoning text"],
+
+        // Codex Adaptor - Custom Models
+        "codex_model_slug": [.chinese: "模型名称", .english: "Model Name"],
+        "codex_model_alias_desc": [.chinese: "Codex 显示名称", .english: "Codex display name"],
+        "codex_model_slug_desc": [.chinese: "上游 API 模型 ID", .english: "Upstream API model ID"],
+        "codex_model_footer": [.chinese: "这些模型会出现在 Codex 的模型选择器中。", .english: "These models appear in Codex's model selector."],
+        "codex_context_window_eg": [.chinese: "如 128,000", .english: "e.g. 128,000"],
+
+        // Codex Adaptor - CDP descriptions
+        "codex_plugin_entry_unlock_desc": [.chinese: "解锁 Codex 插件入口", .english: "Unlock Codex plugin entry"],
+        "codex_marketplace_unlock_desc": [.chinese: "解锁插件市场", .english: "Unlock plugin marketplace"],
+        "codex_force_plugin_install_desc": [.chinese: "强制安装插件", .english: "Force plugin installation"],
+        "codex_debug_port_desc": [.chinese: "Codex Electron 应用的调试端口", .english: "Debug port for Codex Electron app"],
+
+        // Codex Adaptor - Help
+        "codex_help_subtitle": [.chinese: "Responses API 代理，为 OpenAI Codex CLI 提供支持", .english: "Responses API proxy for OpenAI Codex CLI"],
+        "codex_how_it_works": [.chinese: "工作原理", .english: "How It Works"],
+        "codex_how_it_works_desc": [.chinese: "Codex Adaptor 是一个本地 HTTP 代理，将 Codex CLI 的 Responses API 调用转换为 Chat Completions 格式，然后转发到 APIBypass 进行模型映射和参数注入。", .english: "Codex Adaptor is a local HTTP proxy that translates Codex CLI's Responses API calls into Chat Completions format, then forwards them to APIBypass for model mapping and parameter injection."],
+        "codex_setup_guide": [.chinese: "设置指南", .english: "Setup Guide"],
+        "codex_setup_step1": [.chinese: "在上方「Server」标签中启动 Codex Adaptor 服务", .english: "Start the Codex Adaptor service in the Server tab above"],
+        "codex_setup_step2": [.chinese: "配置通信协议（Chat Completions 或 Responses API）", .english: "Configure the communication protocol (Chat Completions or Responses API)"],
+        "codex_setup_step3": [.chinese: "根据需要配置推理参数和自定义模型", .english: "Configure reasoning parameters and custom models as needed"],
+        "codex_setup_step4": [.chinese: "将 Codex CLI 的 API 地址指向 http://127.0.0.1:15721/v1", .english: "Point Codex CLI's API base URL to http://127.0.0.1:15721/v1"],
+        "codex_setup_step5": [.chinese: "在 Codex 中使用 — 所有请求将通过 APIBypass 代理转发", .english: "Use Codex as usual — all requests will be proxied through APIBypass"],
+        "codex_config_files": [.chinese: "配置文件", .english: "Configuration Files"],
+        "codex_file_config_desc": [.chinese: "Codex CLI 读取的主配置文件", .english: "Main configuration file read by Codex CLI"],
+        "codex_file_providers_desc": [.chinese: "代理内部元数据", .english: "Proxy-internal metadata"],
+        "codex_file_catalog_desc": [.chinese: "每个提供商的模型目录", .english: "Per-provider model catalog"],
+        "codex_file_backup_desc": [.chinese: "配置文件备份", .english: "Configuration file backup"],
+
+        // Codex Adaptor - About
+        "codex_about_subtitle": [.chinese: "将 OpenAI Codex CLI 的 Responses API 调用转换为 Chat Completions 格式的本地代理", .english: "A local proxy that translates OpenAI Codex CLI's Responses API calls into Chat Completions format"],
     ]
 }
 

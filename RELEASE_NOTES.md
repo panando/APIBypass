@@ -1,3 +1,37 @@
+# APIBypass v0.7.2
+
+## What's New
+
+### Config Auto-Recovery from providers.json
+
+When Codex Adaptor configuration is missing from UserDefaults (e.g., after clearing app data), the app now automatically recovers settings from `~/.codex/providers.json` — the derived output generated during the last service startup. This prevents data loss for custom models, wire API, and reasoning configuration.
+
+- **Wire API**: Restored from `upstreamWireAPI`
+- **Reasoning config**: Full recovery including all thinking/effort overrides
+- **Custom models**: Model slugs matched against APIBypass mappings by `incomingModel`, restoring aliases and context windows
+- Recovered config is persisted back to UserDefaults immediately
+
+### Bug Fixes
+
+- **Menu bar language switching**: Fixed menu bar not re-rendering when switching between Chinese/English — changed `private let` to `@ObservedObject private var` for `LocalizationManager`
+
+## Download
+
+- [APIBypass-0.7.2.dmg](https://github.com/panando/APIBypass/releases/tag/v0.7.2)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.7.2
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.7.0
 
 ## What's New

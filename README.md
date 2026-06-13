@@ -4,9 +4,9 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**One BaseURL. All models. Zero hassle.**
+**Any AI client. Any model. Any format. One endpoint.**
 
-APIBypass is a macOS menu bar app that acts as your local LLM API gateway. Configure once, and every AI client connects to all your models through a single address — automatic format translation, model mapping, parameter injection, and Claude Code multi-model launch, all in one place.
+APIBypass is a macOS menu bar app that sits between your AI tools and upstream API providers — translating formats, remapping model names, injecting parameters, and launching Claude Code with multi-model routing. Configure once, use everywhere.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![macOS 14.0+](https://img.shields.io/badge/macOS-14.0%2B-black?logo=apple)](https://github.com/panando/APIBypass)
@@ -29,9 +29,18 @@ APIBypass is a macOS menu bar app that acts as your local LLM API gateway. Confi
 
 [![Configure](screenshot_configure.png)](screenshot_configure.png)
 
-> *I was tired of juggling API keys across different clients and providers. Claude Code only speaks Anthropic format, but most third-party models use OpenAI format. Different models need different temperature and thinking settings. I wanted one app that handles everything — format translation, model mapping, parameter injection — from a single menu bar icon.*
->
-> *That's why I built APIBypass.*
+### Why APIBypass?
+
+Claude Code speaks Anthropic. Most models speak OpenAI. Different models need different temperatures, thinking budgets, and context limits. Switching providers usually means reconfiguring every client.
+
+APIBypass solves all of this at the network layer — one local endpoint, zero client changes:
+
+- **Format translation** — Anthropic ↔ OpenAI in both directions, including SSE streaming, tool calls, and thinking mode. Only translates when formats don't match.
+- **Model mapping** — your client asks for `claude-sonnet-4-6`, APIBypass routes it to any model you choose.
+- **Parameter injection** — temperature, top-p, thinking mode, custom JSON fields — set once per model, applied to every request.
+- **Claude Code launcher** — assign different providers to Opus, Sonnet, Haiku, and Subagent roles. One click, one terminal, all models.
+- **Codex Adaptor** — built-in Responses API proxy for Codex CLI, with CDP injection for the Codex Electron app.
+- **Keychain security** — API keys in macOS Keychain, never in plaintext. All traffic stays on your machine.
 
 ## Install
 
@@ -44,13 +53,9 @@ Download the latest `.dmg` from [Releases](https://github.com/panando/APIBypass/
 ```bash
 git clone https://github.com/panando/APIBypass.git
 cd APIBypass
-
-# Run in debug mode
-swift run
-
-# Or build release binary
-swift build -c release
-.build/arm64-apple-macosx/release/APIBypass
+swift run      # debug mode
+# or
+swift build -c release && .build/arm64-apple-macosx/release/APIBypass
 ```
 
 Requires macOS 14.0+, Swift 6.0+, Xcode 16.0+.
@@ -59,169 +64,161 @@ Requires macOS 14.0+, Swift 6.0+, Xcode 16.0+.
 
 ### 1. Start the Server
 
-Click the APIBypass icon in the menu bar. The server starts automatically on launch, and the indicator turns green when running on `127.0.0.1:8390` (default port, configurable in Settings).
+Click the APIBypass icon in the menu bar — the server auto-starts on `127.0.0.1:8390`. Green dot = running.
 
-### 2. Configure Providers
+### 2. Add a Provider
 
-Click "Configure..." in the menu bar. Create a provider:
+Menu bar → "Configure..." → create a provider:
 
 | Field | Description | Example |
 |---|---|---|
-| Provider Name | A label for this provider | `My DeepSeek` |
+| Provider Name | A label | `My DeepSeek` |
 | API Provider | OpenAI or Anthropic | `OpenAI` |
 | Base URL | Upstream API endpoint | `https://api.deepseek.com/v1` |
-| API Key | Your upstream API key | Stored in Keychain |
+| API Key | Your upstream key | Stored in Keychain |
 
-The API Provider type determines whether format translation is needed:
-- If client sends Anthropic format but provider is OpenAI → automatic translation
-- If client sends OpenAI format but provider is Anthropic → automatic translation
-- Same format → no translation, direct passthrough
+### 3. Add Model Mappings
 
-### 3. Configure Model Mappings
-
-Inside each provider, create model mappings:
+Inside each provider, create mappings:
 
 | Field | Description | Example |
 |---|---|---|
-| Config Name | A label for this mapping | `Claude Sonnet` |
-| Incoming Model | The model name your client sends | `claude-sonnet-4-6` |
-| Actual Model | The real model to call upstream | `deepseek-chat` |
+| Incoming Model | What your client sends | `claude-sonnet-4-6` |
+| Actual Model | What the upstream expects | `deepseek-chat` |
 
-### 4. Launch Claude Code
+### 4. Point Your Client
 
-Click "Launch Claude Code" in the menu bar:
-1. Select a provider (base URL and API token are auto-configured)
-2. Select your preferred terminal
-3. Choose a model for `ANTHROPIC_MODEL` (required)
-4. Optionally configure Opus/Sonnet/Haiku/Subagent model defaults
-5. Set effort level (none, low, medium, high, max)
-6. Click "Launch" — Claude Code opens in your terminal with all environment variables set
+Set your AI client's base URL to `http://127.0.0.1:8390/v1`. The API Key field can be anything — APIBypass replaces it with your real key.
 
-### 5. Configure Your Client (Manual)
+### 5. Launch Claude Code (Optional)
 
-If not using the launcher, point your AI client to `http://127.0.0.1:8390/v1`:
+Menu bar → "Launch Claude Code":
+1. Pick a provider (base URL and token auto-configured)
+2. Choose a terminal
+3. Select models for Anthropic/Opus/Sonnet/Haiku/Subagent roles
+4. Set effort level
+5. Click "Launch"
 
-```
-OpenAI Base URL: http://127.0.0.1:8390/v1
-Anthropic Base URL: http://127.0.0.1:8390/v1
-```
-
-The API Key field can be anything — the proxy replaces it with your real key.
+Claude Code opens with all environment variables set, routing each model role through your chosen provider.
 
 ---
 
 ## Features
 
-### API Format Translation
+### Anthropic ↔ OpenAI Format Translation
 
-Automatic Anthropic ↔ OpenAI format translation — request bodies, responses, SSE streams, tool calls, thinking mode. Smart detection: only translates when client format ≠ upstream provider format.
+**The core superpower.** Full bidirectional translation of request bodies, responses, SSE event streams, tool calls, and thinking/redacted_thinking blocks. Smart detection: only translates when the client format ≠ provider format.
 
 | Endpoint | Description |
-| --- | --- |
-| `POST /v1/chat/completions` | OpenAI Chat Completions API |
-| `POST /v1/messages` | Anthropic Messages API |
-| `GET /v1/models` | List available models |
+|---|---|
+| `POST /v1/chat/completions` | OpenAI Chat Completions |
+| `POST /v1/messages` | Anthropic Messages |
+| `GET /v1/models` | Model listing |
 
 ### Claude Code Multi-Model Launcher
 
-**Break Claude Code's model barrier.** Launch Claude Code with one click and assign different providers to Opus, Sonnet, Haiku, and other roles — one session, multiple providers working together seamlessly.
+**Break Claude Code's single-model limitation.** Assign different upstream models to each Claude Code role — Opus, Sonnet, Haiku, and Subagent — all in one session.
 
-- Terminal selection: Terminal.app, iTerm2, Alacritty, Kitty, Warp, Hyper, Warple
-- Effort level selector: none, low, medium, high, max
-- **Cache fix**: strips `cch` billing headers, controls `CLAUDE_CODE_ATTRIBUTION_HEADER`
-- **1M context fix**: auto-appends `[1m]` suffix for long-context models
-
-### Model Mapping & Parameter Injection
-
-- **Model mapping**: your client requests `claude-sonnet-4-6`, APIBypass calls whatever model you specify
-- **Parameter injection**: temperature, max tokens, top p, frequency/presence penalty
-- **Thinking mode toggle**: one-click on/off, compatible with both Anthropic and OpenAI formats
-- **Custom JSON fields**: inject any parameter with any value type
-
-### Provider Management
-
-- Separate Provider configurations (API type, base URL, API key)
-- Model mappings reference providers — no duplicate credentials
-- Environment variables per provider for Claude Code integration
-- Auto-migration from legacy format
+- 7 terminal options: Terminal.app, iTerm2, Alacritty, Kitty, Warp, Hyper, Warple
+- Effort level selector (none → max)
+- Cache fix: strips `cch` billing headers, controls `CLAUDE_CODE_ATTRIBUTION_HEADER`
+- 1M context fix: auto-appends `[1m]` suffix for long-context models
+- Launch templates: save and switch between model configurations
 
 ### Codex Adaptor
 
-A built-in Responses API proxy for OpenAI Codex CLI. Launch from the menu bar "Codex Adaptor" item to run a local proxy that translates Codex's Responses API calls into Chat Completions format.
+Built-in proxy for [OpenAI Codex CLI](https://github.com/openai/codex). Translates Codex's Responses API calls to Chat Completions, routing through APIBypass for model mapping and parameter injection.
 
-- **Communication Protocol**: Choose between Chat Completions or Responses API wire format
-- **Reasoning Configuration**: Auto-detect or manually configure thinking/effort parameters for different providers
-- **Custom Models**: Define model aliases that map to your APIBypass model mappings
-- **CDP Enhancements**: Plugin entry unlock, marketplace unlock, and force plugin install for the Codex Electron app
-- **Real-time Logs**: Built-in log viewer with filtering, copy, export, and clear
+- **Wire protocol**: Chat Completions or Responses API
+- **Reasoning config**: Auto-detect or manual thinking/effort per provider (DeepSeek, OpenRouter, SiliconFlow, MiniMax, Qwen, etc.)
+- **Custom models**: Define display names mapped to APIBypass model mappings
+- **CDP Enhancements**: Force entry unlock, plugin marketplace unlock, force plugin install for Codex Electron
+- **Real-time logs**: Filter, copy, export, clear
+- **Auto-recovery**: Recovers config from `~/.codex/providers.json` if UserDefaults is cleared
 
-Usage: Start the Codex Adaptor service, then point Codex CLI to `http://127.0.0.1:15721/v1` as its API base URL.
+Start from menu bar "Codex Adaptor", point Codex CLI to `http://127.0.0.1:15721/v1`.
+
+### Model Mapping & Parameter Injection
+
+- **Model aliasing**: Any incoming model name → any actual upstream model
+- **Parameter injection per mapping**: temperature, max_tokens, top_p, frequency_penalty, presence_penalty
+- **Thinking mode toggle**: one-click on/off, compatible with both Anthropic and OpenAI formats
+- **Custom JSON injection**: inject arbitrary parameters with automatic type detection (bool, int, float, JSON, string)
+- **Local model cleanup**: strips Ollama/LM Studio-specific params before forwarding to cloud APIs
+
+### Provider Management
+
+- Independent provider configs (API type, base URL, API key) — reuse across mappings
+- Environment variables per provider for Claude Code integration (manual, model-mapping, keychain, base-url types)
+- Auto-migration from legacy format
 
 ### Bypass Mode
 
-One-click toggle in the menu bar to enable pure proxy mode. When activated, requests pass through transparently without API format conversion, while still preserving model mapping and parameter injection.
+One-click toggle for pure proxy mode — requests pass through without format translation, keeping model mapping and parameter injection active.
 
-### Security & Privacy
+### Security
 
-- API Keys stored in macOS Keychain — single authorization, no plaintext in config files
-- All traffic processed locally — no third-party servers involved
-- No telemetry or usage data collected
+- API keys in macOS Keychain, never plaintext on disk
+- All traffic processed locally — no cloud relay, no telemetry
+- Open source, MIT licensed
 
 ---
 
 ## Architecture
 
 ```
-HTTPServer (Hummingbird 2.0)
+Client (Claude Code / Cursor / Anything)
     │
-    ├── /v1/chat/completions  (OpenAI Chat Completions)
-    ├── /v1/messages          (Anthropic Messages)
-    └── /v1/models            (Model listing)
-    │
-    ├── ProxyEngine
-    │   ├── Request transform (model name + parameter injection)
-    │   └── Format detection
-    │
-    ├── FormatTranslator
-    │   ├── Anthropic → OpenAI request/response
-    │   └── OpenAI → Anthropic request/response
-    │
-    ├── StreamTranslator
-    │   ├── OpenAI SSE → Anthropic SSE
-    │   └── Anthropic SSE → OpenAI SSE
-    │
-    ├── Rectifier
-    │   ├── Thinking signature auto-fix
-    │   └── Budget token auto-fix
-    │
-    └── KeychainService (API key secure storage)
+    ▼
+┌─────────────────────────────────────────┐
+│  HTTPServer (Hummingbird 2.0)           │
+│  :8390                                  │
+│                                          │
+│  POST /v1/chat/completions              │
+│  POST /v1/messages                      │
+│  GET  /v1/models                        │
+└──────────────┬──────────────────────────┘
+               │
+       ┌───────┴────────┐
+       ▼                ▼
+┌─────────────┐  ┌──────────────────┐
+│ ProxyEngine │  │ FormatTranslator │
+│ • model map │  │ • req → req      │
+│ • param inj │  │ • resp → resp    │
+│ • strip loc │  │StreamTranslator  │
+└──────┬──────┘  │ • SSE ↔ SSE      │
+       │         │Rectifier         │
+       │         │ • thinking fix   │
+       │         │ • budget fix     │
+       │         └────────┬─────────┘
+       │                  │
+       ▼                  ▼
+┌─────────────────────────────────┐
+│  Upstream Provider (OpenAI /    │
+│  Anthropic / DeepSeek / etc.)   │
+└─────────────────────────────────┘
 ```
+
+---
 
 ## Settings
 
-Access via menu bar "Settings...":
+Menu bar → "Settings...":
 
-- **Language**: Switch between Chinese (中文) and English — takes effect immediately
-- **Server Port**: Configure the local proxy port (default 8390, restart required to apply)
-- **About**: Version number, project description, GitHub repository link, and MIT License info
+- **Language**: 中文 / English, takes effect immediately
+- **Server Port**: Default 8390, restart to apply
+- **About**: Version, description, GitHub link, MIT license
 
 ## Tech Stack
 
 - **SwiftUI** — macOS menu bar app + windows
-- **Hummingbird 2.0** — HTTP server framework
-- **Keychain Services** — API key secure storage with caching
-- **UserDefaults** — Config + language persistence
-- **async/await** — Async networking (including SSE streaming)
-- **ServiceLifecycle** — Service lifecycle management
-
-## Privacy
-
-- API Keys are stored in the system Keychain and never uploaded anywhere
-- All traffic is processed locally — no third-party servers involved
-- No telemetry or usage data collected
+- **Hummingbird 2.0** — HTTP server
+- **Keychain Services** — API key storage with caching
+- **async/await** — networking including SSE streaming
+- **ServiceLifecycle** — service lifecycle management
 
 ---
 
-## Star this project
+## Star This Project
 
-Your support means a lot — please star this project if you find it useful.
+If APIBypass saves you time, please star the repo — it helps others find it too.

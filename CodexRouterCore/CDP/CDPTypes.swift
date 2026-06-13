@@ -43,7 +43,7 @@ public enum CDPError: Error, LocalizedError {
 }
 
 /// CDP settings exposed to injected JavaScript via /settings/get endpoint.
-public struct CDPInjectionSettings: Codable, Sendable {
+public struct CDPInjectionSettings: Codable, Sendable, Equatable {
     public var codexAppPluginEntryUnlock: Bool
     public var codexAppForcePluginInstall: Bool
     public var enhancementsEnabled: Bool

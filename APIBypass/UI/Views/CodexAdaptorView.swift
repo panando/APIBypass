@@ -8,8 +8,6 @@ import CodexRouterCore
 private enum ConfigTab: String, CaseIterable, Identifiable {
     case server
     case logs
-    case help
-    case about
 
     var id: String { rawValue }
 }
@@ -34,9 +32,7 @@ struct CodexAdaptorView: View {
                     }
                 }
                 Section {
-                    sidebarItem(tab: .help, icon: "questionmark.circle")
                     sidebarItem(tab: .logs, icon: "doc.text.magnifyingglass")
-                    sidebarItem(tab: .about, icon: "info.circle")
                 }
             }
             .listStyle(.sidebar)
@@ -77,10 +73,6 @@ struct CodexAdaptorView: View {
             CodexServerTab(configManager: configManager, codexAdaptor: codexAdaptor)
         case .logs:
             CodexLogViewerTab()
-        case .help:
-            CodexHelpTab()
-        case .about:
-            CodexAboutTab()
         case nil:
             VStack {
                 Image(systemName: "gearshape")
@@ -100,8 +92,6 @@ private extension ConfigTab {
         switch self {
         case .server: return "codex_service"
         case .logs: return "codex_logs"
-        case .help: return "help"
-        case .about: return "about"
         }
     }
 }
@@ -422,7 +412,7 @@ private struct CodexServerTab: View {
                 .foregroundColor(.secondary)
                 .padding(.bottom, 8)
 
-            // Column headers
+            // Column headers + sub-headers
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 12) {
                     Text(L10n.t("codex_model_alias"))
@@ -456,6 +446,7 @@ private struct CodexServerTab: View {
                 HStack(spacing: 12) {
                     TextField(L10n.t("codex_model_alias"), text: $config.customModels[index].alias)
                         .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
 
                     Picker("", selection: $config.customModels[index].modelMappingId) {
@@ -464,10 +455,12 @@ private struct CodexServerTab: View {
                         }
                     }
                     .labelsHidden()
-                        .frame(maxWidth: .infinity)
+                    .font(.system(.callout, design: .monospaced))
+                    .frame(maxWidth: .infinity)
 
                     TextField(L10n.t("codex_context_window"), value: $config.customModels[index].contextWindow, format: .number)
                         .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
 
                     Button {
@@ -487,6 +480,7 @@ private struct CodexServerTab: View {
                 HStack(spacing: 12) {
                     TextField(L10n.t("codex_model_alias"), text: $newModelAlias)
                         .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
 
                     Picker("", selection: $newModelMappingId) {
@@ -496,10 +490,12 @@ private struct CodexServerTab: View {
                         }
                     }
                     .labelsHidden()
+                    .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
                     TextField(L10n.t("codex_context_window"), text: $newModelContextWindow)
                         .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
 
                     HStack(spacing: 6) {
@@ -761,117 +757,4 @@ private struct CodexLogEntryRow: View {
 
 // MARK: - Help Tab
 
-private struct CodexHelpTab: View {
-    var body: some View {
-        ScrollView {
-            VStack(alignment: .leading, spacing: 24) {
-                VStack(alignment: .leading, spacing: 6) {
-                    Label(L10n.t("help_codex_adaptor"), systemImage: "questionmark.circle.fill")
-                        .font(.title2)
-                        .foregroundColor(.blue)
-                    Text(L10n.t("codex_help_subtitle"))
-                        .foregroundColor(.secondary)
-                }
 
-                Divider()
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(L10n.t("codex_how_it_works"), systemImage: "arrow.triangle.swap")
-                        .font(.headline)
-                    Text(L10n.t("codex_how_it_works_desc"))
-                        .font(.body)
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(L10n.t("codex_setup_guide"), systemImage: "list.number")
-                        .font(.headline)
-                    VStack(alignment: .leading, spacing: 6) {
-                        step(1, L10n.t("codex_setup_step1"))
-                        step(2, L10n.t("codex_setup_step2"))
-                        step(3, L10n.t("codex_setup_step3"))
-                        step(4, L10n.t("codex_setup_step4"))
-                        step(5, L10n.t("codex_setup_step5"))
-                    }
-                }
-
-                VStack(alignment: .leading, spacing: 8) {
-                    Label(L10n.t("codex_config_files"), systemImage: "doc.text")
-                        .font(.headline)
-                    VStack(alignment: .leading, spacing: 10) {
-                        fileEntry(path: "~/.codex/config.toml", desc: L10n.t("codex_file_config_desc"))
-                        fileEntry(path: "~/.codex/providers.json", desc: L10n.t("codex_file_providers_desc"))
-                        fileEntry(path: "~/.codex/<provider-id>-model-catalog.json", desc: L10n.t("codex_file_catalog_desc"))
-                        fileEntry(path: "~/.codex/config.toml.bak.codexadaptor", desc: L10n.t("codex_file_backup_desc"))
-                    }
-                }
-
-                Spacer()
-            }
-            .padding(24)
-            .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func step(_ num: Int, _ text: String) -> some View {
-        HStack(alignment: .top, spacing: 10) {
-            Text("\(num).")
-                .font(.body).fontWeight(.medium)
-                .foregroundColor(.blue)
-                .frame(width: 20, alignment: .leading)
-            Text(text)
-                .font(.body)
-        }
-    }
-
-    private func fileEntry(path: String, desc: String) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text(path)
-                .font(.system(.callout, design: .monospaced))
-                .foregroundColor(.primary)
-            Text(desc)
-                .font(.caption)
-                .foregroundColor(.secondary)
-        }
-    }
-}
-
-// MARK: - About Tab
-
-private struct CodexAboutTab: View {
-    var body: some View {
-        VStack(spacing: 0) {
-            VStack(spacing: 12) {
-                Image(systemName: "network.badge.shield.half.filled")
-                    .font(.system(size: 56))
-                    .foregroundColor(.blue)
-
-                Text("Codex Adaptor")
-                    .font(.title)
-                    .fontWeight(.bold)
-
-                Text(appVersion())
-                    .font(.body)
-                    .foregroundColor(.secondary)
-
-                Text(L10n.t("codex_about_subtitle"))
-                    .font(.callout)
-                    .foregroundColor(.secondary)
-                    .multilineTextAlignment(.center)
-                    .padding(.horizontal, 40)
-            }
-            .padding(.top, 40)
-            .padding(.bottom, 24)
-
-            Spacer()
-        }
-        .frame(maxWidth: .infinity, maxHeight: .infinity)
-    }
-
-    private func appVersion() -> String {
-        if let ver = Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String, !ver.isEmpty {
-            return ver
-        }
-        return "0.0.0"
-    }
-}

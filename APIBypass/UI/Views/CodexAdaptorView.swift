@@ -444,7 +444,7 @@ private struct CodexServerTab: View {
             // Existing model rows
             ForEach(Array(config.customModels.enumerated()), id: \.element.id) { index, _ in
                 HStack(spacing: 12) {
-                    TextField(L10n.t("codex_model_alias"), text: $config.customModels[index].alias)
+                    TextField("", text: $config.customModels[index].alias)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -458,7 +458,7 @@ private struct CodexServerTab: View {
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
-                    TextField(L10n.t("codex_context_window"), value: $config.customModels[index].contextWindow, format: .number)
+                    TextField("", value: $config.customModels[index].contextWindow, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -478,7 +478,7 @@ private struct CodexServerTab: View {
             // Inline add form
             if showAddModel {
                 HStack(spacing: 12) {
-                    TextField(L10n.t("codex_model_alias"), text: $newModelAlias)
+                    TextField("", text: $newModelAlias)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -493,7 +493,7 @@ private struct CodexServerTab: View {
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
-                    TextField(L10n.t("codex_context_window"), text: $newModelContextWindow)
+                    TextField("", text: $newModelContextWindow)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)

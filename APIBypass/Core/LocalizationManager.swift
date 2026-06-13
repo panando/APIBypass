@@ -280,7 +280,7 @@ struct L10n {
         // 帮助内容 - 模型映射
         "help_model_mapping_title": [.chinese: "模型映射", .english: "Model Mapping"],
         "help_model_mapping_desc": [.chinese: "模型映射允许您将客户端请求的模型名映射到上游提供商的实际模型名。例如，客户端请求「gpt-4」，实际可映射到「claude-sonnet-4-6」。", .english: "Model mapping allows you to map the model name requested by the client to the actual model name of the upstream provider. For example, the client requests \"gpt-4\", which can be mapped to \"claude-sonnet-4-6\"."],
-        "help_model_mapping_fields": [.chinese: "每条映射规则包含：客户端模型名、实际模型名、API 接口类型（OpenAI / Anthropic / OpenAI Response API）、Base URL、API Key、推理模式覆盖等。", .english: "Each mapping rule includes: incoming model name, actual model name, API format (OpenAI / Anthropic / OpenAI Response API), Base URL, API Key, reasoning mode override, etc."],
+        "help_model_mapping_fields": [.chinese: "每条映射规则包含：客户端模型名、实际模型名、API 接口类型（OpenAI / Anthropic）、Base URL、API Key、推理模式覆盖等。", .english: "Each mapping rule includes: incoming model name, actual model name, API format (OpenAI / Anthropic), Base URL, API Key, reasoning mode override, etc."],
 "help_model_mapping_reasoning": [.chinese: "「更改默认推理模式」通过 enable_thinking 参数设置；如果模型提供商使用其他字段定义思考模式，请在「自定义参数」中自行添加。", .english: "Reasoning Mode Override is set via the enable_thinking parameter; if your provider uses a different field for thinking mode, add it in Custom Parameters."],
 
         // 帮助内容 - 参数注入

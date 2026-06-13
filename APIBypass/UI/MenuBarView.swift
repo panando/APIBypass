@@ -14,6 +14,24 @@ struct MenuBarView: View {
 
     var body: some View {
         VStack {
+            Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
+                if isRunning {
+                    onStop()
+                } else {
+                    onStart()
+                }
+            }
+
+            Button(codexAdaptor.isRunning ? L10n.t("stop_codex_adaptor") : L10n.t("start_codex_adaptor")) {
+                if codexAdaptor.isRunning {
+                    onStopCodex()
+                } else {
+                    onStartCodex()
+                }
+            }
+
+            Divider()
+
             Button(bypassMode ? L10n.t("bypass_mode") : L10n.t("bypass_mode_off")) {
                 bypassMode.toggle()
             }
@@ -39,24 +57,6 @@ struct MenuBarView: View {
 
             Button(L10n.t("help")) {
                 openHelpWindow()
-            }
-
-            Divider()
-
-            Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
-                if isRunning {
-                    onStop()
-                } else {
-                    onStart()
-                }
-            }
-
-            Button(codexAdaptor.isRunning ? L10n.t("stop_codex_adaptor") : L10n.t("start_codex_adaptor")) {
-                if codexAdaptor.isRunning {
-                    onStopCodex()
-                } else {
-                    onStartCodex()
-                }
             }
 
             Divider()

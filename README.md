@@ -145,6 +145,18 @@ Automatic Anthropic ↔ OpenAI format translation — request bodies, responses,
 - Environment variables per provider for Claude Code integration
 - Auto-migration from legacy format
 
+### Codex Adaptor
+
+A built-in Responses API proxy for OpenAI Codex CLI. Launch from the menu bar "Codex Adaptor" item to run a local proxy that translates Codex's Responses API calls into Chat Completions format.
+
+- **Communication Protocol**: Choose between Chat Completions or Responses API wire format
+- **Reasoning Configuration**: Auto-detect or manually configure thinking/effort parameters for different providers
+- **Custom Models**: Define model aliases that map to your APIBypass model mappings
+- **CDP Enhancements**: Plugin entry unlock, marketplace unlock, and force plugin install for the Codex Electron app
+- **Real-time Logs**: Built-in log viewer with filtering, copy, export, and clear
+
+Usage: Start the Codex Adaptor service, then point Codex CLI to `http://127.0.0.1:15721/v1` as its API base URL.
+
 ### Bypass Mode
 
 One-click toggle in the menu bar to enable pure proxy mode. When activated, requests pass through transparently without API format conversion, while still preserving model mapping and parameter injection.

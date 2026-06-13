@@ -145,6 +145,18 @@ API Key 填写任意值（代理会替换为真实 Key）。
 - 每个提供商可配置环境变量，用于 Claude Code 集成
 - 自动从旧格式迁移
 
+### Codex Adaptor
+
+内置的 Responses API 代理，专为 OpenAI Codex CLI 设计。从菜单栏「Codex Adaptor」启动，将 Codex 的 Responses API 调用转换为 Chat Completions 格式。
+
+- **通信协议**：可选 Chat Completions 或 Responses API 线路格式
+- **推理配置**：自动检测或手动配置不同提供商的 thinking/effort 参数
+- **自定义模型**：定义模型别名，映射到 APIBypass 的模型配置
+- **CDP 增强**：Codex Electron 应用的插件入口解锁、市场解锁和强制安装插件
+- **实时日志**：内置日志查看器，支持过滤、复制、导出和清除
+
+使用方式：启动 Codex Adaptor 服务后，将 Codex CLI 的 API 地址指向 `http://127.0.0.1:15721/v1`。
+
 ### 代理直通模式
 
 菜单栏一键切换纯代理模式。开启后请求透明透传，不做 API 格式转换，同时保留模型映射和参数注入。

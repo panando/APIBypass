@@ -1,3 +1,16 @@
+# APIBypass v0.7.0
+
+## What's New
+
+### Codex Adaptor
+- **Codex Adaptor**: Integrated codex-adapter as a built-in feature. Launch from menu bar "Codex Adaptor" to run a Responses API proxy for OpenAI Codex CLI, translating Responses API to Chat Completions format.
+- **Reasoning Configuration**: Auto-detect and configure reasoning parameters (thinking, effort) for different providers (DeepSeek, OpenRouter, SiliconFlow, etc.)
+- **Custom Models**: Define custom model aliases that map to APIBypass's model mappings, with a dropdown selector.
+- **CDP Enhancements**: Plugin entry unlock, marketplace unlock, and force plugin install for Codex Electron app.
+- **Real-time Logs**: Built-in log viewer with filtering, copy, export, and clear functionality.
+
+---
+
 # APIBypass v0.6.6
 
 ## What's New

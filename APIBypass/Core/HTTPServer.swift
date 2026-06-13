@@ -113,14 +113,6 @@ final class HTTPServer: ObservableObject {
             return try await self.handleRequestWithConcurrencyLimit(request, context, format: .anthropic)
         }
 
-        // Responses 端点（带并发限制）
-        router.post("/v1/responses") { [weak self] request, context in
-            guard let self = self else {
-                return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
-            }
-            return try await self.handleRequestWithConcurrencyLimit(request, context, format: .responses)
-        }
-
         // 模型列表端点
         router.get("/v1/models") { [weak self] request, context in
             let mappings = await self?.store.getMappings() ?? []
@@ -290,7 +282,6 @@ final class HTTPServer: ObservableObject {
         switch provider.apiProvider {
         case .openai: upstreamFormat = .openai
         case .anthropic: upstreamFormat = .anthropic
-        case .openaiResponses: upstreamFormat = .responses
         }
         // 读取 bypassMode 状态
         let bypassMode = UserDefaults.standard.bool(forKey: "bypassMode")
@@ -344,7 +335,6 @@ final class HTTPServer: ObservableObject {
         switch effectiveFormat {
         case .openai: endpointPath = "chat/completions"
         case .anthropic: endpointPath = "messages"
-        case .responses: endpointPath = "responses"
         }
 
         let path = provider.baseURL.path
@@ -467,12 +457,6 @@ final class HTTPServer: ObservableObject {
                     case (.anthropic, .openai):
                         print("[SSE] 使用 translateAnthropicToOpenAI 转换器")
                         convertedStream = streamTranslator.translateAnthropicToOpenAI(bytes: streamResult.bytes, model: model)
-                    case (.responses, .anthropic), (.responses, .openai), (.anthropic, .responses), (.openai, .responses):
-                        print("[SSE] Responses streaming format translation not yet fully implemented, forwarding raw stream")
-                        // 使用优化的批量读取
-                        try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer)
-                        try await writer.finish(nil)
-                        return
                     default:
                         try await writer.finish(nil)
                         return

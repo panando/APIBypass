@@ -3,7 +3,6 @@ import Foundation
 enum APIFormat {
     case openai
     case anthropic
-    case responses
 }
 
 enum ProxyError: Error {
@@ -85,7 +84,7 @@ final class ProxyEngine {
                 } else {
                     json["thinking"] = ["type": "disabled"]
                 }
-            case .openai, .responses:
+            case .openai:
                 json["enable_thinking"] = thinking.enabled
             }
         }

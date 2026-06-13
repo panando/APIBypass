@@ -1,3 +1,43 @@
+# APIBypass v0.6.6
+
+## What's New
+
+### Removed Responses API Support
+- **Removed OpenAI Responses API (`/v1/responses`) endpoint**: The project now focuses exclusively on Chat Completions API and Anthropic Messages API. Responses API format conversion will be reintroduced later via a dedicated CodexAdaptor module.
+
+### Simplified Architecture
+- **Removed `APIFormat.responses` enum case**: The core format routing now only supports two formats: OpenAI Chat Completions and Anthropic Messages.
+- **Removed `APIProvider.openaiResponses` provider type**: Provider configuration UI no longer shows the Responses API option.
+- **Cleaned up ~500 lines of Responses-specific translation code**: Removed 8 format conversion methods and 5 usage mapping helpers from `FormatTranslator`.
+
+## Changelog
+
+- refactor: remove `/v1/responses` endpoint from HTTPServer
+- refactor: remove `APIFormat.responses` from ProxyEngine
+- refactor: remove `APIProvider.openaiResponses` from APIProvider model
+- refactor: remove Responses request/response translation methods from FormatTranslator
+- refactor: remove Responses usage mapping helpers from FormatTranslator
+- refactor: remove `.openaiResponses` case from NetworkService auth switch
+- refactor: remove Responses option from provider UI pickers
+- refactor: remove `provider_type_openai_responses` localization key
+
+## Download
+
+- [APIBypass-0.6.6.dmg](https://github.com/panando/APIBypass/releases/tag/v0.6.6)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.6.6
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.6.5
 
 ## What's New

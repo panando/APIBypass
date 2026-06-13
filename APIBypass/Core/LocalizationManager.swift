@@ -240,7 +240,6 @@ struct L10n {
         // API Provider types
         "provider_type_openai": [.chinese: "OpenAI Chat API", .english: "OpenAI Chat API"],
         "provider_type_anthropic": [.chinese: "Anthropic API", .english: "Anthropic API"],
-        "provider_type_openai_responses": [.chinese: "OpenAI Response API", .english: "OpenAI Response API"],
         "attribution_header": [.chinese: "禁用 attribution header", .english: "Disable Attribution Header"],
         "attribution_header_desc": [.chinese: "设置 CLAUDE_CODE_ATTRIBUTION_HEADER=0，从源头避免动态 cch 值破坏 prompt 前缀缓存", .english: "Set CLAUDE_CODE_ATTRIBUTION_HEADER=0 to prevent dynamic cch values from breaking prompt prefix caching at the source"],
         "attribution_header_note": [.chinese: "即使不开启此开关，代理层也会自动过滤掉请求中的 billing header", .english: "The proxy layer also automatically filters billing headers from requests even without this switch"],

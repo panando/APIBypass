@@ -1,7 +1,7 @@
 import SwiftUI
 
 enum HelpSection: String, CaseIterable, Identifiable {
-    case quickStart, menuBar, modelMapping, parameterInjection, launcher, bypassMode, settings, faq
+    case quickStart, menuBar, modelMapping, parameterInjection, launcher, bypassMode, codexAdaptor, settings, faq
 
     var id: String { rawValue }
 
@@ -13,6 +13,7 @@ enum HelpSection: String, CaseIterable, Identifiable {
         case .parameterInjection: return "help_parameter_injection"
         case .launcher: return "help_launcher"
         case .bypassMode: return "help_bypass_mode"
+        case .codexAdaptor: return "help_codex_adaptor"
         case .settings: return "help_settings"
         case .faq: return "help_faq"
         }
@@ -55,6 +56,8 @@ struct HelpView: View {
             launcherContent
         case .bypassMode:
             bypassModeContent
+        case .codexAdaptor:
+            codexAdaptorContent
         case .settings:
             settingsContent
         case .faq:
@@ -155,6 +158,40 @@ struct HelpView: View {
 
             Text(L10n.t("help_bypass_note"))
                 .foregroundColor(.orange)
+        }
+    }
+
+    private var codexAdaptorContent: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Text(L10n.t("help_codex_adaptor"))
+                .font(.title2.bold())
+
+            Text("Codex Adaptor is a Responses API proxy for OpenAI Codex CLI. It translates Codex's Responses API calls into Chat Completions format, allowing you to use any OpenAI-compatible provider with Codex.")
+                .foregroundColor(.secondary)
+
+            Text("How to Use")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                bullet("Open \"Codex Adaptor\" from the menu bar")
+                bullet("Click \"Start\" to launch the proxy service on port 15721")
+                bullet("Configure Codex CLI to use http://127.0.0.1:15721/v1 as its API base URL")
+            }
+
+            Text("Configuration")
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 8) {
+                bullet("Communication Protocol: Choose between Chat Completions or Responses API wire format")
+                bullet("Reasoning Configuration: Auto-detect or manually set thinking/effort parameters for different providers")
+                bullet("Custom Models: Define model aliases that map to your APIBypass model mappings")
+            }
+
+            Text("CDP Enhancements")
+                .font(.headline)
+
+            Text("Chrome DevTools Protocol injection for the Codex Electron app. Enables plugin entry unlock, marketplace unlock, and force plugin install features.")
+                .foregroundColor(.secondary)
         }
     }
 

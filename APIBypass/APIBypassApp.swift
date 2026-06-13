@@ -3,6 +3,7 @@ import SwiftUI
 @main
 struct APIBypassApp: App {
     @StateObject private var configManager = ConfigManager()
+    @StateObject private var codexAdaptor = CodexAdaptorService()
     @State private var server: HTTPServer?
     @State private var isRunning = false
     @State private var didAutoStart = false
@@ -37,6 +38,7 @@ struct APIBypassApp: App {
         MenuBarExtra {
             MenuBarView(
                 configManager: configManager,
+                codexAdaptor: codexAdaptor,
                 isRunning: $isRunning,
                 port: server?.port ?? (UserDefaults.standard.integer(forKey: "serverPort") > 0 ? UserDefaults.standard.integer(forKey: "serverPort") : 8390),
                 onStart: startServer,

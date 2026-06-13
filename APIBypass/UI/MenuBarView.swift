@@ -2,6 +2,7 @@ import SwiftUI
 
 struct MenuBarView: View {
     let configManager: ConfigManager
+    let codexAdaptor: CodexAdaptorService
     @Binding var isRunning: Bool
     let port: Int
     let onStart: () -> Void
@@ -35,6 +36,10 @@ struct MenuBarView: View {
                 openLaunchClaudeCodeWindow()
             }
             .disabled(configManager.providers.isEmpty)
+
+            Button(L10n.t("codex_adaptor")) {
+                openCodexAdaptorWindow()
+            }
 
             Divider()
 
@@ -138,6 +143,33 @@ struct MenuBarView: View {
         window.identifier = NSUserInterfaceItemIdentifier("launch-claude-window")
         window.isReleasedWhenClosed = false
         window.contentView = NSHostingView(rootView: LaunchClaudeCodeView(configManager: configManager))
+        window.center()
+        window.makeKeyAndOrderFront(nil)
+    }
+
+    private func openCodexAdaptorWindow() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
+
+        if let existingWindow = NSApplication.shared.windows.first(where: {
+            $0.identifier?.rawValue == "codex-adaptor-window"
+        }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
+        }
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 700, height: 750),
+            styleMask: [.titled, .closable, .resizable],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("codex_adaptor")
+        window.identifier = NSUserInterfaceItemIdentifier("codex-adaptor-window")
+        window.isReleasedWhenClosed = false
+        window.contentView = NSHostingView(rootView: CodexAdaptorView(
+            configManager: configManager,
+            codexAdaptor: codexAdaptor
+        ))
         window.center()
         window.makeKeyAndOrderFront(nil)
     }

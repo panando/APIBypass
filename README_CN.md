@@ -39,7 +39,7 @@ APIBypass 在网络层解决所有这些问题 —— 一个本地地址，客�
 - **模型映射** — 客户端请求 `claude-sonnet-4-6`，APIBypass 路由到你指定的任意模型。
 - **参数注入** — temperature、top-p、thinking 模式、自定义 JSON 参数 —— 每个模型设置一次，每次请求自动生效。
 - **Claude Code 启动器** — 为 Opus、Sonnet、Haiku、Subagent 分别指定不同的上游模型。一键启动，一个终端，全部配齐。
-- **Codex Adaptor** — OpenAI Codex CLI 使用全新的 Responses API 格式，几乎没有代理支持。APIBypass 将其翻译为 Chat Completions，让你能通过任意提供商使用任意模型驱动 Codex CLI，而不仅限于 OpenAI。附带 CDP 注入：解锁插件市场、强制安装插件等 Codex Electron 隐藏功能。
+- **Codex Adaptor** — OpenAI Codex 使用全新的 Responses API 格式，几乎没有代理支持。APIBypass 将其翻译为 Chat Completions，让你能通过任意提供商使用任意模型驱动 Codex，而不仅限于 OpenAI。附带 CDP 注入：解锁插件市场、强制安装插件等 Codex Electron 隐藏功能。
 - **钥匙串安全** — API Key 存储在 macOS 钥匙串中，绝不明文落盘。所有流量仅在本地处理。
 
 ## 安装
@@ -125,19 +125,19 @@ Claude Code 在终端中打开，所有环境变量已配好，每个模型角�
 - 1M 上下文修复：自动为长上下文模型追加 `[1m]` 后缀
 - 启动模板：保存和切换模型配置组合
 
-### Codex Adaptor — Responses API 代理与 Codex CLI 集成
+### Codex Adaptor — Responses API 代理与 Codex 集成
 
-OpenAI 的 [Codex CLI](https://github.com/openai/codex) 使用 **Responses API** —— 一种新的 API 格式，几乎没有代理或第三方提供商支持。APIBypass 是首个填补这一空白的 macOS 工具：实时将 Responses API ↔ Chat Completions 互转，并通过 APIBypass 的模型映射和参数注入管线处理请求。结果：**Codex CLI 可以使用任意提供商的任意模型** —— DeepSeek、Qwen、GLM、MiniMax，而不仅限于 OpenAI。
+OpenAI 的 [Codex](https://github.com/openai/codex) 使用 **Responses API** —— 一种新的 API 格式，几乎没有代理或第三方提供商支持。APIBypass 是首个填补这一空白的 macOS 工具：实时将 Responses API ↔ Chat Completions 互转，并通过 APIBypass 的模型映射和参数注入管线处理请求。结果：**Codex 可以使用任意提供商的任意模型** —— DeepSeek、Qwen、GLM、MiniMax，而不仅限于 OpenAI。
 
 ```
-Codex CLI ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions──▶ APIBypass (:8390) ──▶ 上游
+Codex ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions──▶ APIBypass (:8390) ──▶ 上游
 ```
 
 **线路协议** — 选择 Chat Completions 或 Responses API 作为暴露的线路格式，附带场景化选择指引。
 
 **推理配置** — 自动检测或手动配置各提供商的 thinking/effort 参数。支持 DeepSeek（`thinking`）、OpenRouter（`reasoning_effort`）、SiliconFlow（`thinking`）、MiniMax（`thinking`）、Qwen（`enable_thinking`）等 —— 每种均可配置预算 token 和 effort 等级。
 
-**自定义模型** — 定义显示名称别名，映射到 APIBypass 的模型配置，支持自定义上下文窗口。模型自动同步到 `~/.codex/providers.json` 供 Codex CLI 使用。
+**自定义模型** — 定义显示名称别名，映射到 APIBypass 的模型配置，支持自定义上下文窗口。模型自动同步到 `~/.codex/providers.json` 供 Codex 使用。
 
 **CDP 增强** — Codex Electron 应用暴露出 Chrome DevTools Protocol 调试端口。APIBypass 连接该端口并注入 JavaScript 来解锁隐藏能力：
 - 强制入口解锁 — 绕过等待列表/登录限制
@@ -149,7 +149,7 @@ Codex CLI ──Responses API──▶ Codex Adaptor (:15721) ──Chat Complet
 
 **配置自动恢复** — UserDefaults 被清除后，下次启动自动从 `~/.codex/providers.json` 恢复线路协议、推理配置和自定义模型。
 
-从菜单栏「Codex Adaptor」启动，将 Codex CLI 指向 `http://127.0.0.1:15721/v1`。
+从菜单栏「Codex Adaptor」启动，将 Codex 指向 `http://127.0.0.1:15721/v1`。
 
 ### 模型映射与参数注入
 
@@ -180,7 +180,7 @@ Codex CLI ──Responses API──▶ Codex Adaptor (:15721) ──Chat Complet
 ## 架构
 
 ```
-Codex CLI ──▶ Codex Adaptor (:15721) ──▶┐
+Codex ──▶ Codex Adaptor (:15721) ──▶┐
                                          │
 客户端 (Claude Code / Cursor / 任意工具)  │
     │                                    │

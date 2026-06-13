@@ -39,7 +39,7 @@ APIBypass solves all of this at the network layer — one local endpoint, zero c
 - **Model mapping** — your client asks for `claude-sonnet-4-6`, APIBypass routes it to any model you choose.
 - **Parameter injection** — temperature, top-p, thinking mode, custom JSON fields — set once per model, applied to every request.
 - **Claude Code launcher** — assign different providers to Opus, Sonnet, Haiku, and Subagent roles. One click, one terminal, all models.
-- **Codex Adaptor** — OpenAI Codex CLI speaks the new Responses API format that virtually no proxy supports. APIBypass translates it to Chat Completions, letting you use Codex CLI with any model behind any provider — not just OpenAI. Plus CDP injection to unlock plugin marketplace, force plugin install, and more in the Codex Electron app.
+- **Codex Adaptor** — OpenAI Codex speaks the new Responses API format that virtually no proxy supports. APIBypass translates it to Chat Completions, letting you use Codex with any model behind any provider — not just OpenAI. Plus CDP injection to unlock plugin marketplace, force plugin install, and more in the Codex Electron app.
 - **Keychain security** — API keys in macOS Keychain, never in plaintext. All traffic stays on your machine.
 
 ## Install
@@ -125,19 +125,19 @@ Claude Code opens with all environment variables set, routing each model role th
 - 1M context fix: auto-appends `[1m]` suffix for long-context models
 - Launch templates: save and switch between model configurations
 
-### Codex Adaptor — Responses API Proxy & Codex CLI Integration
+### Codex Adaptor — Responses API Proxy & Codex Integration
 
-OpenAI's [Codex CLI](https://github.com/openai/codex) uses the **Responses API** — a new format that almost no proxy or third-party provider supports. APIBypass is the first macOS tool to bridge this gap: it translates Responses API ↔ Chat Completions in real time, and passes requests through APIBypass's model mapping and parameter injection pipeline. The result: **Codex CLI works with any provider, any model** — DeepSeek, Qwen, GLM, MiniMax, not just OpenAI.
+OpenAI's [Codex](https://github.com/openai/codex) uses the **Responses API** — a new format that almost no proxy or third-party provider supports. APIBypass is the first macOS tool to bridge this gap: it translates Responses API ↔ Chat Completions in real time, and passes requests through APIBypass's model mapping and parameter injection pipeline. The result: **Codex works with any provider, any model** — DeepSeek, Qwen, GLM, MiniMax, not just OpenAI.
 
 ```
-Codex CLI ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions──▶ APIBypass (:8390) ──▶ Upstream
+Codex ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions──▶ APIBypass (:8390) ──▶ Upstream
 ```
 
 **Wire protocol** — Choose between Chat Completions or Responses API as the exposed wire format, with contextual guidance on when to use each.
 
 **Reasoning configuration** — Auto-detect or manually configure thinking/effort parameters per provider. Supports DeepSeek (`thinking`), OpenRouter (`reasoning_effort`), SiliconFlow (`thinking`), MiniMax (`thinking`), Qwen (`enable_thinking`), and more — each with configurable budget tokens and effort levels.
 
-**Custom models** — Define display name aliases mapped to APIBypass model mappings, with configurable context windows. Models are automatically synced to `~/.codex/providers.json` for Codex CLI compatibility.
+**Custom models** — Define display name aliases mapped to APIBypass model mappings, with configurable context windows. Models are automatically synced to `~/.codex/providers.json` for Codex compatibility.
 
 **CDP Enhancements** — The Codex Electron app exposes a Chrome DevTools Protocol debug port. APIBypass connects to it and injects JavaScript to unlock hidden capabilities:
 - Force entry unlock — bypass the waitlist/sign-in gate
@@ -149,7 +149,7 @@ Codex CLI ──Responses API──▶ Codex Adaptor (:15721) ──Chat Complet
 
 **Config auto-recovery** — If UserDefaults is cleared, the next launch automatically recovers wire API, reasoning config, and custom models from `~/.codex/providers.json`.
 
-Start from menu bar "Codex Adaptor", point Codex CLI to `http://127.0.0.1:15721/v1`.
+Start from menu bar "Codex Adaptor", point Codex to `http://127.0.0.1:15721/v1`.
 
 ### Model Mapping & Parameter Injection
 
@@ -180,7 +180,7 @@ One-click toggle for pure proxy mode — requests pass through without format tr
 ## Architecture
 
 ```
-Codex CLI ──▶ Codex Adaptor (:15721) ──▶┐
+Codex ──▶ Codex Adaptor (:15721) ──▶┐
                                          │
 Client (Claude Code / Cursor / Anything) │
     │                                    │

@@ -2,7 +2,7 @@ import Foundation
 
 /// User-facing model catalog configuration for Codex providers.
 /// This matches cc-switch's settings.modelCatalog structure.
-public struct ModelCatalog: Codable, Equatable {
+public struct ModelCatalog: Codable, Equatable, Sendable {
     public var models: [ModelCatalogEntry]
 
     public init(models: [ModelCatalogEntry] = []) {
@@ -15,7 +15,7 @@ public struct ModelCatalog: Codable, Equatable {
 /// - model: required (the model slug/id)
 /// - displayName / display_name: optional (defaults to model if not set)
 /// - contextWindow / context_window: optional (defaults to model_context_window or 128000)
-public struct ModelCatalogEntry: Codable, Identifiable, Equatable {
+public struct ModelCatalogEntry: Codable, Identifiable, Equatable, Sendable {
     public var id: String { model }
 
     /// The model slug/id (required)

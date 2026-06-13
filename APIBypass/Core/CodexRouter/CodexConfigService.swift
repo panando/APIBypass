@@ -109,7 +109,8 @@ class CodexConfigService {
             baseURL: upstreamURL,
             usesChatCompletions: usesChatCompletions,
             bearerToken: bearerToken,
-            reasoningConfig: meta.reasoningConfig
+            reasoningConfig: meta.reasoningConfig,
+            modelCatalog: meta.modelCatalog
         )
     }
 
@@ -542,6 +543,7 @@ struct UpstreamProvider: Sendable {
     let usesChatCompletions: Bool
     let bearerToken: String?
     let reasoningConfig: ReasoningConfig?
+    let modelCatalog: ModelCatalog?
 
     init(
         id: String,
@@ -549,7 +551,8 @@ struct UpstreamProvider: Sendable {
         baseURL: String,
         usesChatCompletions: Bool,
         bearerToken: String? = nil,
-        reasoningConfig: ReasoningConfig? = nil
+        reasoningConfig: ReasoningConfig? = nil,
+        modelCatalog: ModelCatalog? = nil
     ) {
         self.id = id
         self.name = name
@@ -557,5 +560,6 @@ struct UpstreamProvider: Sendable {
         self.usesChatCompletions = usesChatCompletions
         self.bearerToken = bearerToken
         self.reasoningConfig = reasoningConfig
+        self.modelCatalog = modelCatalog
     }
 }

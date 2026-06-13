@@ -97,8 +97,20 @@ actor CodexRequestHandler {
             // Build tool context from original Responses body (before Chat conversion)
             let toolContext = CodexToolContext(responsesBody: json)
 
+            // Resolve Codex model name → APIBypass model name via the provider's model catalog
+            let rawModelName = json["model"] as? String ?? ""
+            var modelName = rawModelName
+            if let catalog = provider.modelCatalog {
+                if let entry = catalog.models.first(where: { $0.displayName == rawModelName }) {
+                    modelName = entry.model
+                    json["model"] = modelName
+                    CodexLogStore.shared.info("[CodexRouter] Model resolved: '\(rawModelName)' → '\(modelName)'")
+                } else if catalog.models.contains(where: { $0.model == rawModelName }) {
+                    // Already resolved, no change needed
+                }
+            }
+
             // Resolve reasoning config: explicit config takes priority, otherwise auto-infer
-            let modelName = json["model"] as? String ?? ""
             let resolvedReasoningConfig = provider.reasoningConfig?.normalized()
                 ?? ReasoningConfig.infer(name: provider.name, baseURL: provider.baseURL, model: modelName)
             if let rc = resolvedReasoningConfig {
@@ -192,12 +204,8 @@ actor CodexRequestHandler {
                             }
                         }
                         if let transformedData = await transformer.transform(data) {
-                            if let transformed = String(data: transformedData, encoding: .utf8) {
-                                CodexLogStore.shared.info("[CodexRouter] Transformed output: \(transformed.prefix(500))")
-                            }
                             continuation.yield(ByteBuffer(data: transformedData))
-                        } else if let raw = String(data: data, encoding: .utf8) {
-                            CodexLogStore.shared.info("[CodexRouter] Transform returned nil, raw upstream: \(raw.prefix(500))")
+                        } else {
                             continuation.yield(ByteBuffer(data: data))
                         }
                     }

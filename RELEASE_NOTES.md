@@ -2,12 +2,62 @@
 
 ## What's New
 
-### Codex Adaptor
-- **Codex Adaptor**: Integrated codex-adapter as a built-in feature. Launch from menu bar "Codex Adaptor" to run a Responses API proxy for OpenAI Codex CLI, translating Responses API to Chat Completions format.
-- **Reasoning Configuration**: Auto-detect and configure reasoning parameters (thinking, effort) for different providers (DeepSeek, OpenRouter, SiliconFlow, etc.)
-- **Custom Models**: Define custom model aliases that map to APIBypass's model mappings, with a dropdown selector.
-- **CDP Enhancements**: Plugin entry unlock, marketplace unlock, and force plugin install for Codex Electron app.
-- **Real-time Logs**: Built-in log viewer with filtering, copy, export, and clear functionality.
+### Codex Adaptor — Built-in Responses API Proxy for Codex CLI
+
+The [codex-adapter](https://github.com/panando/codex-adapter) project is now fully integrated into APIBypass as a built-in feature. Launch from the menu bar "Codex适配器" (Codex Adaptor) to run a local proxy that translates Codex CLI's Responses API calls into Chat Completions format, then forwards them through APIBypass for model mapping and parameter injection.
+
+**Architecture**: Codex CLI → Codex Adaptor proxy (:15721) → APIBypass server (:8390) → upstream API provider
+
+- **Communication Protocol**: Choose between Chat Completions or Responses API wire format, with contextual guidance
+- **Reasoning Configuration**: Auto-detect or manually configure thinking/effort parameters per provider (DeepSeek, OpenRouter, SiliconFlow, MiniMax, Qwen, etc.)
+- **Custom Models**: Define model display names that map to APIBypass model mappings via dropdown selector, with configurable context windows
+- **CDP Enhancements** (switch-toggle style): Force entry unlock, plugin marketplace unlock, and force plugin install for the Codex Electron app
+- **Real-time Logs**: Built-in log viewer with filtering, auto-scroll, copy all, export, and clear
+
+### Thread Safety Architecture
+
+- **CodexLogStore**: Removed `ObservableObject`/`@Published` to eliminate Combine → SwiftUI → AutoLayout crashes from background threads. UI now polls via `Timer` for thread-safe log updates, following the same data/UI separation pattern established in `ConfigDataStore`/`ConfigManager`
+- **CodexProxyServer**: Fixed stop button — server now properly shuts down via `Task.cancel()` propagating through Hummingbird's `ServiceGroup` graceful shutdown, instead of just dropping the reference
+- **ModelCatalog**: Added `Sendable` conformance to `ModelCatalog` and `ModelCatalogEntry` to resolve Swift 6 concurrency warnings
+- **ConfigDataStore**: Added `getFirstEnabledMapping()` for fast lookup
+
+### UI Refinements
+
+- Sidebar navigation redesign matching the original codex-adapter project layout
+- Card-style sections with consistent styling (rounded corners, subtle borders)
+- Custom Models section with proper column headers, inline add/delete, and confirmation dialogs
+- Communication Protocol description explaining when to use Chat Completions vs Responses API
+- Switch toggles with right-aligned layout and smaller control size in Codex Enhancements
+- Removed unused debug port option from Codex Enhancements
+- Empty placeholder text for context window field
+
+### Bug Fixes
+
+- **Double /v1 URL**: Fixed upstream path construction — removed `/v1` prefix from `upstreamPath()` since base URL already includes it
+- **Request loop**: Fixed proxy forwarding back to itself — pointed upstream URL to APIBypass server (127.0.0.1:8390) instead of proxy port
+- **Model name resolution**: Codex Adaptor now resolves Codex model aliases → APIBypass model names through model catalog in proxy handler, enabling the full Codex CLI → proxy → APIBypass → upstream flow
+- **Stop button**: Proper server shutdown with Task cancellation
+
+### Localization
+
+- Menu bar "Codex Adaptor" displays as "Codex适配器" in Chinese UI
+- 25+ new localization keys for Codex Adaptor UI (en/zh), with descriptions matching the original project
+- Communication protocol guidance localized
+
+## Download
+
+- [APIBypass-0.7.0.dmg](https://github.com/panando/APIBypass/releases/tag/v0.7.0)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.7.0
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
 
 ---
 

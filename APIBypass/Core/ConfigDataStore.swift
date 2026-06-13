@@ -48,6 +48,11 @@ actor ConfigDataStore {
         return mappings.first { $0.matches(model: model) }
     }
 
+    func getFirstEnabledMapping() -> ModelMapping? {
+        ensureInitialized()
+        return mappings.first { $0.isEnabled }
+    }
+
     func findProvider(for id: UUID) -> ProviderConfig? {
         ensureInitialized()
         return providers.first { $0.id == id }

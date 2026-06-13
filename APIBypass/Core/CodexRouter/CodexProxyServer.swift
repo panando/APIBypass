@@ -3,11 +3,9 @@ import Hummingbird
 import CodexRouterCore
 
 /// HTTP proxy server for Codex Adaptor.
-final class CodexProxyServer: ObservableObject {
-    @Published private(set) var isRunning = false
-    @Published private(set) var port: Int = 15721
-
+final class CodexProxyServer {
     private var app: Application<RouterResponder<BasicRequestContext>>?
+    private var runTask: Task<Void, Never>?
 
     init() {}
 
@@ -15,8 +13,6 @@ final class CodexProxyServer: ObservableObject {
         port: Int = 15721,
         settingsHandler: @escaping () async -> (Int, String, String)
     ) async throws {
-        self.port = port
-
         let router = Router()
         CodexRoutes.configure(router: router, settingsHandler: settingsHandler)
 
@@ -28,27 +24,22 @@ final class CodexProxyServer: ObservableObject {
 
         self.app = app
 
-        Task {
+        let task = Task {
             do {
                 try await app.run()
             } catch {
                 print("[CodexAdaptor] Server error: \(error)")
             }
         }
-
-        await MainActor.run {
-            self.isRunning = true
-        }
+        runTask = task
 
         CodexLogStore.shared.info("[CodexAdaptor] Server started on port \(port)")
     }
 
     func stop() async {
-        self.app = nil
-
-        await MainActor.run {
-            self.isRunning = false
-        }
+        runTask?.cancel()
+        runTask = nil
+        app = nil
 
         CodexLogStore.shared.info("[CodexAdaptor] Server stopped")
     }

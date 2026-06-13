@@ -1,10 +1,12 @@
 import Foundation
 
-/// In-memory ring buffer for Codex Adaptor log entries. Observable by log viewer UI.
-final class CodexLogStore: ObservableObject, @unchecked Sendable {
+/// Thread-safe ring buffer for Codex Adaptor log entries.
+/// Not an ObservableObject — UI polls via snapshot() to avoid @Published
+/// triggering Combine/SwiftUI/AutoLayout on background threads.
+final class CodexLogStore: @unchecked Sendable {
     static let shared = CodexLogStore()
 
-    @Published private(set) var entries: [LogEntry] = []
+    private var entries: [LogEntry] = []
     private let maxEntries = 2000
     private let lock = NSLock()
 
@@ -29,5 +31,12 @@ final class CodexLogStore: ObservableObject, @unchecked Sendable {
         lock.lock()
         entries.removeAll()
         lock.unlock()
+    }
+
+    /// Thread-safe snapshot for UI polling.
+    func snapshot() -> [LogEntry] {
+        lock.lock()
+        defer { lock.unlock() }
+        return entries
     }
 }

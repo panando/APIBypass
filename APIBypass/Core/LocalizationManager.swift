@@ -333,7 +333,7 @@ struct L10n {
         "new_window": [.chinese: "新建窗口", .english: "New Window"],
 
         // Codex Adaptor
-        "codex_adaptor": [.chinese: "Codex Adaptor", .english: "Codex Adaptor"],
+        "codex_adaptor": [.chinese: "Codex适配器", .english: "Codex Adaptor"],
         "codex_service": [.chinese: "服务", .english: "Service"],
         "codex_start": [.chinese: "启动", .english: "Start"],
         "codex_stop": [.chinese: "停止", .english: "Stop"],
@@ -341,6 +341,7 @@ struct L10n {
         "codex_status_running": [.chinese: "运行中", .english: "Running"],
         "codex_status_stopped": [.chinese: "已停止", .english: "Stopped"],
         "codex_wire_api": [.chinese: "通信协议", .english: "Communication Protocol"],
+        "codex_wire_api_desc": [.chinese: "如果你在纯代理模式模式下接入了 Response API 的模型，可以选择 Responses API，否则你应该总是选择 Chat Completions", .english: "If you have a Responses API model connected in bypass mode, you can choose Responses API. Otherwise, you should always choose Chat Completions."],
         "codex_reasoning": [.chinese: "推理配置", .english: "Reasoning Configuration"],
         "codex_override_reasoning": [.chinese: "覆盖推理配置", .english: "Override Reasoning Config"],
         "codex_auto_detect": [.chinese: "自动检测", .english: "Auto Detect"],
@@ -354,10 +355,9 @@ struct L10n {
         "codex_context_window": [.chinese: "上下文窗口", .english: "Context Window"],
         "codex_add_model": [.chinese: "添加模型", .english: "Add Model"],
         "codex_enhancements": [.chinese: "Codex 增强", .english: "Codex Enhancements"],
-        "codex_plugin_unlock": [.chinese: "插件入口解锁", .english: "Plugin Entry Unlock"],
-        "codex_marketplace_unlock": [.chinese: "市场解锁", .english: "Marketplace Unlock"],
-        "codex_force_install": [.chinese: "强制安装插件", .english: "Force Plugin Install"],
-        "codex_debug_port": [.chinese: "调试端口", .english: "Debug Port"],
+        "codex_plugin_entry_unlock": [.chinese: "强制解锁入口", .english: "Force Entry Unlock"],
+        "codex_marketplace_unlock": [.chinese: "插件市场解锁", .english: "Plugin Marketplace Unlock"],
+        "codex_force_plugin_install": [.chinese: "特殊插件强制安装", .english: "Force Plugin Install"],
         "codex_logs": [.chinese: "日志", .english: "Logs"],
         "codex_clear_logs": [.chinese: "清除", .english: "Clear"],
         "codex_export_logs": [.chinese: "导出", .english: "Export"],
@@ -373,11 +373,9 @@ struct L10n {
         "codex_communication": [.chinese: "通信", .english: "Communication"],
         "codex_copy": [.chinese: "复制", .english: "Copy"],
         "codex_export": [.chinese: "导出", .english: "Export"],
-        "codex_force_plugin_install": [.chinese: "强制安装插件", .english: "Force Plugin Install"],
         "codex_log_filter": [.chinese: "日志过滤", .english: "Log Filter"],
         "codex_no_custom_models": [.chinese: "无自定义模型", .english: "No Custom Models"],
         "codex_no_reasoning_config": [.chinese: "无推理配置", .english: "No Reasoning Config"],
-        "codex_plugin_entry_unlock": [.chinese: "插件入口解锁", .english: "Plugin Entry Unlock"],
         "codex_reasoning_override": [.chinese: "覆盖推理配置", .english: "Reasoning Override"],
         "help_codex_adaptor": [.chinese: "Codex Adaptor", .english: "Codex Adaptor"],
 
@@ -406,10 +404,9 @@ struct L10n {
         "codex_context_window_eg": [.chinese: "如 128,000", .english: "e.g. 128,000"],
 
         // Codex Adaptor - CDP descriptions
-        "codex_plugin_entry_unlock_desc": [.chinese: "解锁 Codex 插件入口", .english: "Unlock Codex plugin entry"],
-        "codex_marketplace_unlock_desc": [.chinese: "解锁插件市场", .english: "Unlock plugin marketplace"],
-        "codex_force_plugin_install_desc": [.chinese: "强制安装插件", .english: "Force plugin installation"],
-        "codex_debug_port_desc": [.chinese: "Codex Electron 应用的调试端口", .english: "Debug port for Codex Electron app"],
+        "codex_plugin_entry_unlock_desc": [.chinese: "通过身份伪装强制显示插件入口按钮。", .english: "Force the Plugins button visible via auth spoofing."],
+        "codex_marketplace_unlock_desc": [.chinese: "API Key 模式下扩展插件市场请求，尽量显示完整插件列表。", .english: "Expand marketplace requests under API Key mode to show full plugin list."],
+        "codex_force_plugin_install_desc": [.chinese: "解除应用不可用导致的前端安装禁用。", .english: "Unblock install buttons disabled due to app unavailability restrictions."],
 
         // Codex Adaptor - Help
         "codex_help_subtitle": [.chinese: "Responses API 代理，为 OpenAI Codex CLI 提供支持", .english: "Responses API proxy for OpenAI Codex CLI"],

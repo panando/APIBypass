@@ -113,156 +113,98 @@ private struct CodexServerTab: View {
     @State private var effortValueMode = "standard"
     @State private var reasoningOutputFormat = "reasoning_content"
     @State private var showAddModel = false
+    @State private var newModelAlias = ""
     @State private var newModelMappingId: UUID?
-    @State private var newModelContextWindow = "128000"
+    @State private var newModelContextWindow = ""
     @State private var modelIndexToDelete: Int?
 
     var body: some View {
-        Form {
-            // Runtime Status
-            Section {
-                HStack {
-                    HStack(spacing: 8) {
-                        Circle()
-                            .fill(codexAdaptor.isRunning ? Color.green : Color.red)
-                            .frame(width: 8, height: 8)
-                        Text(codexAdaptor.isRunning ? L10n.t("codex_status_running") : L10n.t("codex_status_stopped"))
-                            .fontWeight(.medium)
-                        if codexAdaptor.isRunning {
-                            Text("(\(L10n.t("codex_port")) \(String(codexAdaptor.port)))")
-                                .foregroundColor(.secondary)
-                        }
-                    }
-                    Spacer()
-                    Button(action: {
-                        Task {
+        ScrollView {
+            VStack(spacing: 16) {
+                // Runtime Status
+                cardSection(header: Label(L10n.t("codex_runtime_status"), systemImage: "power")) {
+                    HStack {
+                        HStack(spacing: 8) {
+                            Circle()
+                                .fill(codexAdaptor.isRunning ? Color.green : Color.red)
+                                .frame(width: 8, height: 8)
+                            Text(codexAdaptor.isRunning ? L10n.t("codex_status_running") : L10n.t("codex_status_stopped"))
+                                .fontWeight(.medium)
                             if codexAdaptor.isRunning {
-                                await codexAdaptor.stop()
-                            } else {
-                                try? await codexAdaptor.start()
+                                Text("(\(L10n.t("codex_port")) \(String(codexAdaptor.port)))")
+                                    .foregroundColor(.secondary)
                             }
                         }
-                    }) {
-                        Label(
-                            codexAdaptor.isRunning ? L10n.t("codex_stop") : L10n.t("codex_start"),
-                            systemImage: codexAdaptor.isRunning ? "stop.circle" : "play.circle"
-                        )
-                    }
-                    .buttonStyle(.borderedProminent)
-                    .controlSize(.small)
-                }
-            } header: {
-                Label(L10n.t("codex_runtime_status"), systemImage: "power")
-            }
-
-            // Communication Protocol
-            Section {
-                Picker(L10n.t("codex_wire_api"), selection: $config.wireAPI) {
-                    ForEach(CodexAdaptorConfig.WireAPI.allCases, id: \.self) { api in
-                        Text(api.displayName).tag(api)
+                        Spacer()
+                        Button(action: {
+                            Task {
+                                if codexAdaptor.isRunning {
+                                    await codexAdaptor.stop()
+                                } else {
+                                    try? await codexAdaptor.start()
+                                }
+                            }
+                        }) {
+                            Label(
+                                codexAdaptor.isRunning ? L10n.t("codex_stop") : L10n.t("codex_start"),
+                                systemImage: codexAdaptor.isRunning ? "stop.circle" : "play.circle"
+                            )
+                        }
+                        .buttonStyle(.borderedProminent)
                     }
                 }
-                .pickerStyle(.segmented)
-                .onChange(of: config.wireAPI) { _, _ in saveConfig() }
-            } header: {
-                Label(L10n.t("codex_wire_api"), systemImage: "arrow.triangle.swap")
-            }
 
-            // Proxy Server
-            Section {
-                HStack(spacing: 8) {
-                    Text(L10n.t("codex_proxy_port"))
-                        .frame(width: 96, alignment: .leading)
-                    TextField("", text: $portText)
-                        .textFieldStyle(.roundedBorder)
-                    Text(L10n.t("codex_requires_restart"))
+                // Communication Protocol
+                cardSection(header: Label(L10n.t("codex_wire_api"), systemImage: "arrow.triangle.swap")) {
+                    Text(L10n.t("codex_wire_api_desc"))
                         .font(.caption)
                         .foregroundColor(.secondary)
-                        .frame(width: 112, alignment: .leading)
-                }
-                HStack(spacing: 8) {
-                    Text(L10n.t("codex_proxy_url"))
-                        .frame(width: 96, alignment: .leading)
-                    TextField("", text: .constant(proxyURL))
-                        .textFieldStyle(.roundedBorder)
-                        .disabled(true)
-                    Text(L10n.t("codex_auto_configured"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                        .frame(width: 112, alignment: .leading)
-                }
-            } header: {
-                Text(L10n.t("codex_proxy_server"))
-            }
-
-            // Reasoning Configuration (card-style section)
-            Section {
-                reasoningSection
-            }
-
-            // Custom Models (card-style section)
-            Section {
-                customModelsSection
-            }
-
-            // Codex Enhancements
-            Section {
-                Toggle(isOn: $config.cdpSettings.codexAppPluginEntryUnlock) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.t("codex_plugin_entry_unlock")).fontWeight(.medium)
-                        Text(L10n.t("codex_plugin_entry_unlock_desc"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                    Picker(L10n.t("codex_wire_api"), selection: $config.wireAPI) {
+                        ForEach(CodexAdaptorConfig.WireAPI.allCases, id: \.self) { api in
+                            Text(api.displayName).tag(api)
+                        }
                     }
-                }
-                .onChange(of: config.cdpSettings.codexAppPluginEntryUnlock) { _, _ in
-                    saveConfig()
-                    Task { await codexAdaptor.pushInjectionSettings() }
+                    .pickerStyle(.segmented)
+                    .onChange(of: config.wireAPI) { _, _ in saveConfig() }
                 }
 
-                Toggle(isOn: $config.cdpSettings.codexAppPluginMarketplaceUnlock) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.t("codex_marketplace_unlock")).fontWeight(.medium)
-                        Text(L10n.t("codex_marketplace_unlock_desc"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .onChange(of: config.cdpSettings.codexAppPluginMarketplaceUnlock) { _, _ in
-                    saveConfig()
-                    Task { await codexAdaptor.pushInjectionSettings() }
-                }
-
-                Toggle(isOn: $config.cdpSettings.codexAppForcePluginInstall) {
-                    VStack(alignment: .leading, spacing: 2) {
-                        Text(L10n.t("codex_force_plugin_install")).fontWeight(.medium)
-                        Text(L10n.t("codex_force_plugin_install_desc"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
-                    }
-                }
-                .onChange(of: config.cdpSettings.codexAppForcePluginInstall) { _, _ in
-                    saveConfig()
-                    Task { await codexAdaptor.pushInjectionSettings() }
-                }
-
-                VStack(alignment: .leading, spacing: 4) {
+                // Proxy Server
+                cardSection(header: Text(L10n.t("codex_proxy_server"))) {
                     HStack(spacing: 8) {
-                        Text(L10n.t("codex_debug_port"))
+                        Text(L10n.t("codex_proxy_port"))
                             .frame(width: 96, alignment: .leading)
-                        TextField("", value: $config.cdpDebugPort, format: .number.grouping(.never))
+                        TextField("", text: $portText)
                             .textFieldStyle(.roundedBorder)
+                        Text(L10n.t("codex_requires_restart"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(width: 112, alignment: .leading)
                     }
-                    Text(L10n.t("codex_debug_port_desc"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                    HStack(spacing: 8) {
+                        Text(L10n.t("codex_proxy_url"))
+                            .frame(width: 96, alignment: .leading)
+                        TextField("", text: .constant(proxyURL))
+                            .textFieldStyle(.roundedBorder)
+                            .disabled(true)
+                        Text(L10n.t("codex_auto_configured"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                            .frame(width: 112, alignment: .leading)
+                    }
                 }
-                .onChange(of: config.cdpDebugPort) { _, _ in saveConfig() }
-            } header: {
-                Label(L10n.t("codex_enhancements"), systemImage: "wand.and.stars")
+
+                // Reasoning Configuration
+                reasoningSection
+
+                // Custom Models
+                customModelsSection
+
+                // Codex Enhancements
+                enhancementsCard
             }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
         }
-        .formStyle(.grouped)
         .onAppear { loadConfig() }
         .onChange(of: portText) { _, newValue in
             if let portValue = Int(newValue), portValue > 0, portValue <= 65535 {
@@ -273,16 +215,94 @@ private struct CodexServerTab: View {
         }
     }
 
-    // MARK: - Reasoning Section
+    // MARK: - Card Section Helper
 
     @ViewBuilder
-    private var reasoningSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            Label(L10n.t("codex_reasoning"), systemImage: "brain.head.profile")
+    private func cardSection<Header: View, Content: View>(
+        header: Header,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            header
                 .font(.headline)
-                .padding(.bottom, 10)
+            content()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+        )
+    }
 
+    // MARK: - Enhancements Card
+
+    private var enhancementsCard: some View {
+        cardSection(header: Label(L10n.t("codex_enhancements"), systemImage: "wand.and.stars")) {
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("codex_plugin_entry_unlock")).fontWeight(.medium)
+                    Text(L10n.t("codex_plugin_entry_unlock_desc"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $config.cdpSettings.codexAppPluginEntryUnlock)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            }
+            .onChange(of: config.cdpSettings.codexAppPluginEntryUnlock) { _, _ in
+                saveConfig()
+                Task { await codexAdaptor.pushInjectionSettings() }
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("codex_marketplace_unlock")).fontWeight(.medium)
+                    Text(L10n.t("codex_marketplace_unlock_desc"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $config.cdpSettings.codexAppPluginMarketplaceUnlock)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            }
+            .onChange(of: config.cdpSettings.codexAppPluginMarketplaceUnlock) { _, _ in
+                saveConfig()
+                Task { await codexAdaptor.pushInjectionSettings() }
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("codex_force_plugin_install")).fontWeight(.medium)
+                    Text(L10n.t("codex_force_plugin_install_desc"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $config.cdpSettings.codexAppForcePluginInstall)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            }
+            .onChange(of: config.cdpSettings.codexAppForcePluginInstall) { _, _ in
+                saveConfig()
+                Task { await codexAdaptor.pushInjectionSettings() }
+            }
+        }
+    }
+
+    // MARK: - Reasoning Section
+
+    private var reasoningSection: some View {
+        cardSection(header: Label(L10n.t("codex_reasoning"), systemImage: "brain.head.profile")) {
             // Toggle row
             HStack {
                 Toggle("", isOn: $config.reasoningOverrideEnabled)
@@ -299,7 +319,6 @@ private struct CodexServerTab: View {
             }
 
             if !config.reasoningOverrideEnabled {
-                // Footer when disabled
                 Text(L10n.t("codex_reasoning_auto_footer"))
                     .font(.caption)
                     .foregroundColor(.secondary)
@@ -308,7 +327,6 @@ private struct CodexServerTab: View {
 
             if config.reasoningOverrideEnabled {
                 VStack(alignment: .leading, spacing: 12) {
-                    // Thinking
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Toggle("", isOn: $supportsThinking)
@@ -332,7 +350,6 @@ private struct CodexServerTab: View {
 
                     Divider()
 
-                    // Effort
                     VStack(alignment: .leading, spacing: 4) {
                         HStack(spacing: 8) {
                             Toggle("", isOn: $supportsEffort)
@@ -361,7 +378,6 @@ private struct CodexServerTab: View {
 
                     Divider()
 
-                    // Output Format
                     VStack(alignment: .leading, spacing: 4) {
                         Picker(L10n.t("codex_output_format"), selection: $reasoningOutputFormat) {
                             Text("reasoning_content -- single string").tag("reasoning_content")
@@ -376,16 +392,6 @@ private struct CodexServerTab: View {
                 .padding(.top, 12)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
         .onChange(of: supportsThinking) { _, _ in updateReasoningConfig() }
         .onChange(of: supportsEffort) { _, _ in updateReasoningConfig() }
         .onChange(of: thinkingParam) { _, _ in updateReasoningConfig() }
@@ -397,23 +403,18 @@ private struct CodexServerTab: View {
 
     // MARK: - Custom Models Section
 
-    @ViewBuilder
     private var customModelsSection: some View {
-        VStack(alignment: .leading, spacing: 0) {
-            // Header
-            Label(L10n.t("codex_custom_models"), systemImage: "cube.box")
-                .font(.headline)
-                .padding(.bottom, 10)
-
-            // Footer
+        cardSection(header: Label(L10n.t("codex_custom_models"), systemImage: "cube.box")) {
             Text(L10n.t("codex_model_footer"))
                 .font(.caption)
                 .foregroundColor(.secondary)
                 .padding(.bottom, 8)
 
-            // Column headers + sub-headers
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 12) {
+                    Text(L10n.t("codex_model_alias"))
+                        .font(.caption).foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(L10n.t("codex_model_slug"))
                         .font(.caption).foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -423,6 +424,9 @@ private struct CodexServerTab: View {
                     Spacer().frame(width: 60)
                 }
                 HStack(spacing: 12) {
+                    Text(L10n.t("codex_model_alias_desc"))
+                        .font(.caption2).foregroundColor(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(L10n.t("codex_model_slug_desc"))
                         .font(.caption2).foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -434,9 +438,13 @@ private struct CodexServerTab: View {
             }
             .padding(.bottom, 4)
 
-            // Existing model rows
             ForEach(Array(config.customModels.enumerated()), id: \.element.id) { index, _ in
                 HStack(spacing: 12) {
+                    TextField("", text: $config.customModels[index].alias)
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity)
+
                     Picker("", selection: $config.customModels[index].modelMappingId) {
                         ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
                             Text(mapping.incomingModel).tag(mapping.id)
@@ -445,13 +453,8 @@ private struct CodexServerTab: View {
                     .labelsHidden()
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
-                    .onChange(of: config.customModels[index].modelMappingId) { _, newId in
-                        if let mapping = CodexConfigBridge.availableMappings(from: configManager).first(where: { $0.id == newId }) {
-                            config.customModels[index].alias = mapping.incomingModel
-                        }
-                    }
 
-                    TextField(L10n.t("codex_context_window"), value: $config.customModels[index].contextWindow, format: .number)
+                    TextField("", value: $config.customModels[index].contextWindow, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -468,9 +471,13 @@ private struct CodexServerTab: View {
                 }
             }
 
-            // Inline add form
             if showAddModel {
                 HStack(spacing: 12) {
+                    TextField("", text: $newModelAlias)
+                        .textFieldStyle(.roundedBorder)
+                        .multilineTextAlignment(.leading)
+                        .frame(maxWidth: .infinity)
+
                     Picker("", selection: $newModelMappingId) {
                         Text(L10n.t("please_select")).tag(nil as UUID?)
                         ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
@@ -481,7 +488,7 @@ private struct CodexServerTab: View {
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
-                    TextField(L10n.t("codex_context_window"), text: $newModelContextWindow)
+                    TextField("", text: $newModelContextWindow)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -498,11 +505,9 @@ private struct CodexServerTab: View {
                         .controlSize(.small)
 
                         Button {
-                            guard let mappingId = newModelMappingId,
-                                  let mapping = CodexConfigBridge.availableMappings(from: configManager).first(where: { $0.id == mappingId })
-                            else { return }
+                            guard let mappingId = newModelMappingId else { return }
                             let entry = CustomModelEntry(
-                                alias: mapping.incomingModel,
+                                alias: newModelAlias.isEmpty ? (CodexConfigBridge.availableMappings(from: configManager).first { $0.id == mappingId }?.incomingModel ?? "") : newModelAlias,
                                 modelMappingId: mappingId,
                                 contextWindow: UInt64(newModelContextWindow) ?? 128000
                             )
@@ -522,7 +527,6 @@ private struct CodexServerTab: View {
                 }
             }
 
-            // Add Model button
             if !showAddModel {
                 Button {
                     resetModelForm()
@@ -534,16 +538,6 @@ private struct CodexServerTab: View {
                 .controlSize(.small)
             }
         }
-        .padding(16)
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .background(
-            RoundedRectangle(cornerRadius: 10)
-                .fill(Color(nsColor: .controlBackgroundColor))
-        )
-        .overlay(
-            RoundedRectangle(cornerRadius: 10)
-                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
-        )
         .confirmationDialog(
             L10n.t("confirm_delete"),
             isPresented: Binding(
@@ -629,18 +623,21 @@ private struct CodexServerTab: View {
     }
 
     private func resetModelForm() {
+        newModelAlias = ""
         newModelMappingId = nil
-        newModelContextWindow = "128000"
+        newModelContextWindow = ""
     }
 }
 
 // MARK: - Log Viewer Tab
 
 private struct CodexLogViewerTab: View {
-    @ObservedObject private var logStore = CodexLogStore.shared
+    @State private var entries: [LogEntry] = []
     @State private var autoScroll = true
     @State private var filterText = ""
     @State private var copyConfirmation = false
+
+    private let timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
     var body: some View {
         VStack(spacing: 0) {
@@ -652,7 +649,10 @@ private struct CodexLogViewerTab: View {
 
                 Button(L10n.t("codex_copy_all")) { copyAll() }
                 Button(L10n.t("codex_export_logs")) { exportLogs() }
-                Button(L10n.t("codex_clear_logs")) { logStore.clear() }
+                Button(L10n.t("codex_clear_logs")) {
+                    CodexLogStore.shared.clear()
+                    entries = []
+                }
             }
             .padding(8)
 
@@ -664,7 +664,10 @@ private struct CodexLogViewerTab: View {
                     CodexLogEntryRow(entry: entry)
                         .id(entry.id)
                 }
-                .onChange(of: logStore.entries.count) { _, _ in
+                .onReceive(timer) { _ in
+                    entries = CodexLogStore.shared.snapshot()
+                }
+                .onChange(of: entries.count) { _, _ in
                     if autoScroll, let last = filteredEntries.last?.id {
                         proxy.scrollTo(last, anchor: .bottom)
                     }
@@ -689,8 +692,8 @@ private struct CodexLogViewerTab: View {
     }
 
     private var filteredEntries: [LogEntry] {
-        if filterText.isEmpty { return logStore.entries }
-        return logStore.entries.filter { $0.message.localizedCaseInsensitiveContains(filterText) }
+        if filterText.isEmpty { return entries }
+        return entries.filter { $0.message.localizedCaseInsensitiveContains(filterText) }
     }
 
     private func formatEntries(_ entries: [LogEntry]) -> String {
@@ -714,7 +717,7 @@ private struct CodexLogViewerTab: View {
         panel.allowedContentTypes = [.plainText]
         panel.begin { response in
             if response == .OK, let url = panel.url {
-                let text = formatEntries(logStore.entries)
+                let text = formatEntries(entries)
                 try? text.write(to: url, atomically: true, encoding: .utf8)
             }
         }

@@ -88,17 +88,22 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     /// Sync APIBypass Codex Adaptor config to ~/.codex/ files for Codex CLI compatibility.
+    /// The proxy forwards requests to the APIBypass HTTP server (the sole upstream provider).
     private func syncCodexConfig(config: CodexAdaptorConfig) async throws {
         let configService = CodexConfigService.shared
 
-        // Build a CodexModelProvider from the config
+        // APIBypass server port (same logic as HTTPServer)
+        let savedPort = UserDefaults.standard.integer(forKey: "serverPort")
+        let apiBypassPort = savedPort > 0 ? savedPort : 8390
+
+        // Build a CodexModelProvider pointing to the APIBypass server
         let provider = CodexModelProvider(
             id: "apibypass",
             name: "APIBypass",
-            baseURL: "http://127.0.0.1:\(port)/v1",
+            baseURL: "http://127.0.0.1:\(apiBypassPort)/v1",
             upstreamWireAPI: config.wireAPI.rawValue,
-            bearerToken: "1234",
-            modelCatalog: buildModelCatalog(from: config),
+            bearerToken: nil,
+            modelCatalog: await buildModelCatalog(from: config),
             reasoningConfig: config.reasoningOverrideEnabled ? config.reasoningConfig : nil,
             enabled: true
         )
@@ -107,15 +112,20 @@ final class CodexAdaptorService: ObservableObject {
         try configService.switchProvider(to: "apibypass")
     }
 
-    private func buildModelCatalog(from config: CodexAdaptorConfig) -> ModelCatalog? {
+    private func buildModelCatalog(from config: CodexAdaptorConfig) async -> ModelCatalog? {
         guard !config.customModels.isEmpty else { return nil }
-        let entries = config.customModels.map { entry in
-            ModelCatalogEntry(
-                model: entry.alias,
-                displayName: entry.alias,
+        let mappings = await ConfigDataStore.shared.getMappings()
+        let entries = config.customModels.compactMap { entry -> ModelCatalogEntry? in
+            guard let mapping = mappings.first(where: { $0.id == entry.modelMappingId }) else {
+                return nil
+            }
+            return ModelCatalogEntry(
+                model: mapping.incomingModel,
+                displayName: entry.alias.isEmpty ? mapping.incomingModel : entry.alias,
                 contextWindow: entry.contextWindow
             )
         }
+        guard !entries.isEmpty else { return nil }
         return ModelCatalog(models: entries)
     }
 }

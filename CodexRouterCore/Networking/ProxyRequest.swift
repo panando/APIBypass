@@ -9,19 +9,20 @@ public enum ProxyEndpoint: String, Sendable {
     case health = "/health"
 
     /// Returns the upstream path for this endpoint.
+    /// The `/v1` prefix is excluded because it is already part of the provider's base URL.
     public func upstreamPath(usesChatCompletions: Bool) -> String {
         switch self {
         case .chatCompletions:
-            return "/v1/chat/completions"
+            return "/chat/completions"
         case .responses:
             if usesChatCompletions {
-                return "/v1/chat/completions"
+                return "/chat/completions"
             }
-            return "/v1/responses"
+            return "/responses"
         case .responsesCompact:
-            return "/v1/responses/compact"
+            return "/responses/compact"
         case .models:
-            return "/v1/models"
+            return "/models"
         case .health:
             return "/health"
         }

@@ -10,7 +10,7 @@ final class ModelMappingTests: XCTestCase {
         XCTAssertEqual(APIProvider.anthropic.rawValue, "anthropic")
     }
 
-    func testAPIProvider_canDecodeFromJSON() {
+    func testAPIProvider_canDecodeFromJSON() throws {
         let json = """
         {"provider": "openai"}
         """.data(using: .utf8)!

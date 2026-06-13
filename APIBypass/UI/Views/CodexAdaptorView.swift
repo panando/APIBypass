@@ -113,7 +113,6 @@ private struct CodexServerTab: View {
     @State private var effortValueMode = "standard"
     @State private var reasoningOutputFormat = "reasoning_content"
     @State private var showAddModel = false
-    @State private var newModelAlias = ""
     @State private var newModelMappingId: UUID?
     @State private var newModelContextWindow = "128000"
     @State private var modelIndexToDelete: Int?
@@ -415,9 +414,6 @@ private struct CodexServerTab: View {
             // Column headers + sub-headers
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 12) {
-                    Text(L10n.t("codex_model_alias"))
-                        .font(.caption).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(L10n.t("codex_model_slug"))
                         .font(.caption).foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -427,9 +423,6 @@ private struct CodexServerTab: View {
                     Spacer().frame(width: 60)
                 }
                 HStack(spacing: 12) {
-                    Text(L10n.t("codex_model_alias_desc"))
-                        .font(.caption2).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
                     Text(L10n.t("codex_model_slug_desc"))
                         .font(.caption2).foregroundColor(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -444,11 +437,6 @@ private struct CodexServerTab: View {
             // Existing model rows
             ForEach(Array(config.customModels.enumerated()), id: \.element.id) { index, _ in
                 HStack(spacing: 12) {
-                    TextField("", text: $config.customModels[index].alias)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity)
-
                     Picker("", selection: $config.customModels[index].modelMappingId) {
                         ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
                             Text(mapping.incomingModel).tag(mapping.id)
@@ -457,8 +445,13 @@ private struct CodexServerTab: View {
                     .labelsHidden()
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
+                    .onChange(of: config.customModels[index].modelMappingId) { _, newId in
+                        if let mapping = CodexConfigBridge.availableMappings(from: configManager).first(where: { $0.id == newId }) {
+                            config.customModels[index].alias = mapping.incomingModel
+                        }
+                    }
 
-                    TextField("", value: $config.customModels[index].contextWindow, format: .number)
+                    TextField(L10n.t("codex_context_window"), value: $config.customModels[index].contextWindow, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -478,11 +471,6 @@ private struct CodexServerTab: View {
             // Inline add form
             if showAddModel {
                 HStack(spacing: 12) {
-                    TextField("", text: $newModelAlias)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity)
-
                     Picker("", selection: $newModelMappingId) {
                         Text(L10n.t("please_select")).tag(nil as UUID?)
                         ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
@@ -493,7 +481,7 @@ private struct CodexServerTab: View {
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
-                    TextField("", text: $newModelContextWindow)
+                    TextField(L10n.t("codex_context_window"), text: $newModelContextWindow)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -510,9 +498,11 @@ private struct CodexServerTab: View {
                         .controlSize(.small)
 
                         Button {
-                            guard let mappingId = newModelMappingId else { return }
+                            guard let mappingId = newModelMappingId,
+                                  let mapping = CodexConfigBridge.availableMappings(from: configManager).first(where: { $0.id == mappingId })
+                            else { return }
                             let entry = CustomModelEntry(
-                                alias: newModelAlias.isEmpty ? (CodexConfigBridge.availableMappings(from: configManager).first { $0.id == mappingId }?.incomingModel ?? "") : newModelAlias,
+                                alias: mapping.incomingModel,
                                 modelMappingId: mappingId,
                                 contextWindow: UInt64(newModelContextWindow) ?? 128000
                             )
@@ -639,7 +629,6 @@ private struct CodexServerTab: View {
     }
 
     private func resetModelForm() {
-        newModelAlias = ""
         newModelMappingId = nil
         newModelContextWindow = "128000"
     }

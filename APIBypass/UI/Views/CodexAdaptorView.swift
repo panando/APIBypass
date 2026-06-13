@@ -117,6 +117,7 @@ private struct CodexServerTab: View {
     @State private var newModelMappingId: UUID?
     @State private var newModelContextWindow = ""
     @State private var modelIndexToDelete: Int?
+    @State private var draftCustomModels: [CustomModelEntry] = []
 
     var body: some View {
         ScrollView {
@@ -438,14 +439,14 @@ private struct CodexServerTab: View {
             }
             .padding(.bottom, 4)
 
-            ForEach(Array(config.customModels.enumerated()), id: \.element.id) { index, _ in
+            ForEach(Array(draftCustomModels.enumerated()), id: \.element.id) { index, _ in
                 HStack(spacing: 12) {
-                    TextField("", text: $config.customModels[index].alias)
+                    TextField("", text: $draftCustomModels[index].alias)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
 
-                    Picker("", selection: $config.customModels[index].modelMappingId) {
+                    Picker("", selection: $draftCustomModels[index].modelMappingId) {
                         ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
                             Text(mapping.incomingModel).tag(mapping.id)
                         }
@@ -454,7 +455,7 @@ private struct CodexServerTab: View {
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
-                    TextField("", value: $config.customModels[index].contextWindow, format: .number)
+                    TextField("", value: $draftCustomModels[index].contextWindow, format: .number)
                         .textFieldStyle(.roundedBorder)
                         .multilineTextAlignment(.leading)
                         .frame(maxWidth: .infinity)
@@ -511,10 +512,9 @@ private struct CodexServerTab: View {
                                 modelMappingId: mappingId,
                                 contextWindow: UInt64(newModelContextWindow) ?? 128000
                             )
-                            config.customModels.append(entry)
+                            draftCustomModels.append(entry)
                             resetModelForm()
                             showAddModel = false
-                            saveConfig()
                         } label: {
                             Image(systemName: "checkmark.circle.fill")
                                 .font(.title3)
@@ -537,6 +537,19 @@ private struct CodexServerTab: View {
                 .buttonStyle(.borderless)
                 .controlSize(.small)
             }
+
+            if hasUnsavedModelChanges {
+                Divider()
+                    .padding(.vertical, 4)
+                HStack(spacing: 8) {
+                    Button(L10n.t("save")) { saveCustomModels() }
+                        .buttonStyle(.borderedProminent)
+                        .controlSize(.small)
+                    Button(L10n.t("cancel")) { cancelCustomModels() }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                }
+            }
         }
         .confirmationDialog(
             L10n.t("confirm_delete"),
@@ -547,9 +560,8 @@ private struct CodexServerTab: View {
         ) {
             Button(L10n.t("delete"), role: .destructive) {
                 if let idx = modelIndexToDelete {
-                    config.customModels.remove(at: idx)
+                    draftCustomModels.remove(at: idx)
                     modelIndexToDelete = nil
-                    saveConfig()
                 }
             }
             Button(L10n.t("cancel"), role: .cancel) { modelIndexToDelete = nil }
@@ -565,6 +577,7 @@ private struct CodexServerTab: View {
             config = await CodexAdaptorConfigStore.shared.load()
             portText = String(config.port)
             proxyURL = "http://127.0.0.1:\(config.port)/v1"
+            draftCustomModels = config.customModels
 
             // Populate reasoning state
             if let rc = config.reasoningConfig {
@@ -626,6 +639,23 @@ private struct CodexServerTab: View {
         newModelAlias = ""
         newModelMappingId = nil
         newModelContextWindow = ""
+    }
+
+    private var hasUnsavedModelChanges: Bool {
+        draftCustomModels != config.customModels
+    }
+
+    private func saveCustomModels() {
+        config.customModels = draftCustomModels
+        saveConfig()
+    }
+
+    private func cancelCustomModels() {
+        draftCustomModels = config.customModels
+        if showAddModel {
+            resetModelForm()
+            showAddModel = false
+        }
     }
 }
 

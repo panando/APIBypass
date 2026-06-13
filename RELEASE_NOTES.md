@@ -1,3 +1,54 @@
+# APIBypass v0.7.3
+
+## What's New
+
+### Menu Bar Dual Status Indicator
+
+The menu bar icon now shows two status dots — one for each service:
+
+- **Bottom-left**: Codex Adaptor (green = running, gray = stopped)
+- **Bottom-right**: APIBypass server (green = running, gray = stopped)
+
+Same dot style and color logic as before (5px oval, systemGreen / systemGray). You can now see the status of both services at a glance.
+
+### Menu Bar Start/Stop for Codex Adaptor
+
+- **New menu item**: "Start/Stop CodexAdaptor" — control the Codex Adaptor proxy directly from the menu bar
+- **Renamed existing item**: "Start/Stop APIBypass" (was "Start/Stop Server") for clarity
+- **Removed status text**: The running/stopped text and port number have been removed from the menu. Status is now shown exclusively via the icon dots — cleaner and less visual noise
+
+### Codex Adaptor Custom Models: Save/Cancel Buttons
+
+The Custom Models section now uses a draft-working-copy pattern with explicit **Save** and **Cancel** buttons:
+
+- Edits to model aliases, mappings, and context windows are held in a draft until you commit them
+- **Save** persists changes and syncs to UserDefaults + `~/.codex/providers.json`
+- **Cancel** reverts all changes to the last saved state, including any in-progress add form
+- Add and delete operations only modify the draft — no more auto-save
+- Buttons only appear when there are unsaved changes, keeping the UI clean
+
+### Other Changes
+
+- README: All "Codex CLI" references replaced with "Codex"
+- Updated icon assets
+
+## Download
+
+- [APIBypass-0.7.3.dmg](https://github.com/panando/APIBypass/releases/tag/v0.7.3)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.7.3
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.7.2
 
 ## What's New

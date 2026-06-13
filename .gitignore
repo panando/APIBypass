@@ -6,6 +6,7 @@
 *.swiftmodule
 *.swiftsourceinfo
 *.dSYM/
+*.bak.icns
 
 # Xcode
 *.xcuserdata/

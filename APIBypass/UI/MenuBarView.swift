@@ -4,30 +4,16 @@ struct MenuBarView: View {
     let configManager: ConfigManager
     let codexAdaptor: CodexAdaptorService
     @Binding var isRunning: Bool
-    let port: Int
     let onStart: () -> Void
     let onStop: () -> Void
+    let onStartCodex: () -> Void
+    let onStopCodex: () -> Void
 
     @ObservedObject private var l10n = LocalizationManager.shared
     @AppStorage("bypassMode") var bypassMode: Bool = false
 
     var body: some View {
         VStack {
-            HStack {
-                Circle()
-                    .fill(isRunning ? Color.green : Color.red)
-                    .frame(width: 8, height: 8)
-                Text(isRunning ? L10n.t("server_running") : L10n.t("server_stopped"))
-            }
-
-            if isRunning {
-                Text("\(L10n.t("port")): \(String(port))")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-            }
-
-            Divider()
-
             Button(bypassMode ? L10n.t("bypass_mode") : L10n.t("bypass_mode_off")) {
                 bypassMode.toggle()
             }
@@ -62,6 +48,14 @@ struct MenuBarView: View {
                     onStop()
                 } else {
                     onStart()
+                }
+            }
+
+            Button(codexAdaptor.isRunning ? L10n.t("stop_codex_adaptor") : L10n.t("start_codex_adaptor")) {
+                if codexAdaptor.isRunning {
+                    onStopCodex()
+                } else {
+                    onStartCodex()
                 }
             }
 

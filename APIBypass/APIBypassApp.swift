@@ -9,26 +9,35 @@ struct APIBypassApp: App {
     @State private var didAutoStart = false
     @State private var isTransitioning = false
 
-    private func menuBarIcon(running: Bool) -> NSImage? {
+    private func menuBarIcon(running: Bool, codexRunning: Bool) -> NSImage? {
         guard let url = Bundle.main.url(forResource: "AppIcon", withExtension: "icns"),
               let baseImage = NSImage(contentsOf: url) else { return nil }
 
         let size = NSSize(width: 18, height: 18)
         let dotSize: CGFloat = 5
-        let dotColor = running ? NSColor.systemGreen : NSColor.systemGray
 
         let composited = NSImage(size: size)
         composited.lockFocus()
         baseImage.draw(in: NSRect(origin: .zero, size: size),
                        from: .zero, operation: .copy, fraction: 1.0)
 
-        let dotRect = NSRect(x: size.width - dotSize - 1,
-                             y: 1,
-                             width: dotSize,
-                             height: dotSize)
-        let path = NSBezierPath(ovalIn: dotRect)
-        dotColor.setFill()
-        path.fill()
+        // Bottom-left dot: Codex Adaptor status
+        let leftDotColor = codexRunning ? NSColor.systemGreen : NSColor.systemGray
+        let leftDotRect = NSRect(x: 1, y: 1, width: dotSize, height: dotSize)
+        let leftPath = NSBezierPath(ovalIn: leftDotRect)
+        leftDotColor.setFill()
+        leftPath.fill()
+
+        // Bottom-right dot: APIBypass server status
+        let rightDotColor = running ? NSColor.systemGreen : NSColor.systemGray
+        let rightDotRect = NSRect(x: size.width - dotSize - 1,
+                                  y: 1,
+                                  width: dotSize,
+                                  height: dotSize)
+        let rightPath = NSBezierPath(ovalIn: rightDotRect)
+        rightDotColor.setFill()
+        rightPath.fill()
+
         composited.unlockFocus()
         composited.isTemplate = false
         return composited
@@ -40,9 +49,10 @@ struct APIBypassApp: App {
                 configManager: configManager,
                 codexAdaptor: codexAdaptor,
                 isRunning: $isRunning,
-                port: server?.port ?? (UserDefaults.standard.integer(forKey: "serverPort") > 0 ? UserDefaults.standard.integer(forKey: "serverPort") : 8390),
                 onStart: startServer,
-                onStop: stopServer
+                onStop: stopServer,
+                onStartCodex: startCodexAdaptor,
+                onStopCodex: stopCodexAdaptor
             )
         } label: {
             labelView
@@ -52,7 +62,7 @@ struct APIBypassApp: App {
 
     private var labelView: some View {
         Group {
-            if let icon = menuBarIcon(running: isRunning) {
+            if let icon = menuBarIcon(running: isRunning, codexRunning: codexAdaptor.isRunning) {
                 Image(nsImage: icon)
             } else {
                 Image(systemName: isRunning ? "network" : "network.slash")
@@ -94,6 +104,22 @@ struct APIBypassApp: App {
             server = nil
             isRunning = false
             isTransitioning = false
+        }
+    }
+
+    private func startCodexAdaptor() {
+        Task {
+            do {
+                try await codexAdaptor.start()
+            } catch {
+                print("[APIBypass] Failed to start Codex Adaptor: \(error)")
+            }
+        }
+    }
+
+    private func stopCodexAdaptor() {
+        Task {
+            await codexAdaptor.stop()
         }
     }
 }

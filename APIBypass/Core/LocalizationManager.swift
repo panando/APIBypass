@@ -43,8 +43,10 @@ struct L10n {
         // 菜单栏
         "server_running": [.chinese: "服务运行中", .english: "Server Running"],
         "server_stopped": [.chinese: "服务已停止", .english: "Server Stopped"],
-        "start_server": [.chinese: "启动服务", .english: "Start Server"],
-        "stop_server": [.chinese: "停止服务", .english: "Stop Server"],
+        "start_server": [.chinese: "启动 APIBypass 服务", .english: "Start APIBypass"],
+        "stop_server": [.chinese: "停止 APIBypass 服务", .english: "Stop APIBypass"],
+        "start_codex_adaptor": [.chinese: "启动 CodexAdaptor 服务", .english: "Start Codex Adaptor"],
+        "stop_codex_adaptor": [.chinese: "停止 CodexAdaptor 服务", .english: "Stop Codex Adaptor"],
         "configure": [.chinese: "配置...", .english: "Configure..."],
         "settings": [.chinese: "设置...", .english: "Settings..."],
         "quit": [.chinese: "退出", .english: "Quit"],

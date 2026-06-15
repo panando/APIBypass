@@ -29,5 +29,5 @@ struct CustomModelEntry: Codable, Identifiable, Equatable {
     var id: UUID = UUID()
     var alias: String
     var modelMappingId: UUID
-    var contextWindow: UInt64 = 128000
+    var contextWindow: UInt64?
 }

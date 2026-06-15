@@ -23,8 +23,7 @@ struct SettingsView: View {
             // 语言
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.t("language"))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.headline)
 
                 Picker("", selection: languageBinding) {
                     ForEach(AppLanguage.allCases, id: \.self) { lang in
@@ -33,11 +32,7 @@ struct SettingsView: View {
                 }
                 .pickerStyle(.segmented)
                 .frame(width: 240)
-
-                Text(L10n.t("language_hint"))
-                    .font(.callout)
-                    .foregroundColor(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
@@ -47,8 +42,7 @@ struct SettingsView: View {
             // 服务端口
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.t("server_port"))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.headline)
 
                 HStack(spacing: 12) {
                     TextField("", text: portString)
@@ -72,8 +66,7 @@ struct SettingsView: View {
             // 关于
             VStack(alignment: .leading, spacing: 12) {
                 Text(L10n.t("about"))
-                    .font(.subheadline)
-                    .foregroundColor(.secondary)
+                    .font(.headline)
 
                 Text(L10n.t("about_description"))
                     .font(.callout)

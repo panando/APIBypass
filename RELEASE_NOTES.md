@@ -1,3 +1,26 @@
+# APIBypass v0.7.4
+
+## What's New
+
+### Codex Adaptor: Custom Models UI Overhaul
+
+- **Unified row style**: Adding a model now inserts a standard row (with trash button) instead of a separate inline form with X/checkmark buttons. Deleting via trash button saves immediately — no double confirmation needed
+- **Context Window**: New model entries no longer pre-fill 128000. The field is empty with placeholder text, preventing accidental saves of default values
+
+### Codex Adaptor: Reasoning Configuration Improvements
+
+- **Auto-Detect button repositioned**: Moved from the override toggle row to inside the override panel, appearing next to the toggle when enabled. It now only fills parameters without automatically enabling the override switch
+- **Info popover**: Added an info button (ℹ) next to the "auto-detection is used when no override is set" hint. Clicking it shows how inference works, which providers are supported, and what happens when no match is found
+
+### Settings Panel
+
+- **Section titles**: Changed from `.subheadline` secondary style to `.headline` for clearer visual hierarchy
+- **Language picker**: Left-aligned instead of centered; removed the "takes effect immediately" hint text
+
+### Localization
+
+- **Menu bar**: "启动 CodexAdaptor 服务" → "启动 Codex 适配服务" (Chinese)
+
 # APIBypass v0.7.3
 
 ## What's New

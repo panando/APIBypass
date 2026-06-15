@@ -112,12 +112,9 @@ private struct CodexServerTab: View {
     @State private var effortParam = "reasoning_effort"
     @State private var effortValueMode = "standard"
     @State private var reasoningOutputFormat = "reasoning_content"
-    @State private var showAddModel = false
-    @State private var newModelAlias = ""
-    @State private var newModelMappingId: UUID?
-    @State private var newModelContextWindow = ""
     @State private var modelIndexToDelete: Int?
     @State private var draftCustomModels: [CustomModelEntry] = []
+    @State private var showReasoningInfo = false
 
     var body: some View {
         ScrollView {
@@ -312,18 +309,46 @@ private struct CodexServerTab: View {
                     .controlSize(.small)
                 Text(L10n.t("codex_override_reasoning"))
                 Spacer()
-                Button(L10n.t("codex_auto_detect")) {
-                    inferReasoningConfig()
+                if config.reasoningOverrideEnabled {
+                    HStack(spacing: 6) {
+                        Button(L10n.t("codex_auto_detect")) {
+                            inferReasoningConfig()
+                        }
+                        .buttonStyle(.bordered)
+                        .controlSize(.small)
+                        .disabled(configManager.providers.isEmpty)
+                        Button {
+                            showReasoningInfo = true
+                        } label: {
+                            Image(systemName: "info.circle")
+                        }
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .popover(isPresented: $showReasoningInfo) {
+                            reasoningInfoPopover
+                        }
+                    }
                 }
-                .controlSize(.small)
-                .disabled(configManager.providers.isEmpty)
             }
 
             if !config.reasoningOverrideEnabled {
-                Text(L10n.t("codex_reasoning_auto_footer"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                    .padding(.top, 8)
+                HStack(spacing: 4) {
+                    Text(L10n.t("codex_reasoning_auto_footer"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                    Button {
+                        showReasoningInfo = true
+                    } label: {
+                        Image(systemName: "info.circle")
+                            .font(.caption)
+                    }
+                    .buttonStyle(.borderless)
+                    .controlSize(.small)
+                    .popover(isPresented: $showReasoningInfo) {
+                        reasoningInfoPopover
+                    }
+                }
+                .padding(.top, 8)
             }
 
             if config.reasoningOverrideEnabled {
@@ -402,6 +427,45 @@ private struct CodexServerTab: View {
         .onChange(of: config.reasoningOverrideEnabled) { _, _ in updateReasoningConfig() }
     }
 
+    // MARK: - Reasoning Info Popover
+
+    private var reasoningInfoPopover: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(L10n.t("codex_reasoning_info_title"))
+                .font(.headline)
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L10n.t("codex_reasoning_info_basis"))
+                    .fontWeight(.medium)
+                Text(L10n.t("codex_reasoning_info_basis_desc"))
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L10n.t("codex_reasoning_info_supported"))
+                    .fontWeight(.medium)
+                Text(L10n.t("codex_reasoning_info_supported_list"))
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 6) {
+                Text(L10n.t("codex_reasoning_info_unmatched"))
+                    .fontWeight(.medium)
+                Text(L10n.t("codex_reasoning_info_unmatched_desc"))
+                    .font(.callout)
+                    .foregroundColor(.secondary)
+            }
+        }
+        .padding(16)
+        .frame(width: 340)
+    }
+
     // MARK: - Custom Models Section
 
     private var customModelsSection: some View {
@@ -455,10 +519,16 @@ private struct CodexServerTab: View {
                     .font(.system(.callout, design: .monospaced))
                     .frame(maxWidth: .infinity)
 
-                    TextField("", value: $draftCustomModels[index].contextWindow, format: .number)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity)
+                    TextField(
+                        L10n.t("codex_context_window_eg"),
+                        text: Binding(
+                            get: { draftCustomModels[index].contextWindow.map { String($0) } ?? "" },
+                            set: { draftCustomModels[index].contextWindow = UInt64($0) }
+                        )
+                    )
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity)
 
                     Button {
                         modelIndexToDelete = index
@@ -472,71 +542,19 @@ private struct CodexServerTab: View {
                 }
             }
 
-            if showAddModel {
-                HStack(spacing: 12) {
-                    TextField("", text: $newModelAlias)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity)
-
-                    Picker("", selection: $newModelMappingId) {
-                        Text(L10n.t("please_select")).tag(nil as UUID?)
-                        ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
-                            Text(mapping.incomingModel).tag(mapping.id as UUID?)
-                        }
-                    }
-                    .labelsHidden()
-                    .font(.system(.callout, design: .monospaced))
-                    .frame(maxWidth: .infinity)
-
-                    TextField("", text: $newModelContextWindow)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity)
-
-                    HStack(spacing: 6) {
-                        Button {
-                            resetModelForm()
-                            showAddModel = false
-                        } label: {
-                            Image(systemName: "xmark.circle.fill")
-                                .font(.title3)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-
-                        Button {
-                            guard let mappingId = newModelMappingId else { return }
-                            let entry = CustomModelEntry(
-                                alias: newModelAlias.isEmpty ? (CodexConfigBridge.availableMappings(from: configManager).first { $0.id == mappingId }?.incomingModel ?? "") : newModelAlias,
-                                modelMappingId: mappingId,
-                                contextWindow: UInt64(newModelContextWindow) ?? 128000
-                            )
-                            draftCustomModels.append(entry)
-                            resetModelForm()
-                            showAddModel = false
-                        } label: {
-                            Image(systemName: "checkmark.circle.fill")
-                                .font(.title3)
-                        }
-                        .buttonStyle(.bordered)
-                        .controlSize(.small)
-                        .disabled(newModelMappingId == nil)
-                    }
-                    .frame(width: 60)
-                }
+            Button {
+                let firstMapping = CodexConfigBridge.availableMappings(from: configManager).first
+                let entry = CustomModelEntry(
+                    alias: "",
+                    modelMappingId: firstMapping?.id ?? UUID(),
+                    contextWindow: nil
+                )
+                draftCustomModels.append(entry)
+            } label: {
+                Label(L10n.t("codex_add_model"), systemImage: "plus.circle")
             }
-
-            if !showAddModel {
-                Button {
-                    resetModelForm()
-                    showAddModel = true
-                } label: {
-                    Label(L10n.t("codex_add_model"), systemImage: "plus.circle")
-                }
-                .buttonStyle(.borderless)
-                .controlSize(.small)
-            }
+            .buttonStyle(.borderless)
+            .controlSize(.small)
 
             if hasUnsavedModelChanges {
                 Divider()
@@ -562,6 +580,7 @@ private struct CodexServerTab: View {
                 if let idx = modelIndexToDelete {
                     draftCustomModels.remove(at: idx)
                     modelIndexToDelete = nil
+                    saveCustomModels()
                 }
             }
             Button(L10n.t("cancel"), role: .cancel) { modelIndexToDelete = nil }
@@ -630,15 +649,8 @@ private struct CodexServerTab: View {
             effortParam = rc.effortParam ?? "reasoning_effort"
             effortValueMode = rc.effortValueMode ?? "standard"
             reasoningOutputFormat = rc.outputFormat ?? "reasoning_content"
-            config.reasoningOverrideEnabled = true
             updateReasoningConfig()
         }
-    }
-
-    private func resetModelForm() {
-        newModelAlias = ""
-        newModelMappingId = nil
-        newModelContextWindow = ""
     }
 
     private var hasUnsavedModelChanges: Bool {
@@ -652,10 +664,6 @@ private struct CodexServerTab: View {
 
     private func cancelCustomModels() {
         draftCustomModels = config.customModels
-        if showAddModel {
-            resetModelForm()
-            showAddModel = false
-        }
     }
 }
 

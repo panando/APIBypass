@@ -21,17 +21,17 @@ struct APIBypassApp: App {
         baseImage.draw(in: NSRect(origin: .zero, size: size),
                        from: .zero, operation: .copy, fraction: 1.0)
 
-        // Bottom-left dot: Codex Adaptor status
+        // Top-left dot: Codex Adaptor status
         let leftDotColor = codexRunning ? NSColor.systemGreen : NSColor.systemGray
-        let leftDotRect = NSRect(x: 1, y: 1, width: dotSize, height: dotSize)
+        let leftDotRect = NSRect(x: 1, y: size.height - dotSize - 1, width: dotSize, height: dotSize)
         let leftPath = NSBezierPath(ovalIn: leftDotRect)
         leftDotColor.setFill()
         leftPath.fill()
 
-        // Bottom-right dot: APIBypass server status
+        // Top-right dot: APIBypass server status
         let rightDotColor = running ? NSColor.systemGreen : NSColor.systemGray
         let rightDotRect = NSRect(x: size.width - dotSize - 1,
-                                  y: 1,
+                                  y: size.height - dotSize - 1,
                                   width: dotSize,
                                   height: dotSize)
         let rightPath = NSBezierPath(ovalIn: rightDotRect)

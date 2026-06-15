@@ -17,6 +17,10 @@
 - **Section titles**: Changed from `.subheadline` secondary style to `.headline` for clearer visual hierarchy
 - **Language picker**: Left-aligned instead of centered; removed the "takes effect immediately" hint text
 
+### Menu Bar
+
+- **Status indicator position**: Moved the two status dots from bottom-left/bottom-right to top-left/top-right of the menu bar icon
+
 ### Localization
 
 - **Menu bar**: "启动 CodexAdaptor 服务" → "启动 Codex 适配服务" (Chinese)

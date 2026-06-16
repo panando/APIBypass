@@ -1,3 +1,39 @@
+# APIBypass v0.7.5
+
+## What's New
+
+### Return Requested Model Name
+
+Added a global toggle in the config window sidebar: **"Return Requested Model"** (返回请求模型名). When enabled, the `model` field in API responses matches the client's requested model name instead of the upstream actual model name.
+
+This solves a common problem: some AI clients strictly validate that the response's `model` field matches the request. For example, if you request `glm-5.1-ark` (mapped to upstream `glm-5.1`), the response would normally return `glm-5.1` — causing validation failures. Enabling this toggle ensures the response returns `glm-5.1-ark`, consistent with what the client sent.
+
+- Works for both streaming and non-streaming responses
+- Works across all API format combinations (OpenAI, Anthropic, with or without format translation)
+- Toggle is located at the bottom of the config window sidebar, separated from the provider list
+- Click the info icon next to the toggle for a detailed explanation with example
+
+### README: Credential Protection
+
+Added a new pain point to the README: many AI clients require you to enter provider API Keys directly, exposing your real credentials and base URL. APIBypass solves this — your real API Key stays in macOS Keychain and is injected at request time. Clients only see the local proxy address.
+
+## Download
+
+- [APIBypass-0.7.5.dmg](https://github.com/panando/APIBypass/releases/tag/v0.7.5)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.7.5
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.7.4
 
 ## What's New

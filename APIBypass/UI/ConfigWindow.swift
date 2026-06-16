@@ -13,6 +13,10 @@ struct ConfigWindow: View {
     @State private var sidebarWidth: CGFloat = 200
     @State private var mappingPanelWidth: CGFloat = 180
 
+    // Global toggle
+    @AppStorage("preserveIncomingModel") private var preserveModelName: Bool = false
+    @State private var showPreserveModelInfo = false
+
     // Change tracking
     @State private var currentHasChanges = false
     @State private var pendingProviderId: UUID?
@@ -94,6 +98,8 @@ struct ConfigWindow: View {
         VStack(spacing: 0) {
             providerList
             bottomToolbar
+            Divider()
+            preserveModelToggle
         }
         .alert(L10n.t("confirm_delete_provider"), isPresented: $showDeleteProviderConfirmation) {
             Button(L10n.t("cancel"), role: .cancel) {
@@ -222,6 +228,46 @@ struct ConfigWindow: View {
                 Label(L10n.t("delete_provider"), systemImage: "trash")
             }
         }
+    }
+
+    @ViewBuilder
+    private var preserveModelToggle: some View {
+        HStack(spacing: 6) {
+            Toggle(isOn: $preserveModelName) {
+                Text(L10n.t("preserve_model_name"))
+                    .font(.system(size: 11))
+            }
+            .toggleStyle(.switch)
+            .controlSize(.small)
+
+            Spacer()
+
+            Button {
+                showPreserveModelInfo.toggle()
+            } label: {
+                Image(systemName: "info.circle")
+                    .font(.system(size: 11))
+                    .foregroundColor(.secondary)
+            }
+            .buttonStyle(.plain)
+            .popover(isPresented: $showPreserveModelInfo) {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text(L10n.t("preserve_model_name"))
+                        .font(.headline)
+                    Text(L10n.t("preserve_model_name_desc"))
+                        .font(.body)
+                        .fixedSize(horizontal: false, vertical: true)
+                    Text(L10n.t("preserve_model_name_example"))
+                        .font(.callout)
+                        .foregroundColor(.secondary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(12)
+                .frame(width: 280)
+            }
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 6)
     }
 
     @ViewBuilder

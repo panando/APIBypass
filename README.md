@@ -31,10 +31,11 @@ APIBypass is a macOS menu bar app that sits between your AI tools and upstream A
 
 ### Why APIBypass?
 
-Claude Code speaks Anthropic. Most models speak OpenAI. Different models need different temperatures, thinking budgets, and context limits. Switching providers usually means reconfiguring every client.
+Claude Code speaks Anthropic. Most models speak OpenAI. Different models need different temperatures, thinking budgets, and context limits. Switching providers usually means reconfiguring every client. And many AI clients require you to enter your provider's API Key directly — exposing your real credentials and base URL to every app you use.
 
 APIBypass solves all of this at the network layer — one local endpoint, zero client changes:
 
+- **Credential protection** — Your real API Key never leaves your machine. API keys are stored in the macOS Keychain and injected by APIBypass at request time. Clients only see the local proxy address and a dummy key — your actual base URL and credentials stay private.
 - **Format translation** — Anthropic ↔ OpenAI in both directions, including SSE streaming, tool calls, and thinking mode. Only translates when formats don't match.
 - **Model mapping** — your client asks for `claude-sonnet-4-6`, APIBypass routes it to any model you choose.
 - **Parameter injection** — temperature, top-p, thinking mode, custom JSON fields — set once per model, applied to every request.

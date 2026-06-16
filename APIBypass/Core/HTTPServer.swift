@@ -285,6 +285,7 @@ final class HTTPServer: ObservableObject {
         }
         // 读取 bypassMode 状态
         let bypassMode = UserDefaults.standard.bool(forKey: "bypassMode")
+        let preserveModel = UserDefaults.standard.bool(forKey: "preserveIncomingModel")
         let needsConversion = !bypassMode && (format != upstreamFormat)
         let effectiveFormat = needsConversion ? upstreamFormat : format
 
@@ -368,23 +369,28 @@ final class HTTPServer: ObservableObject {
 
         // 根据是否流式选择处理路径
         if isStreaming {
+            let responseModel = preserveModel ? mapping.incomingModel : mapping.actualModel
             return try await handleStreamingRequest(
                 upstreamRequest: upstreamRequest,
                 needsConversion: needsConversion,
                 upstreamFormat: upstreamFormat,
                 clientFormat: format,
-                model: mapping.actualModel
+                model: responseModel,
+                preserveModel: preserveModel,
+                actualModel: mapping.actualModel,
+                incomingModel: mapping.incomingModel
             )
         }
 
         do {
             let rectifierEnabled = mapping.parameters.rectifierEnabled ?? true
+            let responseModel = preserveModel ? mapping.incomingModel : mapping.actualModel
             let (finalResponseData, httpResponse) = try await sendWithRectifier(
                 upstreamRequest: upstreamRequest,
                 needsConversion: needsConversion,
                 upstreamFormat: upstreamFormat,
                 clientFormat: format,
-                model: mapping.actualModel,
+                model: responseModel,
                 rectifierEnabled: rectifierEnabled,
                 apiKey: apiKey,
                 provider: provider.apiProvider.transportFormat,
@@ -408,15 +414,16 @@ final class HTTPServer: ObservableObject {
             }
 
             let statusCode = httpResponse.statusCode
-            print("📤 返回客户端: \(statusCode), body 大小: \(finalResponseData.count) bytes")
-            if let bodyStr = String(data: finalResponseData, encoding: .utf8) {
+            let outputData = preserveModel ? replaceModelInResponseData(finalResponseData, with: mapping.incomingModel) : finalResponseData
+            print("📤 返回客户端: \(statusCode), body 大小: \(outputData.count) bytes")
+            if let bodyStr = String(data: outputData, encoding: .utf8) {
                 print("📤 响应体: \(bodyStr.prefix(500))")
             }
 
             return Response(
                 status: HTTPResponse.Status(code: statusCode),
                 headers: headers,
-                body: .init(byteBuffer: ByteBuffer(data: finalResponseData))
+                body: .init(byteBuffer: ByteBuffer(data: outputData))
             )
         } catch {
             print("❌ 上游请求失败: \(error)")
@@ -434,7 +441,10 @@ final class HTTPServer: ObservableObject {
         needsConversion: Bool,
         upstreamFormat: APIFormat,
         clientFormat: APIFormat,
-        model: String
+        model: String,
+        preserveModel: Bool = false,
+        actualModel: String = "",
+        incomingModel: String = ""
     ) async throws -> Response {
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
@@ -471,7 +481,15 @@ final class HTTPServer: ObservableObject {
                     try await writer.finish(nil)
                 } else {
                     // 使用优化的批量读取（无格式转换）
-                    try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer)
+                    if preserveModel {
+                        try await self.streamWithBackpressure(
+                            bytes: streamResult.bytes,
+                            writer: &writer,
+                            modelReplacement: (from: actualModel, to: incomingModel)
+                        )
+                    } else {
+                        try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer)
+                    }
                     try await writer.finish(nil)
                 }
             } catch {
@@ -511,7 +529,8 @@ final class HTTPServer: ObservableObject {
     /// 带背压控制的流式传输
     private func streamWithBackpressure(
         bytes: URLSession.AsyncBytes,
-        writer: inout any ResponseBodyWriter
+        writer: inout any ResponseBodyWriter,
+        modelReplacement: (from: String, to: String)? = nil
     ) async throws {
         // 使用更大的缓冲区 (64KB) 进行批量读取
         let bufferSize = 65536
@@ -536,7 +555,14 @@ final class HTTPServer: ObservableObject {
                     doneReceived = true
                     break  // 收到 [DONE] 后停止处理
                 }
-                try await writer.write(buffer)
+
+                // 替换模型名称（如果需要）
+                var outputBuffer = buffer
+                if let replacement = modelReplacement {
+                    outputBuffer = Self.replaceModelInBuffer(buffer, from: replacement.from, to: replacement.to)
+                }
+
+                try await writer.write(outputBuffer)
                 buffer.clear()
             }
 
@@ -548,7 +574,11 @@ final class HTTPServer: ObservableObject {
 
         // 写入剩余数据（仅在未收到 [DONE] 时）
         if !doneReceived && buffer.readableBytes > 0 {
-            try await writer.write(buffer)
+            var outputBuffer = buffer
+            if let replacement = modelReplacement {
+                outputBuffer = Self.replaceModelInBuffer(buffer, from: replacement.from, to: replacement.to)
+            }
+            try await writer.write(outputBuffer)
         }
     }
 
@@ -623,6 +653,33 @@ final class HTTPServer: ObservableObject {
             finalData = responseData
         }
         return (finalData, httpResponse)
+    }
+
+    /// 替换响应 JSON 中的 model 字段
+    private func replaceModelInResponseData(_ data: Data, with model: String) -> Data {
+        guard var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any] else { return data }
+        if json["model"] != nil {
+            json["model"] = model
+            return (try? JSONSerialization.data(withJSONObject: json)) ?? data
+        }
+        return data
+    }
+
+    /// 替换 ByteBuffer 中的模型名称（用于流式传输）
+    private static func replaceModelInBuffer(_ buffer: ByteBuffer, from: String, to: String) -> ByteBuffer {
+        guard let string = String(data: Data(buffer.readableBytesView), encoding: .utf8) else { return buffer }
+        let patterns = [
+            ("\"model\":\"\(from)\"", "\"model\":\"\(to)\""),
+            ("\"model\": \"\(from)\"", "\"model\": \"\(to)\"")
+        ]
+        var modified = string
+        for (search, replace) in patterns {
+            modified = modified.replacingOccurrences(of: search, with: replace)
+        }
+        if modified != string, let data = modified.data(using: .utf8) {
+            return ByteBuffer(data: data)
+        }
+        return buffer
     }
 
     /// 格式化 JSON 字符串

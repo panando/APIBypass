@@ -31,10 +31,11 @@ APIBypass 是一款 macOS 菜单栏应用，位于你的 AI 工具与上游 API 
 
 ### 为什么用 APIBypass？
 
-Claude Code 只认 Anthropic 格式。大多数第三方模型说的是 OpenAI 格式。不同模型需要不同的 temperature、thinking 预算和上下文长度。切换提供商通常意味着重新配置每一个客户端。
+Claude Code 只认 Anthropic 格式。大多数第三方模型说的是 OpenAI 格式。不同模型需要不同的 temperature、thinking 预算和上下文长度。切换提供商通常意味着重新配置每一个客户端。更重要的是，很多 AI 客户端要求你直接填写模型提供商的 API Key —— 你的真实凭据和 Base URL 就这样暴露给了每一个应用。
 
 APIBypass 在网络层解决所有这些问题 —— 一个本地地址，客户端零改动：
 
+- **凭据保护** — 你的真实 API Key 不会离开本机。密钥存储在 macOS 钥匙串中，由 APIBypass 在请求时注入。客户端只能看到本地代理地址和一个占位 Key —— 你的真实 Base URL 和凭据始终保密。
 - **格式转换** — Anthropic ↔ OpenAI 双向互转，包括 SSE 流式、工具调用、思考模式。只在格式不匹配时才转换。
 - **模型映射** — 客户端请求 `claude-sonnet-4-6`，APIBypass 路由到你指定的任意模型。
 - **参数注入** — temperature、top-p、thinking 模式、自定义 JSON 参数 —— 每个模型设置一次，每次请求自动生效。

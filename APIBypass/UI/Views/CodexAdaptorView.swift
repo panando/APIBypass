@@ -114,6 +114,8 @@ private struct CodexServerTab: View {
     @State private var reasoningOutputFormat = "reasoning_content"
     @State private var modelIndexToDelete: Int?
     @State private var draftCustomModels: [CustomModelEntry] = []
+    @State private var draggingCustomModelId: UUID?
+    @State private var customModelDropTarget: CustomModelDropTarget?
     @State private var showReasoningInfo = false
 
     var body: some View {
@@ -469,7 +471,11 @@ private struct CodexServerTab: View {
     // MARK: - Custom Models Section
 
     private var customModelsSection: some View {
-        cardSection(header: Label(L10n.t("codex_custom_models"), systemImage: "cube.box")) {
+        let handleWidth: CGFloat = 18
+        let contextWidth: CGFloat = 100
+        let actionWidth: CGFloat = 60
+
+        return cardSection(header: Label(L10n.t("codex_custom_models"), systemImage: "cube.box")) {
             Text(L10n.t("codex_model_footer"))
                 .font(.caption)
                 .foregroundColor(.secondary)
@@ -477,69 +483,39 @@ private struct CodexServerTab: View {
 
             VStack(alignment: .leading, spacing: 1) {
                 HStack(spacing: 12) {
+                    Spacer().frame(width: handleWidth)
                     Text(L10n.t("codex_model_alias"))
-                        .font(.caption).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     Text(L10n.t("codex_model_slug"))
-                        .font(.caption).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.primary)
+                        .frame(maxWidth: .infinity, alignment: .center)
                     Text(L10n.t("codex_context_window"))
-                        .font(.caption).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer().frame(width: 60)
+                        .font(.caption.weight(.medium))
+                        .foregroundColor(.primary)
+                        .frame(width: contextWidth, alignment: .center)
+                    Spacer().frame(width: actionWidth)
                 }
                 HStack(spacing: 12) {
+                    Spacer().frame(width: handleWidth)
                     Text(L10n.t("codex_model_alias_desc"))
-                        .font(.caption2).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.caption2).foregroundColor(.secondary.opacity(0.8))
+                        .frame(maxWidth: .infinity, alignment: .center)
                     Text(L10n.t("codex_model_slug_desc"))
-                        .font(.caption2).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .font(.caption2).foregroundColor(.secondary.opacity(0.8))
+                        .frame(maxWidth: .infinity, alignment: .center)
                     Text(L10n.t("codex_context_window_eg"))
-                        .font(.caption2).foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                    Spacer().frame(width: 60)
+                        .font(.caption2).foregroundColor(.secondary.opacity(0.8))
+                        .frame(width: contextWidth, alignment: .center)
+                    Spacer().frame(width: actionWidth)
                 }
             }
             .padding(.bottom, 4)
 
-            ForEach(Array(draftCustomModels.enumerated()), id: \.element.id) { index, _ in
-                HStack(spacing: 12) {
-                    TextField("", text: $draftCustomModels[index].alias)
-                        .textFieldStyle(.roundedBorder)
-                        .multilineTextAlignment(.leading)
-                        .frame(maxWidth: .infinity)
-
-                    Picker("", selection: $draftCustomModels[index].modelMappingId) {
-                        ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
-                            Text(mapping.incomingModel).tag(mapping.id)
-                        }
-                    }
-                    .labelsHidden()
-                    .font(.system(.callout, design: .monospaced))
-                    .frame(maxWidth: .infinity)
-
-                    TextField(
-                        L10n.t("codex_context_window_eg"),
-                        text: Binding(
-                            get: { draftCustomModels[index].contextWindow.map { String($0) } ?? "" },
-                            set: { draftCustomModels[index].contextWindow = UInt64($0) }
-                        )
-                    )
-                    .textFieldStyle(.roundedBorder)
-                    .multilineTextAlignment(.leading)
-                    .frame(maxWidth: .infinity)
-
-                    Button {
-                        modelIndexToDelete = index
-                    } label: {
-                        Image(systemName: "trash")
-                            .font(.callout)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .frame(width: 60)
-                }
+            ForEach(draftCustomModels) { model in
+                customModelRow(model)
             }
 
             Button {
@@ -590,6 +566,112 @@ private struct CodexServerTab: View {
     }
 
     // MARK: - Helpers
+
+    private func customModelRow(_ model: CustomModelEntry) -> some View {
+        let canDrag = draftCustomModels.count > 1
+        let handleWidth: CGFloat = 18
+        let contextWidth: CGFloat = 100
+        let actionWidth: CGFloat = 60
+
+        return VStack(spacing: 0) {
+            customModelDropLine(for: model.id, position: .before)
+
+            HStack(spacing: 12) {
+                Image(systemName: "line.3.horizontal")
+                    .font(.caption)
+                    .foregroundColor(canDrag ? .secondary : .secondary.opacity(0.35))
+                    .frame(width: handleWidth)
+                    .contentShape(Rectangle())
+                    .onDrag {
+                        draggingCustomModelId = model.id
+                        return NSItemProvider(object: model.id.uuidString as NSString)
+                    }
+                    .disabled(!canDrag)
+
+                TextField("", text: customModelBinding(for: model.id, keyPath: \.alias))
+                    .textFieldStyle(.roundedBorder)
+                    .multilineTextAlignment(.leading)
+                    .frame(maxWidth: .infinity)
+
+                Picker("", selection: customModelBinding(for: model.id, keyPath: \.modelMappingId)) {
+                    ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
+                        Text(mapping.incomingModel).tag(mapping.id)
+                    }
+                }
+                .labelsHidden()
+                .font(.system(.callout, design: .monospaced))
+                .frame(maxWidth: .infinity)
+
+                TextField(
+                    L10n.t("codex_context_window_eg"),
+                    text: Binding(
+                        get: {
+                            draftCustomModels.first(where: { $0.id == model.id })?.contextWindow.map { String($0) } ?? ""
+                        },
+                        set: { value in
+                            guard let index = draftCustomModels.firstIndex(where: { $0.id == model.id }) else { return }
+                            draftCustomModels[index].contextWindow = UInt64(value)
+                        }
+                    )
+                )
+                .textFieldStyle(.roundedBorder)
+                .multilineTextAlignment(.leading)
+                .frame(width: contextWidth)
+
+                Button {
+                    modelIndexToDelete = draftCustomModels.firstIndex(where: { $0.id == model.id })
+                } label: {
+                    Image(systemName: "trash")
+                        .font(.callout)
+                }
+                .buttonStyle(.bordered)
+                .controlSize(.small)
+                .frame(width: actionWidth)
+            }
+            .opacity(draggingCustomModelId == model.id ? 0.6 : 1)
+            .onDrop(of: [.text], delegate: CustomModelDropDelegate(
+                targetId: model.id,
+                models: draftCustomModels,
+                draggingId: $draggingCustomModelId,
+                dropTarget: $customModelDropTarget,
+                move: moveCustomModel
+            ))
+
+            customModelDropLine(for: model.id, position: .after)
+        }
+    }
+
+    private func customModelDropLine(for id: UUID, position: CustomModelDropPosition) -> some View {
+        Rectangle()
+            .fill(customModelDropTarget == CustomModelDropTarget(id: id, position: position) ? Color.accentColor : Color.clear)
+            .frame(height: 2)
+            .padding(.leading, 30)
+    }
+
+    private func customModelBinding<Value>(for id: UUID, keyPath: WritableKeyPath<CustomModelEntry, Value>) -> Binding<Value> {
+        Binding(
+            get: {
+                draftCustomModels.first(where: { $0.id == id })![keyPath: keyPath]
+            },
+            set: { value in
+                guard let index = draftCustomModels.firstIndex(where: { $0.id == id }) else { return }
+                draftCustomModels[index][keyPath: keyPath] = value
+            }
+        )
+    }
+
+    private func moveCustomModel(sourceId: UUID, targetId: UUID, position: CustomModelDropPosition) {
+        guard sourceId != targetId,
+              let sourceIndex = draftCustomModels.firstIndex(where: { $0.id == sourceId }),
+              let targetIndex = draftCustomModels.firstIndex(where: { $0.id == targetId }) else { return }
+
+        let model = draftCustomModels.remove(at: sourceIndex)
+        var insertionIndex = draftCustomModels.firstIndex(where: { $0.id == targetId }) ?? targetIndex
+        if position == .after {
+            insertionIndex += 1
+        }
+        draftCustomModels.insert(model, at: insertionIndex)
+    }
 
     private func loadConfig() {
         Task {
@@ -664,6 +746,63 @@ private struct CodexServerTab: View {
 
     private func cancelCustomModels() {
         draftCustomModels = config.customModels
+    }
+}
+
+private enum CustomModelDropPosition: Equatable {
+    case before
+    case after
+}
+
+private struct CustomModelDropTarget: Equatable {
+    let id: UUID
+    let position: CustomModelDropPosition
+}
+
+private struct CustomModelDropDelegate: DropDelegate {
+    let targetId: UUID
+    let models: [CustomModelEntry]
+    @Binding var draggingId: UUID?
+    @Binding var dropTarget: CustomModelDropTarget?
+    let move: (UUID, UUID, CustomModelDropPosition) -> Void
+
+    func dropEntered(info: DropInfo) {
+        updateDropTarget(info: info)
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        updateDropTarget(info: info)
+        return DropProposal(operation: .move)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        guard let sourceId = draggingId,
+              let target = dropTarget,
+              target.id == targetId else {
+            draggingId = nil
+            dropTarget = nil
+            return false
+        }
+
+        move(sourceId, target.id, target.position)
+        draggingId = nil
+        dropTarget = nil
+        return true
+    }
+
+    func dropExited(info: DropInfo) {
+        if dropTarget?.id == targetId {
+            dropTarget = nil
+        }
+    }
+
+    private func updateDropTarget(info: DropInfo) {
+        guard let draggingId,
+              draggingId != targetId,
+              models.contains(where: { $0.id == draggingId }) else { return }
+
+        let position: CustomModelDropPosition = info.location.y < 16 ? .before : .after
+        dropTarget = CustomModelDropTarget(id: targetId, position: position)
     }
 }
 

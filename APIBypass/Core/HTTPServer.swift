@@ -223,6 +223,24 @@ final class HTTPServer: ObservableObject {
         return count
     }
 
+    private func injectStreamUsageIfNeeded(
+        into data: Data,
+        isStreaming: Bool,
+        upstreamFormat: APIFormat,
+        provider: ProviderConfig
+    ) -> Data {
+        guard isStreaming,
+              upstreamFormat == .openai,
+              provider.includeUsageInStreamRequests,
+              var json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              json["stream_options"] == nil else {
+            return data
+        }
+
+        json["stream_options"] = ["include_usage": true]
+        return (try? JSONSerialization.data(withJSONObject: json)) ?? data
+    }
+
     private func handleProxyRequest(
         _ request: Request,
         _ context: BasicRequestContext,
@@ -318,6 +336,13 @@ final class HTTPServer: ObservableObject {
             finalRequestData = transformedData
         }
 
+        let upstreamRequestData = injectStreamUsageIfNeeded(
+            into: finalRequestData,
+            isStreaming: isStreaming,
+            upstreamFormat: upstreamFormat,
+            provider: provider
+        )
+
         // 获取 API Key
         let apiKey: String
         do {
@@ -349,7 +374,7 @@ final class HTTPServer: ObservableObject {
         let upstreamRequest = networkService.buildRequest(
             url: upstreamURL,
             method: "POST",
-            body: finalRequestData,
+            body: upstreamRequestData,
             apiKey: apiKey,
             provider: provider.apiProvider.transportFormat,
             customHeaders: mapping.parameters.customHeaders
@@ -361,7 +386,7 @@ final class HTTPServer: ObservableObject {
         print("────────────────────────────────────────────────────────────")
         print("上游 URL: \(upstreamURL.absoluteString)")
         print("实际模型: \(mapping.actualModel)")
-        if let finalBody = String(data: finalRequestData, encoding: .utf8) {
+        if let finalBody = String(data: upstreamRequestData, encoding: .utf8) {
             print("请求体 (转换后):")
             print(prettyJSON(finalBody) ?? finalBody)
         }

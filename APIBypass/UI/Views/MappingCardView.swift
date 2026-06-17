@@ -115,6 +115,10 @@ struct MappingCardView: View {
 
                         Spacer()
 
+                        Image(systemName: "line.3.horizontal")
+                            .foregroundColor(.secondary)
+                            .font(.caption)
+
                         Image(systemName: isExpanded ? "chevron.up" : "chevron.down")
                             .foregroundColor(.secondary)
                             .font(.caption)

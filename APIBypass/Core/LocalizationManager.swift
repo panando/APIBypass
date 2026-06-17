@@ -71,7 +71,7 @@ struct L10n {
         "language_hint": [.chinese: "切换语言后立即生效", .english: "Changes take effect immediately"],
         "server_port": [.chinese: "服务端口", .english: "Server Port"],
         "port_hint": [.chinese: "修改端口后需重启服务生效", .english: "Restart the server to apply port changes"],
-        "preserve_model_name": [.chinese: "返回请求模型名", .english: "Return Requested Model"],
+        "preserve_model_name": [.chinese: "模型名校正", .english: "Model Name Fix"],
         "preserve_model_name_desc": [.chinese: "开启后，API 响应中的 model 字段将返回客户端请求的模型名，而非上游实际模型名。适用于客户端对响应模型名做严格校验的场景。", .english: "When enabled, the model field in API responses returns the client's requested model name instead of the upstream actual model name. Useful when clients strictly validate the response model name."],
         "preserve_model_name_example": [.chinese: "示例：客户端请求 glm-5.1-ark → 上游实际调用 glm-5.1 → 响应返回 glm-5.1-ark", .english: "Example: Client requests glm-5.1-ark → upstream uses glm-5.1 → response returns glm-5.1-ark"],
         "about": [.chinese: "关于", .english: "About"],
@@ -170,6 +170,8 @@ struct L10n {
         "provider": [.chinese: "提供商", .english: "Provider"],
         "provider_missing": [.chinese: "提供商缺失", .english: "Provider Missing"],
         "provider_deleted_warning": [.chinese: "提供商已删除，请重新选择", .english: "Provider deleted, please reselect"],
+        "stream_usage_toggle": [.chinese: "请求流式 token 用量", .english: "Request streaming token usage"],
+        "stream_usage_desc": [.chinese: "开启后，APIBypass 会为该供应商的 OpenAI 兼容流式请求添加 stream_options.include_usage=true，让 Claude Code 等客户端可以显示上下文比例和 token 用量。\n\n当流式响应中的 token 用量显示为 0、缺失或不更新时，建议开启。\n\n如果开启后该供应商请求失败，或错误提示不支持 stream_options / include_usage，请关闭。", .english: "When enabled, APIBypass adds stream_options.include_usage=true to OpenAI-compatible streaming requests for this provider, allowing clients like Claude Code to display context percentage and token usage.\n\nEnable this when token usage in streaming responses shows as 0, is missing, or does not update.\n\nDisable it if requests to this provider fail after enabling it, or if the error says stream_options / include_usage is unsupported."],
 
         // 映射分组
         "model_mappings": [.chinese: "模型映射", .english: "Model Mappings"],

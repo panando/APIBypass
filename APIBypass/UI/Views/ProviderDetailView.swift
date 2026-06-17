@@ -16,12 +16,15 @@ struct ProviderDetailView: View {
     @State private var apiProvider: APIProvider = .openai
     @State private var baseURL: String = ""
     @State private var apiKey: String = ""
+    @State private var includeUsageInStreamRequests = true
+    @State private var showStreamUsageInfo = false
     @State private var showSaveConfirmation = false
 
     @State private var originalName: String = ""
     @State private var originalApiProvider: APIProvider = .openai
     @State private var originalBaseURL: String = ""
     @State private var originalApiKey: String = ""
+    @State private var originalIncludeUsageInStreamRequests = true
     @State private var lastResetTrigger = 0
     @State private var lastSaveTrigger = 0
 
@@ -34,12 +37,14 @@ struct ProviderDetailView: View {
     @State private var showMappingSwitchAlert = false
     @State private var pendingMappingId: UUID?
     @State private var mappingSaveTrigger = 0
+    @State private var draggingMappingId: UUID?
 
     private var hasChanges: Bool {
         name != originalName
             || apiProvider != originalApiProvider
             || baseURL != originalBaseURL
             || apiKey != originalApiKey
+            || includeUsageInStreamRequests != originalIncludeUsageInStreamRequests
     }
 
     private var relatedMappings: [ModelMapping] {
@@ -86,6 +91,38 @@ struct ProviderDetailView: View {
                             Text(L10n.t("api_key"))
                                 .frame(width: 100, alignment: .trailing)
                             SecureField(L10n.t("api_key_placeholder"), text: $apiKey)
+                        }
+                        if apiProvider == .openai {
+                            HStack(spacing: 6) {
+                                Toggle("", isOn: $includeUsageInStreamRequests)
+                                    .toggleStyle(.switch)
+                                    .controlSize(.small)
+                                    .labelsHidden()
+                                Text(L10n.t("stream_usage_toggle"))
+                                    .lineLimit(1)
+                                Button {
+                                    showStreamUsageInfo.toggle()
+                                } label: {
+                                    Image(systemName: "info.circle")
+                                        .font(.system(size: 11))
+                                        .foregroundColor(.secondary)
+                                }
+                                .buttonStyle(.plain)
+                                .popover(isPresented: $showStreamUsageInfo) {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text(L10n.t("stream_usage_toggle"))
+                                            .font(.headline)
+                                        Text(L10n.t("stream_usage_desc"))
+                                            .font(.body)
+                                            .fixedSize(horizontal: false, vertical: true)
+                                    }
+                                    .padding(12)
+                                    .frame(width: 320)
+                                }
+                                Spacer()
+                            }
+                            .padding(.leading, 100)
+                            .padding(.top, 4)
                         }
                     }
 
@@ -188,11 +225,21 @@ struct ProviderDetailView: View {
                                     },
                                     externalSaveTrigger: mappingSaveTrigger
                                 )
-                            }
-                            .onMove { source, destination in
-                                Task {
-                                    await configManager.moveMapping(providerId: providerId, from: source, to: destination)
+                                .opacity(draggingMappingId == mapping.id ? 0.6 : 1)
+                                .onDrag {
+                                    draggingMappingId = mapping.id
+                                    return NSItemProvider(object: mapping.id.uuidString as NSString)
                                 }
+                                .onDrop(of: [.text], delegate: MappingDropDelegate(
+                                    targetMapping: mapping,
+                                    relatedMappings: relatedMappings,
+                                    draggingMappingId: $draggingMappingId,
+                                    move: { source, destination in
+                                        Task {
+                                            await configManager.moveMapping(providerId: providerId, from: source, to: destination)
+                                        }
+                                    }
+                                ))
                             }
                         }
                     }
@@ -264,6 +311,7 @@ struct ProviderDetailView: View {
         name = provider.name
         apiProvider = provider.apiProvider
         baseURL = provider.baseURL.absoluteString
+        includeUsageInStreamRequests = provider.includeUsageInStreamRequests
 
         Task {
             if let key = try? await keychain.retrieve(forKey: providerId.uuidString) {
@@ -278,6 +326,7 @@ struct ProviderDetailView: View {
         originalApiProvider = apiProvider
         originalBaseURL = baseURL
         originalApiKey = apiKey
+        originalIncludeUsageInStreamRequests = includeUsageInStreamRequests
         onHasChangesChange?(false)
     }
 
@@ -289,7 +338,8 @@ struct ProviderDetailView: View {
             name: name,
             apiProvider: apiProvider,
             baseURL: URL(string: baseURL) ?? apiProvider.defaultBaseURL,
-            environmentVariables: provider.environmentVariables
+            environmentVariables: provider.environmentVariables,
+            includeUsageInStreamRequests: includeUsageInStreamRequests
         )
 
         Task {
@@ -306,5 +356,31 @@ struct ProviderDetailView: View {
 
     func discardChanges() {
         loadProviderData()
+    }
+}
+
+private struct MappingDropDelegate: DropDelegate {
+    let targetMapping: ModelMapping
+    let relatedMappings: [ModelMapping]
+    @Binding var draggingMappingId: UUID?
+    let move: (IndexSet, Int) -> Void
+
+    func dropEntered(info: DropInfo) {
+        guard let draggingMappingId,
+              draggingMappingId != targetMapping.id,
+              let sourceIndex = relatedMappings.firstIndex(where: { $0.id == draggingMappingId }),
+              let targetIndex = relatedMappings.firstIndex(where: { $0.id == targetMapping.id }) else { return }
+
+        let destination = targetIndex > sourceIndex ? targetIndex + 1 : targetIndex
+        move(IndexSet(integer: sourceIndex), destination)
+    }
+
+    func performDrop(info: DropInfo) -> Bool {
+        draggingMappingId = nil
+        return true
+    }
+
+    func dropUpdated(info: DropInfo) -> DropProposal? {
+        DropProposal(operation: .move)
     }
 }

@@ -1,3 +1,43 @@
+# APIBypass v0.7.6
+
+## What's New
+
+### Streaming Token Usage for OpenAI-Compatible Providers
+
+Added a provider-level switch: **Request streaming token usage** (请求流式 token 用量). When enabled, APIBypass adds `stream_options.include_usage=true` to OpenAI-compatible streaming requests for that provider, allowing clients such as Claude Code to display context percentage and token usage when the upstream provider requires explicit usage reporting.
+
+- Enabled by default for existing and new providers
+- Only applies to OpenAI-compatible streaming upstream requests
+- Preserves client-provided `stream_options` without overriding them
+- Can be disabled per provider if an upstream API does not support `stream_options` / `include_usage`
+- Includes an info popover explaining when to enable or disable the option
+
+### UI Improvements
+
+- Improved the provider settings UI with a compact stream-usage switch and clearer help text
+- Renamed the global model-name option to **Model Name Fix** (模型名校正)
+- Improved the sidebar model-name toggle layout for better visual consistency
+- Added drag handles and drag-and-drop reordering for provider model mappings
+- Added drag-and-drop reordering for Codex Adaptor custom models
+- Refined Codex Adaptor custom model column sizing and header hierarchy
+
+## Download
+
+- [APIBypass-0.7.6.dmg](https://github.com/panando/APIBypass/releases/tag/v0.7.6)
+
+## Build from Source
+
+```bash
+git clone https://github.com/panando/APIBypass.git
+cd APIBypass
+git checkout v0.7.6
+swift build -c release
+```
+
+**Requirements**: macOS 14.0+, Swift 6.0+, Xcode 16.0+
+
+---
+
 # APIBypass v0.7.5
 
 ## What's New

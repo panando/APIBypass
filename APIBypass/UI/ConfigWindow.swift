@@ -233,12 +233,14 @@ struct ConfigWindow: View {
     @ViewBuilder
     private var preserveModelToggle: some View {
         HStack(spacing: 6) {
-            Toggle(isOn: $preserveModelName) {
-                Text(L10n.t("preserve_model_name"))
-                    .font(.system(size: 11))
-            }
-            .toggleStyle(.switch)
-            .controlSize(.small)
+            Toggle("", isOn: $preserveModelName)
+                .toggleStyle(.switch)
+                .controlSize(.small)
+                .labelsHidden()
+
+            Text(L10n.t("preserve_model_name"))
+                .font(.system(size: 11))
+                .lineLimit(1)
 
             Spacer()
 
@@ -408,7 +410,8 @@ struct ConfigWindow: View {
             name: provider.name + " 副本",
             apiProvider: provider.apiProvider,
             baseURL: provider.baseURL,
-            environmentVariables: provider.environmentVariables
+            environmentVariables: provider.environmentVariables,
+            includeUsageInStreamRequests: provider.includeUsageInStreamRequests
         )
 
         let mappingsToCopy = configManager.mappings.filter { $0.providerConfigId == provider.id }

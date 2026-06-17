@@ -25,9 +25,9 @@ APIBypass is a macOS menu bar app that sits between your AI tools and upstream A
 
 ---
 
-[![menu](menu.png)](menu.png)
-
-[![Configure](screenshot_configure.png)](screenshot_configure.png)
+<p align="center">
+  <a href="menu.png"><img src="menu.png" alt="APIBypass menu bar menu" width="380"></a>
+</p>
 
 ### Why APIBypass?
 
@@ -71,6 +71,10 @@ Click the APIBypass icon in the menu bar — the server auto-starts on `127.0.0.
 
 Menu bar → "Configure..." → create a provider:
 
+<p align="center">
+  <a href="screenshot_configure.png"><img src="screenshot_configure.png" alt="Provider and model mapping configuration" width="720"></a>
+</p>
+
 | Field | Description | Example |
 |---|---|---|
 | Provider Name | A label | `My DeepSeek` |
@@ -94,6 +98,11 @@ Set your AI client's base URL to `http://127.0.0.1:8390/v1`. The API Key field c
 ### 5. Launch Claude Code (Optional)
 
 Menu bar → "Launch Claude Code":
+
+<p align="center">
+  <a href="screenshot_launch.png"><img src="screenshot_launch.png" alt="Launch Claude Code configuration" width="720"></a>
+</p>
+
 1. Pick a provider (base URL and token auto-configured)
 2. Choose a terminal
 3. Select models for Anthropic/Opus/Sonnet/Haiku/Subagent roles
@@ -220,6 +229,10 @@ Client (Claude Code / Cursor / Anything) │
 ## Settings
 
 Menu bar → "Settings...":
+
+<p align="center">
+  <a href="screenshot_settings.png"><img src="screenshot_settings.png" alt="APIBypass settings window" width="720"></a>
+</p>
 
 - **Language**: 中文 / English, takes effect immediately
 - **Server Port**: Default 8390, restart to apply

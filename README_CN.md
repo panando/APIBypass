@@ -25,9 +25,9 @@ APIBypass 是一款 macOS 菜单栏应用，位于你的 AI 工具与上游 API 
 
 ---
 
-[![菜单栏](menu.png)](menu.png)
-
-[![配置界面](screenshot_configure.png)](screenshot_configure.png)
+<p align="center">
+  <a href="menu.png"><img src="menu.png" alt="APIBypass 菜单栏菜单" width="380"></a>
+</p>
 
 ### 为什么用 APIBypass？
 
@@ -71,6 +71,10 @@ swift build -c release && .build/arm64-apple-macosx/release/APIBypass
 
 菜单栏 →「配置...」→ 创建提供商：
 
+<p align="center">
+  <a href="screenshot_configure.png"><img src="screenshot_configure.png" alt="提供商与模型映射配置" width="720"></a>
+</p>
+
 | 字段 | 说明 | 示例 |
 |---|---|---|
 | 提供商名称 | 便于识别 | `我的 DeepSeek` |
@@ -94,6 +98,11 @@ swift build -c release && .build/arm64-apple-macosx/release/APIBypass
 ### 5. 启动 Claude Code（可选）
 
 菜单栏 →「启动 Claude Code」：
+
+<p align="center">
+  <a href="screenshot_launch.png"><img src="screenshot_launch.png" alt="启动 Claude Code 配置" width="720"></a>
+</p>
+
 1. 选择提供商（Base URL 和 Token 自动配置）
 2. 选择终端
 3. 为 Anthropic/Opus/Sonnet/Haiku/Subagent 选择模型
@@ -129,6 +138,10 @@ Claude Code 在终端中打开，所有环境变量已配好，每个模型角�
 ### Codex Adaptor — Responses API 代理与 Codex 集成
 
 OpenAI 的 [Codex](https://github.com/openai/codex) 使用 **Responses API** —— 一种新的 API 格式，几乎没有代理或第三方提供商支持。APIBypass 是首个填补这一空白的 macOS 工具：实时将 Responses API ↔ Chat Completions 互转，并通过 APIBypass 的模型映射和参数注入管线处理请求。结果：**Codex 可以使用任意提供商的任意模型** —— DeepSeek、Qwen、GLM、MiniMax，而不仅限于 OpenAI。
+
+<p align="center">
+  <a href="screenshot_codexadaptor.png"><img src="screenshot_codexadaptor.png" alt="Codex Adaptor 配置" width="720"></a>
+</p>
 
 ```
 Codex ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions──▶ APIBypass (:8390) ──▶ 上游
@@ -220,6 +233,10 @@ Codex ──▶ Codex Adaptor (:15721) ──▶┐
 ## 设置面板
 
 菜单栏 →「设置...」：
+
+<p align="center">
+  <a href="screenshot_settings.png"><img src="screenshot_settings.png" alt="APIBypass 设置窗口" width="720"></a>
+</p>
 
 - **语言**：中文 / English，即时生效
 - **服务端口**：默认 8390，修改后重启生效

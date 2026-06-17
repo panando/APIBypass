@@ -139,6 +139,10 @@ Claude Code opens with all environment variables set, routing each model role th
 
 OpenAI's [Codex](https://github.com/openai/codex) uses the **Responses API** — a new format that almost no proxy or third-party provider supports. APIBypass is the first macOS tool to bridge this gap: it translates Responses API ↔ Chat Completions in real time, and passes requests through APIBypass's model mapping and parameter injection pipeline. The result: **Codex works with any provider, any model** — DeepSeek, Qwen, GLM, MiniMax, not just OpenAI.
 
+<p align="center">
+  <a href="screenshot_codexadaptor.png"><img src="screenshot_codexadaptor.png" alt="Codex Adaptor configuration" width="720"></a>
+</p>
+
 ```
 Codex ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions──▶ APIBypass (:8390) ──▶ Upstream
 ```

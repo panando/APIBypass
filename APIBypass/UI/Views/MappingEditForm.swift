@@ -33,6 +33,7 @@ struct MappingEditForm: View {
     var focusIncomingModelTrigger: Int = 0
 
     @State private var showNewProviderSheet = false
+    @State private var showThinkingProtocolHelp = false
     @FocusState private var isIncomingModelFocused: Bool
     private let l10n = LocalizationManager.shared
 
@@ -137,7 +138,33 @@ struct MappingEditForm: View {
                             }
                         }
                         .labelsHidden()
+                        .frame(maxWidth: 220, alignment: .leading)
                         .disabled(!thinkingOverrideEnabled)
+                        Button {
+                            showThinkingProtocolHelp.toggle()
+                        } label: {
+                            Image(systemName: "info.circle")
+                                .font(.system(size: 12))
+                                .foregroundColor(.secondary)
+                        }
+                        .buttonStyle(.plain)
+                        .popover(isPresented: $showThinkingProtocolHelp) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(L10n.t("thinking_protocol_help_title"))
+                                    .font(.headline)
+                                Text(L10n.t("thinking_protocol_help_enable_thinking"))
+                                    .font(.body)
+                                Text(L10n.t("thinking_protocol_help_reasoning_effort"))
+                                    .font(.body)
+                                Text(L10n.t("thinking_protocol_help_anthropic_native"))
+                                    .font(.body)
+                                Text(L10n.t("thinking_protocol_help_none"))
+                                    .font(.body)
+                            }
+                            .padding(12)
+                            .frame(width: 360)
+                        }
+                        Spacer()
                     }
 
                     // Protocol-specific controls

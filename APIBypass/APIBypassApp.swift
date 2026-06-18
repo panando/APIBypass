@@ -80,6 +80,7 @@ struct APIBypassApp: App {
     private func startServer() {
         guard !isTransitioning, server == nil else { return }
         isTransitioning = true
+        _ = TraceLogger.shared
         print("[APIBypass] startServer() called")
         Task {
             let newServer = HTTPServer()

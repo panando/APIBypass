@@ -16,7 +16,8 @@ final class StreamTranslator {
 
     func translateOpenAIToAnthropic(
         bytes: URLSession.AsyncBytes,
-        model: String
+        model: String,
+        reqId: String = "none"
     ) -> AsyncThrowingStream<String, Error> {
         AsyncThrowingStream { continuation in
             Task {
@@ -31,6 +32,14 @@ final class StreamTranslator {
                     var nextBlockIndex = 0
                     var usageChunk: [String: Any]?
                     var finishReason: String?
+                    var upstreamChunkIndex = 0
+                    var outEventIndex = 0
+
+                    func yieldOut(_ sse: String) {
+                        outEventIndex += 1
+                        TraceLogger.shared.log(reqId, "out #\(String(format: "%03d", outEventIndex)): \(sse.replacingOccurrences(of: "\n", with: "\\n"))")
+                        continuation.yield(sse)
+                    }
 
                     /// Stop current thinking block (if any) and emit content_block_stop
                     func stopThinking() {
@@ -40,13 +49,13 @@ final class StreamTranslator {
                             event: "content_block_stop",
                             data: ["type": "content_block_stop", "index": thinkingBlockIndex]
                         )
-                        continuation.yield(stopBlock)
+                        yieldOut(stopBlock)
                         // Emit signature delta (dummy for non-Anthropic models)
                         let sigEvent = anthropicSSE(
                             event: "content_block_delta",
                             data: ["type": "content_block_delta", "index": thinkingBlockIndex, "delta": ["type": "signature_delta", "signature": "Eq4EAC8KAQw="]]
                         )
-                        continuation.yield(sigEvent)
+                        yieldOut(sigEvent)
                     }
 
                     /// Stop current text block (if any)
@@ -57,7 +66,7 @@ final class StreamTranslator {
                             event: "content_block_stop",
                             data: ["type": "content_block_stop", "index": textBlockIndex]
                         )
-                        continuation.yield(stopBlock)
+                        yieldOut(stopBlock)
                     }
 
                     /// Stop any active content block
@@ -68,12 +77,18 @@ final class StreamTranslator {
 
                     for try await event in SSEDecoder.decode(bytes: bytes) {
                         let data = event.data
+                        upstreamChunkIndex += 1
+                        TraceLogger.shared.log(reqId, "in  #\(String(format: "%03d", upstreamChunkIndex)): \(data.prefix(300))")
 
                         // Check for [DONE]
-                        if data == "[DONE]" { break }
+                        if data == "[DONE]" {
+                            TraceLogger.shared.log(reqId, "in  #\(String(format: "%03d", upstreamChunkIndex)): [DONE] — breaking loop")
+                            break
+                        }
 
                         guard let jsonData = data.data(using: .utf8),
                               let chunk = try? JSONSerialization.jsonObject(with: jsonData) as? [String: Any] else {
+                            TraceLogger.shared.log(reqId, "in  #\(String(format: "%03d", upstreamChunkIndex)): JSON parse failed, skipping")
                             continue
                         }
 
@@ -84,6 +99,7 @@ final class StreamTranslator {
 
                         guard let choices = chunk["choices"] as? [[String: Any]],
                               let first = choices.first else {
+                            TraceLogger.shared.log(reqId, "in  #\(String(format: "%03d", upstreamChunkIndex)): no choices, skipping")
                             continue
                         }
 
@@ -106,7 +122,7 @@ final class StreamTranslator {
                                     "usage": ["input_tokens": 0, "output_tokens": 0]
                                 ]]
                             )
-                            continuation.yield(startEvent)
+                            yieldOut(startEvent)
 
                             // If the first delta has a role, we can move on
                             _ = delta["role"] as? String
@@ -123,13 +139,13 @@ final class StreamTranslator {
                                     event: "content_block_start",
                                     data: ["type": "content_block_start", "index": thinkingBlockIndex, "content_block": ["type": "thinking", "thinking": ""]]
                                 )
-                                continuation.yield(startBlock)
+                                yieldOut(startBlock)
                             }
                             let deltaEvent = anthropicSSE(
                                 event: "content_block_delta",
                                 data: ["type": "content_block_delta", "index": thinkingBlockIndex, "delta": ["type": "thinking_delta", "thinking": reasoning]]
                             )
-                            continuation.yield(deltaEvent)
+                            yieldOut(deltaEvent)
                         }
 
                         // Text content
@@ -143,13 +159,13 @@ final class StreamTranslator {
                                     event: "content_block_start",
                                     data: ["type": "content_block_start", "index": textBlockIndex, "content_block": ["type": "text", "text": ""]]
                                 )
-                                continuation.yield(startBlock)
+                                yieldOut(startBlock)
                             }
                             let deltaEvent = anthropicSSE(
                                 event: "content_block_delta",
                                 data: ["type": "content_block_delta", "index": textBlockIndex, "delta": ["type": "text_delta", "text": content]]
                             )
-                            continuation.yield(deltaEvent)
+                            yieldOut(deltaEvent)
                         }
 
                         // Tool calls
@@ -171,7 +187,7 @@ final class StreamTranslator {
                                         event: "content_block_start",
                                         data: ["type": "content_block_start", "index": blockIdx, "content_block": ["type": "tool_use", "id": id, "name": name ?? "", "input": [:]]]
                                     )
-                                    continuation.yield(startTool)
+                                    yieldOut(startTool)
                                 }
 
                                 if var state = toolStates[index] {
@@ -184,7 +200,7 @@ final class StreamTranslator {
                                             event: "content_block_delta",
                                             data: ["type": "content_block_delta", "index": state.blockIdx, "delta": ["type": "input_json_delta", "partial_json": arguments]]
                                         )
-                                        continuation.yield(deltaTool)
+                                        yieldOut(deltaTool)
                                     }
                                 }
                             }
@@ -196,6 +212,8 @@ final class StreamTranslator {
                         }
                     }
 
+                    TraceLogger.shared.log(reqId, "━━━ upstream loop ended: \(upstreamChunkIndex) chunks received ━━━")
+
                     // Close blocks
                     stopActiveBlock()
                     let sortedToolIndices = toolStates.keys.sorted()
@@ -206,7 +224,7 @@ final class StreamTranslator {
                             event: "content_block_stop",
                             data: ["type": "content_block_stop", "index": state.blockIdx]
                         )
-                        continuation.yield(stopTool)
+                        yieldOut(stopTool)
                     }
 
                     // message_delta
@@ -220,11 +238,12 @@ final class StreamTranslator {
                     } else {
                         deltaData["usage"] = ["output_tokens": 0]
                     }
-                    continuation.yield(anthropicSSE(event: "message_delta", data: deltaData))
+                    yieldOut(anthropicSSE(event: "message_delta", data: deltaData))
 
                     // message_stop
-                    continuation.yield(anthropicSSE(event: "message_stop", data: ["type": "message_stop"]))
+                    yieldOut(anthropicSSE(event: "message_stop", data: ["type": "message_stop"]))
 
+                    TraceLogger.shared.log(reqId, "━━━ translated stream finished: \(outEventIndex) events sent ━━━")
                     continuation.finish()
                 } catch {
                     continuation.finish(throwing: error)

@@ -489,11 +489,16 @@ final class FormatTranslator {
         var imageParts: [[String: Any]] = []
         var toolCalls: [[String: Any]] = []
         var toolResults: [[String: Any]] = []
+        var reasoningParts: [String] = []
 
         for block in blocks {
             switch block["type"] as? String {
             case "text":
                 if let t = block["text"] as? String { textParts.append(t) }
+            case "thinking":
+                if let t = block["thinking"] as? String, !t.isEmpty {
+                    reasoningParts.append(t)
+                }
             case "image":
                 if let img = convertAnthropicImageToOpenAI(block) {
                     imageParts.append(img)
@@ -511,7 +516,17 @@ final class FormatTranslator {
                 ])
             case "tool_result":
                 let toolUseId = block["tool_use_id"] as? String ?? ""
-                let resultContent = block["content"] as? String ?? ""
+                let resultContent: String
+                if let s = block["content"] as? String {
+                    resultContent = s
+                } else if let arr = block["content"] as? [[String: Any]] {
+                    resultContent = arr.compactMap { b -> String? in
+                        guard (b["type"] as? String) == "text" else { return nil }
+                        return b["text"] as? String
+                    }.joined()
+                } else {
+                    resultContent = ""
+                }
                 toolResults.append([
                     "role": "tool",
                     "tool_call_id": toolUseId,
@@ -532,16 +547,33 @@ final class FormatTranslator {
             if !textParts.isEmpty {
                 msg["content"] = textParts.joined()
             }
+            if !reasoningParts.isEmpty {
+                msg["reasoning_content"] = reasoningParts.joined()
+            }
             messages.insert(msg, at: 0)
         } else if !textParts.isEmpty || !imageParts.isEmpty {
             if !imageParts.isEmpty {
                 var parts: [[String: Any]] = []
                 for t in textParts { parts.append(["type": "text", "text": t]) }
                 parts.append(contentsOf: imageParts)
-                messages.append(["role": role, "content": parts])
+                var msg: [String: Any] = ["role": role, "content": parts]
+                if !reasoningParts.isEmpty && role == "assistant" {
+                    msg["reasoning_content"] = reasoningParts.joined()
+                }
+                messages.append(msg)
             } else {
-                messages.append(["role": role, "content": textParts.joined()])
+                var msg: [String: Any] = ["role": role, "content": textParts.joined()]
+                if !reasoningParts.isEmpty && role == "assistant" {
+                    msg["reasoning_content"] = reasoningParts.joined()
+                }
+                messages.append(msg)
             }
+        } else if !reasoningParts.isEmpty && role == "assistant" {
+            messages.append([
+                "role": "assistant",
+                "content": "",
+                "reasoning_content": reasoningParts.joined()
+            ])
         }
 
         return messages

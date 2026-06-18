@@ -246,9 +246,18 @@ final class HTTPServer: ObservableObject {
         _ context: BasicRequestContext,
         format: APIFormat
     ) async throws -> Response {
+        let reqId = TraceLogger.newReqId()
+        TraceLogger.shared.log(reqId, "━━━━━━━━━ NEW REQUEST [\(format == .openai ? "OpenAI" : "Anthropic")] ━━━━━━━━━")
+
         // 读取请求体
         let body = try await request.body.collect(upTo: 10 * 1024 * 1024)
         let data = Data(body.readableBytesView)
+
+        // trace: 原始客户端请求体
+        TraceLogger.shared.logBodyFull(reqId, label: "CLIENT REQUEST", data: data)
+        let clientDumpPath = TraceLogger.debugDirectory.appendingPathComponent("client_\(reqId).json").path
+        try? data.write(to: URL(fileURLWithPath: clientDumpPath))
+        TraceLogger.shared.log(reqId, "client body dumped to: \(clientDumpPath)")
 
         // 日志: 原始请求
         print("\n")
@@ -263,6 +272,7 @@ final class HTTPServer: ObservableObject {
         // 解析模型名称
         guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
               let model = json["model"] as? String else {
+            TraceLogger.shared.log(reqId, "❌ missing model field in request")
             let errorData = #"{"error": "Invalid request: missing model field"}"#.data(using: .utf8)!
             return Response(
                 status: .badRequest,
@@ -270,10 +280,13 @@ final class HTTPServer: ObservableObject {
             )
         }
 
+        TraceLogger.shared.log(reqId, "incoming model: \(model)")
+
         // 从 ConfigDataStore 获取映射配置（线程安全）
         let mapping = await store.findMapping(for: model)
 
         guard let mapping else {
+            TraceLogger.shared.log(reqId, "❌ no mapping for model \(model)")
             let errorData = #"{"error": "Model not found or no mapping configured"}"#.data(using: .utf8)!
             return Response(
                 status: .badRequest,
@@ -285,6 +298,7 @@ final class HTTPServer: ObservableObject {
         let provider = await store.findProvider(for: mapping.providerConfigId)
 
         guard let provider else {
+            TraceLogger.shared.log(reqId, "❌ no provider for mapping \(mapping.id)")
             let errorData = #"{"error": "Provider not found for this mapping"}"#.data(using: .utf8)!
             return Response(
                 status: .badRequest,
@@ -386,6 +400,18 @@ final class HTTPServer: ObservableObject {
         print("────────────────────────────────────────────────────────────")
         print("上游 URL: \(upstreamURL.absoluteString)")
         print("实际模型: \(mapping.actualModel)")
+
+        // trace: 上游请求
+        TraceLogger.shared.log(reqId, "upstream_url: \(upstreamURL.absoluteString)")
+        TraceLogger.shared.log(reqId, "upstream_model: \(mapping.actualModel) (from incoming=\(mapping.incomingModel))")
+        TraceLogger.shared.log(reqId, "mode: stream=\(isStreaming) bypass=\(bypassMode) needsConversion=\(needsConversion) upstreamFormat=\(upstreamFormat) clientFormat=\(format)")
+        TraceLogger.shared.logBodyFull(reqId, label: "UPSTREAM REQUEST", data: upstreamRequestData)
+
+        // 同时把 upstream body 写到独立文件，方便 curl 直连复现
+        let dumpPath = TraceLogger.debugDirectory.appendingPathComponent("upstream_\(reqId).json").path
+        try? upstreamRequestData.write(to: URL(fileURLWithPath: dumpPath))
+        TraceLogger.shared.log(reqId, "upstream body dumped to: \(dumpPath)")
+
         if let finalBody = String(data: upstreamRequestData, encoding: .utf8) {
             print("请求体 (转换后):")
             print(prettyJSON(finalBody) ?? finalBody)
@@ -403,7 +429,8 @@ final class HTTPServer: ObservableObject {
                 model: responseModel,
                 preserveModel: preserveModel,
                 actualModel: mapping.actualModel,
-                incomingModel: mapping.incomingModel
+                incomingModel: mapping.incomingModel,
+                reqId: reqId
             )
         }
 
@@ -469,7 +496,8 @@ final class HTTPServer: ObservableObject {
         model: String,
         preserveModel: Bool = false,
         actualModel: String = "",
-        incomingModel: String = ""
+        incomingModel: String = "",
+        reqId: String = "none"
     ) async throws -> Response {
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
@@ -479,16 +507,19 @@ final class HTTPServer: ObservableObject {
         let body = ResponseBody(contentLength: nil) { writer in
             do {
                 print("[SSE] 开始发送流式请求到上游...")
+                TraceLogger.shared.log(reqId, "━━━ UPSTREAM SSE (raw chunks from \(upstreamFormat)) ━━━")
                 let streamResult = try await self.networkService.sendStream(request: upstreamRequest)
                 print("[SSE] 上游连接成功，开始接收流数据...")
+                TraceLogger.shared.log(reqId, "upstream connection established")
 
                 if needsConversion {
                     let streamTranslator = StreamTranslator()
                     let convertedStream: AsyncThrowingStream<String, Error>
                     print("[SSE] 需要格式转换: \(upstreamFormat) → \(clientFormat)")
+                    TraceLogger.shared.log(reqId, "━━━ TRANSLATED SSE (→ \(clientFormat)) ━━━")
                     switch (upstreamFormat, clientFormat) {
                     case (.openai, .anthropic):
-                        convertedStream = streamTranslator.translateOpenAIToAnthropic(bytes: streamResult.bytes, model: model)
+                        convertedStream = streamTranslator.translateOpenAIToAnthropic(bytes: streamResult.bytes, model: model, reqId: reqId)
                     case (.anthropic, .openai):
                         print("[SSE] 使用 translateAnthropicToOpenAI 转换器")
                         convertedStream = streamTranslator.translateAnthropicToOpenAI(bytes: streamResult.bytes, model: model)
@@ -519,10 +550,12 @@ final class HTTPServer: ObservableObject {
                 }
             } catch {
                 print("[SSE] 流传输错误: \(error)")
+                TraceLogger.shared.log(reqId, "❌ STREAM ERROR: \(error)")
                 let errorResponse: [String: Any]
                 if case ProxyError.upstreamError(let code, let data) = error {
                     let bodyStr = String(data: data ?? Data(), encoding: .utf8) ?? "unknown"
                     print("[SSE] upstream error body: \(bodyStr)")
+                    TraceLogger.shared.log(reqId, "❌ upstream error \(code): \(bodyStr.prefix(500))")
                     errorResponse = [
                         "error": [
                             "message": "Upstream \(code): \(bodyStr)",

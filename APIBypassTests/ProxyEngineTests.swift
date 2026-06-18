@@ -303,4 +303,74 @@ final class ProxyEngineTests: XCTestCase {
         XCTAssertEqual(thinking["type"] as? String, "enabled")
         XCTAssertNil(thinking["budget_tokens"])
     }
+
+    // MARK: - OpenAI thinking protocol tests
+
+    func testTransformOpenAIRequest_enableThinkingProtocol() throws {
+        let mapping = ModelMapping(
+            name: "Test", incomingModel: "glm", actualModel: "glm-5.2",
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(
+                thinking: ThinkingConfig(enabled: true, budgetTokens: 8000, thinkingProtocol: .enable_thinking),
+                thinkingOverrideEnabled: true
+            )
+        )
+        let body: [String: Any] = ["model": "glm", "messages": [["role": "user", "content": "hi"]]]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .openai)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+        XCTAssertEqual(json["enable_thinking"] as? Bool, true)
+        XCTAssertEqual(json["thinking_budget"] as? Int, 8000)
+    }
+
+    func testTransformOpenAIRequest_enableThinkingProtocolOff() throws {
+        let mapping = ModelMapping(
+            name: "Test", incomingModel: "glm", actualModel: "glm-5.2",
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(
+                thinking: ThinkingConfig(enabled: false, thinkingProtocol: .enable_thinking),
+                thinkingOverrideEnabled: true
+            )
+        )
+        let body: [String: Any] = ["model": "glm", "messages": [["role": "user", "content": "hi"]]]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .openai)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+        XCTAssertEqual(json["enable_thinking"] as? Bool, false)
+    }
+
+    func testTransformOpenAIRequest_reasoningEffortProtocol() throws {
+        let mapping = ModelMapping(
+            name: "Test", incomingModel: "o3", actualModel: "o3-mini",
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .reasoning_effort, effort: "high"),
+                thinkingOverrideEnabled: true
+            )
+        )
+        let body: [String: Any] = ["model": "o3", "messages": [["role": "user", "content": "hi"]]]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .openai)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+        XCTAssertEqual(json["reasoning_effort"] as? String, "high")
+        XCTAssertNil(json["enable_thinking"])
+    }
+
+    func testTransformOpenAIRequest_noneProtocolEmitsNothing() throws {
+        let mapping = ModelMapping(
+            name: "Test", incomingModel: "ds", actualModel: "deepseek-r1",
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .none),
+                thinkingOverrideEnabled: true
+            )
+        )
+        let body: [String: Any] = ["model": "ds", "messages": [["role": "user", "content": "hi"]]]
+        let data = try JSONSerialization.data(withJSONObject: body)
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .openai)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+        XCTAssertNil(json["enable_thinking"])
+        XCTAssertNil(json["reasoning_effort"])
+        XCTAssertNil(json["thinking"])
+    }
 }

@@ -1,3 +1,22 @@
+# APIBypass v0.7.8
+
+## What's New
+
+### Multi-Protocol Thinking Override
+
+The "Reasoning Mode Override" feature now supports multiple upstream thinking protocols instead of only `enable_thinking`:
+
+- **`enable_thinking`** — GLM / Qwen / Kimi / Ark (existing behavior)
+- **`reasoning_effort`** — OpenAI o-series (o1 / o3 / o4), with low/medium/high selector
+- **`thinking (Anthropic)`** — Anthropic-compatible upstreams using native `thinking.type=enabled`
+- **`none`** — Models that control thinking internally (e.g. DeepSeek-R1), no field emitted
+
+The protocol is **auto-inferred** from the provider baseURL and model name, and can be manually overridden per mapping.
+
+**Bug fix**: the off state is now explicitly emitted (`enable_thinking: false`) for protocols that support it, instead of omitting the field. This allows disabling thinking on upstreams that default to thinking-on (e.g. GLM-5.2 on Ark).
+
+---
+
 # APIBypass v0.7.7
 
 ## What's New

@@ -47,14 +47,22 @@ final class ModelMappingTests: XCTestCase {
         let config = ThinkingConfig(
             enabled: true,
             budgetTokens: 5000,
-            thinkingProtocol: .reasoning_effort,
+            thinkingProtocol: .none,
             effort: "high"
         )
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: data)
         XCTAssertEqual(decoded.enabled, true)
         XCTAssertEqual(decoded.budgetTokens, 5000)
-        XCTAssertEqual(decoded.thinkingProtocol, .reasoning_effort)
+        XCTAssertEqual(decoded.thinkingProtocol, .none)
+        XCTAssertEqual(decoded.effort, "high")
+    }
+
+    func testThinkingConfigBackwardCompatOldReasoningEffort() throws {
+        // 旧版本 protocol="reasoning_effort" 应迁移到 .none
+        let json = #"{"enabled":true,"budgetTokens":5000,"protocol":"reasoning_effort","effort":"high"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
+        XCTAssertEqual(decoded.thinkingProtocol, .none)
         XCTAssertEqual(decoded.effort, "high")
     }
 
@@ -72,12 +80,12 @@ final class ModelMappingTests: XCTestCase {
 
     func testInferProtocolGLM() {
         let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.2")
-        XCTAssertEqual(p, .enable_thinking)
+        XCTAssertEqual(p, .anthropic_native)
     }
 
     func testInferProtocolOpenAIOSeries() {
         let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.openai.com/v1", model: "o3-mini")
-        XCTAssertEqual(p, .reasoning_effort)
+        XCTAssertEqual(p, .none)
     }
 
     func testInferProtocolDeepSeekReasoner() {

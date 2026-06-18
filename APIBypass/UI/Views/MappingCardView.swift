@@ -34,10 +34,9 @@ struct MappingCardView: View {
     @State private var frequencyPenalty = ""
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
-    @State private var thinkingBudget = ""
     @State private var thinkingOverrideEnabled = false
     @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enable_thinking
-    @State private var thinkingEffort = "medium"
+    @State private var thinkingEffort = ""
 
     @State private var customFields: [CustomField] = []
     @State private var customFieldsEnabled = false
@@ -154,7 +153,6 @@ struct MappingCardView: View {
                     presencePenalty: $presencePenalty,
                     thinkingOverrideEnabled: $thinkingOverrideEnabled,
                     thinkingEnabled: $thinkingEnabled,
-                    thinkingBudget: $thinkingBudget,
                     thinkingProtocol: $thinkingProtocol,
                     thinkingEffort: $thinkingEffort,
                     customFields: $customFields,
@@ -261,14 +259,12 @@ struct MappingCardView: View {
 
         if let thinking = current.parameters.thinking {
             thinkingEnabled = thinking.enabled
-            thinkingBudget = thinking.budgetTokens.map { String($0) } ?? ""
             thinkingProtocol = thinking.thinkingProtocol
-            thinkingEffort = thinking.effort ?? "medium"
+            thinkingEffort = thinking.effort ?? ""
         } else {
             thinkingEnabled = false
-            thinkingBudget = ""
             thinkingProtocol = .enable_thinking
-            thinkingEffort = "medium"
+            thinkingEffort = ""
         }
         thinkingOverrideEnabled = current.parameters.thinkingOverrideEnabled ?? false
         if current.parameters.thinkingOverrideEnabled == nil && current.parameters.thinking != nil {
@@ -336,9 +332,9 @@ struct MappingCardView: View {
 
         let thinking = ThinkingConfig(
             enabled: thinkingEnabled,
-            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil,
+            budgetTokens: nil,
             thinkingProtocol: thinkingProtocol,
-            effort: thinkingProtocol == .reasoning_effort ? thinkingEffort : nil
+            effort: (thinkingProtocol == .none && !thinkingEffort.isEmpty) ? thinkingEffort : nil
         )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty

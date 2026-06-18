@@ -2,18 +2,28 @@
 
 ## What's New
 
-### Multi-Protocol Thinking Override
+### Redesigned Thinking Control Field
 
-The "Reasoning Mode Override" feature now supports multiple upstream thinking protocols instead of only `enable_thinking`:
+The "Reasoning Mode Override" section was rebuilt around a single **Thinking Field** picker with three protocols, replacing the previous four-case design:
 
-- **`enable_thinking`** — GLM / Qwen / Kimi / Ark (existing behavior)
-- **`reasoning_effort`** — OpenAI o-series (o1 / o3 / o4), with low/medium/high selector
-- **`thinking (Anthropic)`** — Anthropic-compatible upstreams using native `thinking.type=enabled`
-- **`none`** — Models that control thinking internally (e.g. DeepSeek-R1), no field emitted
+- **`enable_thinking`** — Qwen3 series (DashScope). A switch toggles the boolean field on/off.
+- **`thinking.type` (Anthropic native)** — Claude / GLM / Kimi / DeepSeek / Doubao. A switch toggles `thinking.type` between `enabled` and `disabled`.
+- **`none`** — Models that control thinking internally (OpenAI o-series, gpt-5, DeepSeek-R1). No switch field is emitted; an optional **Reasoning Effort** free-text input lets you inject `reasoning_effort` (e.g. `low` / `medium` / `high` / `xhigh`).
 
-The protocol is **auto-inferred** from the provider baseURL and model name, and can be manually overridden per mapping.
+The protocol is **auto-inferred** from the provider baseURL and model name, and can be manually overridden per mapping. Backward compatible: configs saved with the old `reasoning_effort` protocol value decode to the new `none` case.
 
-**Bug fix**: the off state is now explicitly emitted (`enable_thinking: false`) for protocols that support it, instead of omitting the field. This allows disabling thinking on upstreams that default to thinking-on (e.g. GLM-5.2 on Ark).
+### Collapsible Mapping Sections
+
+In the expanded mapping card, the **Reasoning Mode Override** and **Custom Parameters** sections now collapse to a single title row when their switch is off, instead of greying out their contents. This keeps the editor compact and the inactive state unambiguous.
+
+### Grouped Section Borders
+
+The four editor sections — Basic Info, Reasoning Mode Override, Parameter Injection, Custom Parameters — are now wrapped in individual bordered cards inside the mapping card, making the grouping clearer at a glance. The provider info line under Basic Info is left-aligned.
+
+### Other
+
+- Removed the divider between the thinking-protocol picker and the enable-thinking toggle.
+- `MappingCardView` no longer carries a `thinkingBudget` state (budget fields were dropped from the model).
 
 ---
 

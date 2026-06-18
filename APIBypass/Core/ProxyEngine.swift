@@ -78,11 +78,7 @@ final class ProxyEngine {
             case .anthropic:
                 // Anthropic 上游始终用原生 thinking 协议，thinkingProtocol 字段不影响
                 if thinking.enabled {
-                    var thinkingDict: [String: Any] = ["type": "enabled"]
-                    if let budget = thinking.budgetTokens {
-                        thinkingDict["budget_tokens"] = budget
-                    }
-                    json["thinking"] = thinkingDict
+                    json["thinking"] = ["type": "enabled"]
                 } else {
                     json["thinking"] = ["type": "disabled"]
                 }
@@ -90,23 +86,16 @@ final class ProxyEngine {
                 switch thinking.thinkingProtocol {
                 case .enable_thinking:
                     json["enable_thinking"] = thinking.enabled
-                    if thinking.enabled, let budget = thinking.budgetTokens {
-                        json["thinking_budget"] = budget
-                    }
-                case .reasoning_effort:
-                    if thinking.enabled {
-                        json["reasoning_effort"] = thinking.effort ?? "medium"
-                    }
                 case .anthropic_native:
                     if thinking.enabled {
-                        var t: [String: Any] = ["type": "enabled"]
-                        if let budget = thinking.budgetTokens { t["budget_tokens"] = budget }
-                        json["thinking"] = t
+                        json["thinking"] = ["type": "enabled"]
                     } else {
                         json["thinking"] = ["type": "disabled"]
                     }
                 case .none:
-                    break
+                    if let effort = thinking.effort, !effort.isEmpty {
+                        json["reasoning_effort"] = effort
+                    }
                 }
             }
         }

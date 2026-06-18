@@ -19,12 +19,19 @@ struct MappingDetailView: View {
 
     private let l10n = LocalizationManager.shared
 
+    private var thinkingModelsKey: String {
+        switch thinkingProtocol {
+        case .enable_thinking: return "thinking_models_enable_thinking"
+        case .anthropic_native: return "thinking_models_anthropic_native"
+        case .none: return "thinking_models_none"
+        }
+    }
+
     @State private var name: String = ""
     @State private var incomingModel: String = ""
     @State private var actualModel: String = ""
     @State private var selectedProviderId: UUID?
     @State private var showNewProviderSheet = false
-    @State private var showThinkingProtocolHelp = false
 
     // 参数设置
     @State private var temperature = ""
@@ -33,10 +40,9 @@ struct MappingDetailView: View {
     @State private var frequencyPenalty = ""
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
-    @State private var thinkingBudget = ""
     @State private var thinkingOverrideEnabled = false
     @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enable_thinking
-    @State private var thinkingEffort = "medium"
+    @State private var thinkingEffort = ""
     @State private var isEnabled = true
 
     // 自定义字段
@@ -170,13 +176,9 @@ struct MappingDetailView: View {
                         // 显示当前提供商信息（只读）
                         if let pid = selectedProviderId,
                            let provider = configManager.providers.first(where: { $0.id == pid }) {
-                            HStack {
-                                Text("")
-                                    .frame(width: 100, alignment: .trailing)
-                                Text("\(L10n.t(provider.apiProvider == .openai ? "provider_type_openai" : "provider_type_anthropic")) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
-                                    .font(.caption)
-                                    .foregroundColor(.secondary)
-                            }
+                            Text("\(L10n.t(provider.apiProvider == .openai ? "provider_type_openai" : "provider_type_anthropic")) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                 }
@@ -197,122 +199,51 @@ struct MappingDetailView: View {
                             .fixedSize()
                     }
 
-                    Text(L10n.t("reasoning_hint"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-
-                    VStack(spacing: 8) {
-                        HStack {
-                            Text(L10n.t("thinking_protocol"))
-                                .frame(width: 120, alignment: .trailing)
-                            Picker("", selection: $thinkingProtocol) {
-                                ForEach(ThinkingConfig.ThinkingProtocol.allCases, id: \.self) { p in
-                                    Text(p.displayName).tag(p)
-                                }
-                            }
-                            .labelsHidden()
-                            .frame(maxWidth: 220, alignment: .leading)
-                            .disabled(!thinkingOverrideEnabled)
-                            Button {
-                                showThinkingProtocolHelp.toggle()
-                            } label: {
-                                Image(systemName: "info.circle")
-                                    .font(.system(size: 12))
-                                    .foregroundColor(.secondary)
-                            }
-                            .buttonStyle(.plain)
-                            .popover(isPresented: $showThinkingProtocolHelp) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(L10n.t("thinking_protocol_help_title"))
-                                        .font(.headline)
-                                    Text(L10n.t("thinking_protocol_help_enable_thinking"))
-                                        .font(.body)
-                                    Text(L10n.t("thinking_protocol_help_reasoning_effort"))
-                                        .font(.body)
-                                    Text(L10n.t("thinking_protocol_help_anthropic_native"))
-                                        .font(.body)
-                                    Text(L10n.t("thinking_protocol_help_none"))
-                                        .font(.body)
-                                }
-                                .padding(12)
-                                .frame(width: 360)
-                            }
-                            Spacer()
-                        }
-
-                        switch thinkingProtocol {
-                        case .enable_thinking:
+                    if thinkingOverrideEnabled {
+                        VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text(L10n.t("enable_thinking"))
+                                Text(L10n.t("thinking_protocol"))
+                                    .fontWeight(.medium)
                                 Spacer()
-                                Toggle("", isOn: $thinkingEnabled)
-                                    .toggleStyle(.switch)
-                                    .labelsHidden()
-                                    .fixedSize()
-                                    .disabled(!thinkingOverrideEnabled)
-                            }
-                            if thinkingEnabled {
-                                HStack {
-                                    Text(L10n.t("thinking_budget"))
-                                        .frame(width: 120, alignment: .trailing)
-                                    TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
-                                        .disabled(!thinkingOverrideEnabled)
-                                    Text(L10n.t("thinking_budget_eg"))
-                                        .foregroundColor(.secondary)
-                                        .font(.caption)
-                                }
-                            }
-                        case .reasoning_effort:
-                            HStack {
-                                Text(L10n.t("enable_thinking"))
-                                Spacer()
-                                Toggle("", isOn: $thinkingEnabled)
-                                    .toggleStyle(.switch)
-                                    .labelsHidden()
-                                    .fixedSize()
-                                    .disabled(!thinkingOverrideEnabled)
-                            }
-                            if thinkingEnabled {
-                                HStack {
-                                    Text(L10n.t("thinking_effort"))
-                                        .frame(width: 120, alignment: .trailing)
-                                    Picker("", selection: $thinkingEffort) {
-                                        Text("low").tag("low")
-                                        Text("medium").tag("medium")
-                                        Text("high").tag("high")
+                                Picker("", selection: $thinkingProtocol) {
+                                    ForEach(ThinkingConfig.ThinkingProtocol.allCases, id: \.self) { p in
+                                        Text(p.displayName).tag(p)
                                     }
-                                    .labelsHidden()
-                                    .disabled(!thinkingOverrideEnabled)
                                 }
+                                .labelsHidden()
+                                .fixedSize()
                             }
-                        case .anthropic_native:
-                            HStack {
-                                Text(L10n.t("enable_thinking"))
-                                Spacer()
-                                Toggle("", isOn: $thinkingEnabled)
-                                    .toggleStyle(.switch)
-                                    .labelsHidden()
-                                    .fixedSize()
-                                    .disabled(!thinkingOverrideEnabled)
-                            }
-                            if thinkingEnabled {
-                                HStack {
-                                    Text(L10n.t("thinking_budget"))
-                                        .frame(width: 120, alignment: .trailing)
-                                    TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
-                                        .disabled(!thinkingOverrideEnabled)
-                                    Text(L10n.t("thinking_budget_eg"))
-                                        .foregroundColor(.secondary)
-                                        .font(.caption)
-                                }
-                            }
-                        case .none:
-                            Text(L10n.t("thinking_none_hint"))
+                            Text(L10n.t(thinkingModelsKey))
                                 .font(.caption)
                                 .foregroundColor(.secondary)
+
+                            switch thinkingProtocol {
+                            case .enable_thinking:
+                                HStack {
+                                    Text(L10n.t("enable_thinking"))
+                                    Spacer()
+                                    Toggle("", isOn: $thinkingEnabled)
+                                        .toggleStyle(.switch)
+                                        .labelsHidden()
+                                        .fixedSize()
+                                }
+                            case .anthropic_native:
+                                HStack {
+                                    Text(L10n.t("enable_thinking"))
+                                    Spacer()
+                                    Toggle("", isOn: $thinkingEnabled)
+                                        .toggleStyle(.switch)
+                                        .labelsHidden()
+                                        .fixedSize()
+                                }
+                            case .none:
+                                HStack {
+                                    Text(L10n.t("thinking_effort"))
+                                    TextField(L10n.t("thinking_effort_hint"), text: $thinkingEffort)
+                                }
+                            }
                         }
                     }
-                    .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
@@ -369,55 +300,52 @@ struct MappingDetailView: View {
                             .fixedSize()
                     }
 
-                    VStack(spacing: 8) {
-                        HStack {
-                            Button(action: {
-                                customFields.append(CustomField(key: "", value: ""))
-                            }) {
-                                HStack(spacing: 4) {
-                                    Image(systemName: "plus.circle")
-                                    Text(L10n.t("add_field"))
+                    if customFieldsEnabled {
+                        VStack(spacing: 8) {
+                            HStack {
+                                Button(action: {
+                                    customFields.append(CustomField(key: "", value: ""))
+                                }) {
+                                    HStack(spacing: 4) {
+                                        Image(systemName: "plus.circle")
+                                        Text(L10n.t("add_field"))
+                                    }
                                 }
+                                .buttonStyle(.plain)
+                                Spacer()
                             }
-                            .buttonStyle(.plain)
-                            .disabled(!customFieldsEnabled)
-                            Spacer()
-                        }
 
-                        if customFields.isEmpty {
-                            Text(L10n.t("add_custom_hint"))
-                                .foregroundColor(.secondary)
-                                .font(.caption)
-                                .frame(maxWidth: .infinity, alignment: .center)
-                                .padding(.vertical, 8)
-                        } else {
-                            VStack(spacing: 8) {
-                                ForEach(customFields.indices, id: \.self) { index in
-                                    HStack {
-                                        TextField(L10n.t("field_name_placeholder"), text: $customFields[index].key)
-                                            .frame(idealWidth: 140, maxWidth: .infinity)
-                                            .disabled(!customFieldsEnabled)
-                                        TextField(L10n.t("field_value_placeholder"), text: $customFields[index].value)
-                                            .frame(idealWidth: 210, maxWidth: .infinity)
-                                            .disabled(!customFieldsEnabled)
-                                        Button(action: {
-                                            customFields.remove(at: index)
-                                        }) {
-                                            Image(systemName: "minus.circle")
-                                                .foregroundColor(.red)
+                            if customFields.isEmpty {
+                                Text(L10n.t("add_custom_hint"))
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                                    .frame(maxWidth: .infinity, alignment: .center)
+                                    .padding(.vertical, 8)
+                            } else {
+                                VStack(spacing: 8) {
+                                    ForEach(customFields.indices, id: \.self) { index in
+                                        HStack {
+                                            TextField(L10n.t("field_name_placeholder"), text: $customFields[index].key)
+                                                .frame(idealWidth: 140, maxWidth: .infinity)
+                                            TextField(L10n.t("field_value_placeholder"), text: $customFields[index].value)
+                                                .frame(idealWidth: 210, maxWidth: .infinity)
+                                            Button(action: {
+                                                customFields.remove(at: index)
+                                            }) {
+                                                Image(systemName: "minus.circle")
+                                                    .foregroundColor(.red)
+                                            }
+                                            .buttonStyle(.plain)
                                         }
-                                        .buttonStyle(.plain)
-                                        .disabled(!customFieldsEnabled)
                                     }
                                 }
                             }
                         }
-                    }
-                    .opacity(customFieldsEnabled ? 1.0 : 0.4)
 
-                    Text(L10n.t("custom_hint"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
+                        Text(L10n.t("custom_hint"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                    }
                 }
                 .padding()
                 .background(Color(NSColor.controlBackgroundColor))
@@ -504,14 +432,10 @@ struct MappingDetailView: View {
         }
         if let thinking = mapping.parameters.thinking {
             thinkingEnabled = thinking.enabled
-            if let budget = thinking.budgetTokens {
-                thinkingBudget = String(budget)
-            }
             thinkingProtocol = thinking.thinkingProtocol
-            thinkingEffort = thinking.effort ?? "medium"
+            thinkingEffort = thinking.effort ?? ""
         } else {
             thinkingEnabled = false
-            thinkingBudget = ""
             // Infer protocol from provider + model when no saved config
             if let provider = configManager.providers.first(where: { $0.id == mapping.providerConfigId }) {
                 thinkingProtocol = ThinkingConfig.ThinkingProtocol.infer(
@@ -519,7 +443,7 @@ struct MappingDetailView: View {
                     model: mapping.actualModel
                 )
             }
-            thinkingEffort = "medium"
+            thinkingEffort = ""
         }
         if let enabled = mapping.parameters.thinkingOverrideEnabled {
             thinkingOverrideEnabled = enabled
@@ -579,9 +503,9 @@ struct MappingDetailView: View {
         // 始终保存思考配置数据（即使开关关闭），以便下次开启时恢复
         let thinking = ThinkingConfig(
             enabled: thinkingEnabled,
-            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil,
+            budgetTokens: nil,
             thinkingProtocol: thinkingProtocol,
-            effort: thinkingProtocol == .reasoning_effort ? thinkingEffort : nil
+            effort: (thinkingProtocol == .none && !thinkingEffort.isEmpty) ? thinkingEffort : nil
         )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty

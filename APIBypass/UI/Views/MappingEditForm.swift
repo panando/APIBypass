@@ -1,5 +1,18 @@
 import SwiftUI
 
+extension View {
+    func cardSectionStyle() -> some View {
+        self
+            .padding()
+            .background(Color(NSColor.controlBackgroundColor))
+            .cornerRadius(8)
+            .overlay(
+                RoundedRectangle(cornerRadius: 8)
+                    .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+            )
+    }
+}
+
 struct MappingEditForm: View {
     @ObservedObject var configManager: ConfigManager
     let keychain: KeychainService
@@ -21,7 +34,6 @@ struct MappingEditForm: View {
     // Thinking bindings
     @Binding var thinkingOverrideEnabled: Bool
     @Binding var thinkingEnabled: Bool
-    @Binding var thinkingBudget: String
     @Binding var thinkingProtocol: ThinkingConfig.ThinkingProtocol
     @Binding var thinkingEffort: String
 
@@ -33,9 +45,16 @@ struct MappingEditForm: View {
     var focusIncomingModelTrigger: Int = 0
 
     @State private var showNewProviderSheet = false
-    @State private var showThinkingProtocolHelp = false
     @FocusState private var isIncomingModelFocused: Bool
     private let l10n = LocalizationManager.shared
+
+    private var thinkingModelsKey: String {
+        switch thinkingProtocol {
+        case .enable_thinking: return "thinking_models_enable_thinking"
+        case .anthropic_native: return "thinking_models_anthropic_native"
+        case .none: return "thinking_models_none"
+        }
+    }
 
     var body: some View {
         VStack(spacing: 12) {
@@ -96,19 +115,13 @@ struct MappingEditForm: View {
 
                     if let pid = selectedProviderId,
                        let provider = configManager.providers.first(where: { $0.id == pid }) {
-                        HStack {
-                            Text("")
-                                .frame(width: 100, alignment: .trailing)
-                            Text("\(L10n.t(provider.apiProvider == .openai ? "provider_type_openai" : "provider_type_anthropic")) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
+                        Text("\(L10n.t(provider.apiProvider == .openai ? "provider_type_openai" : "provider_type_anthropic")) · \(provider.baseURL.host ?? provider.baseURL.absoluteString)")
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
             }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardSectionStyle()
 
             // Thinking Override
             VStack(alignment: .leading, spacing: 12) {
@@ -123,49 +136,24 @@ struct MappingEditForm: View {
                         .fixedSize()
                 }
 
-                Text(L10n.t("reasoning_hint"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-
-                VStack(spacing: 8) {
-                    // Protocol picker
+                if thinkingOverrideEnabled {
+                    VStack(alignment: .leading, spacing: 8) {
+                    // Protocol picker — subheader style + left-aligned (matches Enable Thinking row)
                     HStack {
                         Text(L10n.t("thinking_protocol"))
-                            .frame(width: 120, alignment: .trailing)
+                            .fontWeight(.medium)
+                        Spacer()
                         Picker("", selection: $thinkingProtocol) {
                             ForEach(ThinkingConfig.ThinkingProtocol.allCases, id: \.self) { p in
                                 Text(p.displayName).tag(p)
                             }
                         }
                         .labelsHidden()
-                        .frame(maxWidth: 220, alignment: .leading)
-                        .disabled(!thinkingOverrideEnabled)
-                        Button {
-                            showThinkingProtocolHelp.toggle()
-                        } label: {
-                            Image(systemName: "info.circle")
-                                .font(.system(size: 12))
-                                .foregroundColor(.secondary)
-                        }
-                        .buttonStyle(.plain)
-                        .popover(isPresented: $showThinkingProtocolHelp) {
-                            VStack(alignment: .leading, spacing: 6) {
-                                Text(L10n.t("thinking_protocol_help_title"))
-                                    .font(.headline)
-                                Text(L10n.t("thinking_protocol_help_enable_thinking"))
-                                    .font(.body)
-                                Text(L10n.t("thinking_protocol_help_reasoning_effort"))
-                                    .font(.body)
-                                Text(L10n.t("thinking_protocol_help_anthropic_native"))
-                                    .font(.body)
-                                Text(L10n.t("thinking_protocol_help_none"))
-                                    .font(.body)
-                            }
-                            .padding(12)
-                            .frame(width: 360)
-                        }
-                        Spacer()
+                        .fixedSize()
                     }
+                    Text(L10n.t(thinkingModelsKey))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
 
                     // Protocol-specific controls
                     switch thinkingProtocol {
@@ -177,41 +165,6 @@ struct MappingEditForm: View {
                                 .toggleStyle(.switch)
                                 .labelsHidden()
                                 .fixedSize()
-                                .disabled(!thinkingOverrideEnabled)
-                        }
-                        if thinkingEnabled {
-                            HStack {
-                                Text(L10n.t("thinking_budget"))
-                                    .frame(width: 120, alignment: .trailing)
-                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
-                                    .disabled(!thinkingOverrideEnabled)
-                                Text(L10n.t("thinking_budget_eg"))
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            }
-                        }
-                    case .reasoning_effort:
-                        HStack {
-                            Text(L10n.t("enable_thinking"))
-                            Spacer()
-                            Toggle("", isOn: $thinkingEnabled)
-                                .toggleStyle(.switch)
-                                .labelsHidden()
-                                .fixedSize()
-                                .disabled(!thinkingOverrideEnabled)
-                        }
-                        if thinkingEnabled {
-                            HStack {
-                                Text(L10n.t("thinking_effort"))
-                                    .frame(width: 120, alignment: .trailing)
-                                Picker("", selection: $thinkingEffort) {
-                                    Text("low").tag("low")
-                                    Text("medium").tag("medium")
-                                    Text("high").tag("high")
-                                }
-                                .labelsHidden()
-                                .disabled(!thinkingOverrideEnabled)
-                            }
                         }
                     case .anthropic_native:
                         HStack {
@@ -221,30 +174,17 @@ struct MappingEditForm: View {
                                 .toggleStyle(.switch)
                                 .labelsHidden()
                                 .fixedSize()
-                                .disabled(!thinkingOverrideEnabled)
-                        }
-                        if thinkingEnabled {
-                            HStack {
-                                Text(L10n.t("thinking_budget"))
-                                    .frame(width: 120, alignment: .trailing)
-                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
-                                    .disabled(!thinkingOverrideEnabled)
-                                Text(L10n.t("thinking_budget_eg"))
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
-                            }
                         }
                     case .none:
-                        Text(L10n.t("thinking_none_hint"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
+                        HStack {
+                            Text(L10n.t("thinking_effort"))
+                            TextField(L10n.t("thinking_effort_hint"), text: $thinkingEffort)
+                        }
+                    }
                     }
                 }
-                .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)
             }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardSectionStyle()
 
             // Parameter Injection
             VStack(alignment: .leading, spacing: 12) {
@@ -280,9 +220,7 @@ struct MappingEditForm: View {
                     }
                 }
             }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardSectionStyle()
 
             // Custom Parameters
             VStack(alignment: .leading, spacing: 12) {
@@ -297,59 +235,54 @@ struct MappingEditForm: View {
                         .fixedSize()
                 }
 
-                VStack(spacing: 8) {
-                    HStack {
-                        Button(action: {
-                            customFields.append(CustomField(key: "", value: ""))
-                        }) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "plus.circle")
-                                Text(L10n.t("add_field"))
+                if customFieldsEnabled {
+                    VStack(spacing: 8) {
+                        HStack {
+                            Button(action: {
+                                customFields.append(CustomField(key: "", value: ""))
+                            }) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "plus.circle")
+                                    Text(L10n.t("add_field"))
+                                }
                             }
+                            .buttonStyle(.plain)
+                            Spacer()
                         }
-                        .buttonStyle(.plain)
-                        .disabled(!customFieldsEnabled)
-                        Spacer()
-                    }
 
-                    if customFields.isEmpty {
-                        Text(L10n.t("add_custom_hint"))
-                            .foregroundColor(.secondary)
-                            .font(.caption)
-                            .frame(maxWidth: .infinity, alignment: .center)
-                            .padding(.vertical, 8)
-                    } else {
-                        VStack(spacing: 8) {
-                            ForEach(customFields.indices, id: \.self) { index in
-                                HStack {
-                                    TextField(L10n.t("field_name_placeholder"), text: $customFields[index].key)
-                                        .frame(idealWidth: 140, maxWidth: .infinity)
-                                        .disabled(!customFieldsEnabled)
-                                    TextField(L10n.t("field_value_placeholder"), text: $customFields[index].value)
-                                        .frame(idealWidth: 210, maxWidth: .infinity)
-                                        .disabled(!customFieldsEnabled)
-                                    Button(action: {
-                                        customFields.remove(at: index)
-                                    }) {
-                                        Image(systemName: "minus.circle")
-                                            .foregroundColor(.red)
+                        if customFields.isEmpty {
+                            Text(L10n.t("add_custom_hint"))
+                                .foregroundColor(.secondary)
+                                .font(.caption)
+                                .frame(maxWidth: .infinity, alignment: .center)
+                                .padding(.vertical, 8)
+                        } else {
+                            VStack(spacing: 8) {
+                                ForEach(customFields.indices, id: \.self) { index in
+                                    HStack {
+                                        TextField(L10n.t("field_name_placeholder"), text: $customFields[index].key)
+                                            .frame(idealWidth: 140, maxWidth: .infinity)
+                                        TextField(L10n.t("field_value_placeholder"), text: $customFields[index].value)
+                                            .frame(idealWidth: 210, maxWidth: .infinity)
+                                        Button(action: {
+                                            customFields.remove(at: index)
+                                        }) {
+                                            Image(systemName: "minus.circle")
+                                                .foregroundColor(.red)
+                                        }
+                                        .buttonStyle(.plain)
                                     }
-                                    .buttonStyle(.plain)
-                                    .disabled(!customFieldsEnabled)
                                 }
                             }
                         }
                     }
-                }
-                .opacity(customFieldsEnabled ? 1.0 : 0.4)
 
-                Text(L10n.t("custom_hint"))
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    Text(L10n.t("custom_hint"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
             }
-            .padding()
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardSectionStyle()
         }
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in

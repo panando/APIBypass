@@ -205,19 +205,14 @@ final class FormatTranslator {
             switch proto {
             case .enable_thinking:
                 out["enable_thinking"] = enabled
-                if enabled, let budget = thinking["budget_tokens"] as? Int {
-                    out["thinking_budget"] = budget
-                }
-            case .reasoning_effort:
-                if enabled {
-                    out["reasoning_effort"] = thinkingConfig?.effort ?? "medium"
-                }
             case .anthropic_native:
                 var t = thinking
                 if !enabled { t = ["type": "disabled"] }
                 out["thinking"] = t
             case .none:
-                break
+                if let effort = thinkingConfig?.effort, !effort.isEmpty {
+                    out["reasoning_effort"] = effort
+                }
             }
 
             if proto != .anthropic_native {

@@ -2,17 +2,26 @@ import Foundation
 
 struct ThinkingConfig: Codable, Equatable {
     enum ThinkingProtocol: String, Codable, CaseIterable {
-        case enable_thinking      // GLM / Qwen / Kimi / Ark
-        case reasoning_effort     // OpenAI o-series
-        case anthropic_native     // Anthropic 兼容上游
-        case none                 // 不发字段（模型自身即开关）
+        case enable_thinking      // Qwen3 系列（DashScope）
+        case anthropic_native     // thinking.type: Anthropic / GLM / Kimi / DeepSeek / Doubao
+        case none                 // 不发开关字段；o 系列可附 reasoning_effort 程度
 
         var displayName: String {
             switch self {
             case .enable_thinking: return "enable_thinking"
-            case .reasoning_effort: return "reasoning_effort"
-            case .anthropic_native: return "thinking (Anthropic)"
+            case .anthropic_native: return "thinking.type"
             case .none: return "none"
+            }
+        }
+
+        init(from decoder: Decoder) throws {
+            let raw = try decoder.singleValueContainer().decode(String.self)
+            switch raw {
+            case "enable_thinking": self = .enable_thinking
+            case "anthropic_native": self = .anthropic_native
+            case "none": self = .none
+            case "reasoning_effort": self = .none
+            default: self = .enable_thinking
             }
         }
     }
@@ -138,12 +147,13 @@ extension ThinkingConfig.ThinkingProtocol {
         let m = model.lowercased()
 
         if lower.contains("anthropic") { return .anthropic_native }
-        if m.hasPrefix("o1") || m.hasPrefix("o3") || m.hasPrefix("o4") { return .reasoning_effort }
+        if m.hasPrefix("o1") || m.hasPrefix("o3") || m.hasPrefix("o4") { return .none }
         if m.hasPrefix("deepseek-r") { return .none }
+        if lower.contains("aliyuncs") { return .enable_thinking }
         if lower.contains("bigmodel") || lower.contains("z.ai")
-            || lower.contains("moonshot") || lower.contains("aliyuncs")
+            || lower.contains("moonshot")
             || lower.contains("volces") || lower.contains("ark.cn-beijing") {
-            return .enable_thinking
+            return .anthropic_native
         }
         return .enable_thinking
     }

@@ -252,6 +252,19 @@ Menu bar → "Settings...":
 
 ---
 
+## Contributing
+
+Contributions are welcome — bug reports, feature ideas, UI/UX polish, translations, and code fixes all help.
+
+- **Bugs & feature requests**: open an [issue](../../issues) with a clear description and reproduction steps.
+- **Pull requests**: fork the repo, create a branch, and open a PR against `main`. Keep changes focused and described in the PR description.
+- **Translations**: the app is localized via `LocalizationManager`; adding or improving a language is a great first contribution.
+- **Discussions**: feel free to start a [discussion](../../discussions) for questions or design ideas before opening a PR.
+
+Please be respectful and constructive. By contributing you agree your contributions are licensed under the project's license.
+
+---
+
 ## Star This Project
 
 If APIBypass saves you time, please star the repo — it helps others find it too.

@@ -99,7 +99,7 @@ final class ProxyEngineTests: XCTestCase {
             incomingModel: "claude",
             actualModel: "claude-sonnet-4-6",
             providerConfigId: UUID(),
-            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: true, budgetTokens: 10000), thinkingOverrideEnabled: true)
+            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: true), thinkingOverrideEnabled: true)
         )
 
         let requestBody: [String: Any] = [
@@ -114,7 +114,7 @@ final class ProxyEngineTests: XCTestCase {
 
         let thinking = json["thinking"] as! [String: Any]
         XCTAssertEqual(thinking["type"] as? String, "enabled")
-        XCTAssertEqual(thinking["budget_tokens"] as? Int, 10000)
+        XCTAssertNil(thinking["budget_tokens"])
     }
 
     func testTransformAnthropicRequest_disablesThinking() throws {
@@ -311,7 +311,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test", incomingModel: "glm", actualModel: "glm-5.2",
             providerConfigId: UUID(),
             parameters: InjectedParameters(
-                thinking: ThinkingConfig(enabled: true, budgetTokens: 8000, thinkingProtocol: .enable_thinking),
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .enable_thinking),
                 thinkingOverrideEnabled: true
             )
         )
@@ -320,7 +320,7 @@ final class ProxyEngineTests: XCTestCase {
         let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .openai)
         let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
         XCTAssertEqual(json["enable_thinking"] as? Bool, true)
-        XCTAssertEqual(json["thinking_budget"] as? Int, 8000)
+        XCTAssertNil(json["thinking_budget"])
     }
 
     func testTransformOpenAIRequest_enableThinkingProtocolOff() throws {
@@ -344,7 +344,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test", incomingModel: "o3", actualModel: "o3-mini",
             providerConfigId: UUID(),
             parameters: InjectedParameters(
-                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .reasoning_effort, effort: "high"),
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .none, effort: "high"),
                 thinkingOverrideEnabled: true
             )
         )
@@ -387,7 +387,7 @@ final class ProxyEngineTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: anthropicBody)
         let translated = try translator.translateRequest(
             data, from: .anthropic, to: .openai,
-            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .reasoning_effort, effort: "high")
+            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .none, effort: "high")
         )
         let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
         XCTAssertEqual(json["reasoning_effort"] as? String, "high")

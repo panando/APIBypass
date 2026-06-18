@@ -127,3 +127,30 @@ struct ModelMapping: Codable, Identifiable, Equatable {
         return incomingModel == stripped
     }
 }
+
+// `ThinkingConfig.Protocol` cannot be referenced by its declared name from outside the
+// type: Swift parses `ThinkingConfig.Protocol` as the protocol-metatype accessor
+// (`T.Protocol`), not as member access on the nested enum. The alias below exposes the
+// enum under a name external callers can actually use.
+extension ThinkingConfig {
+    typealias Proto = `Protocol`
+}
+
+extension ThinkingConfig.`Protocol` {
+    /// Auto-detect which thinking protocol an upstream expects, based on its baseURL
+    /// and the model name. Used when a mapping has no explicit protocol configured.
+    static func infer(baseURL: String, model: String) -> ThinkingConfig.`Protocol` {
+        let lower = baseURL.lowercased()
+        let m = model.lowercased()
+
+        if lower.contains("anthropic") { return .anthropic_native }
+        if m.hasPrefix("o1") || m.hasPrefix("o3") || m.hasPrefix("o4") { return .reasoning_effort }
+        if m.hasPrefix("deepseek-r") { return .none }
+        if lower.contains("bigmodel") || lower.contains("z.ai")
+            || lower.contains("moonshot") || lower.contains("aliyuncs")
+            || lower.contains("volces") || lower.contains("ark.cn-beijing") {
+            return .enable_thinking
+        }
+        return .enable_thinking
+    }
+}

@@ -68,6 +68,32 @@ final class ModelMappingTests: XCTestCase {
         XCTAssertNil(decoded.effort)
     }
 
+    // MARK: - ThinkingConfig.Protocol.infer Tests
+    // Note: `ThinkingConfig.Protocol` cannot be referenced by its declared name from
+    // outside the type — Swift parses `ThinkingConfig.Protocol` as the protocol-metatype
+    // accessor. The `Proto` typealias (see ModelMapping.swift) is the externally usable
+    // alias, so tests call `ThinkingConfig.Proto.infer(...)`.
+
+    func testInferProtocolGLM() {
+        let p = ThinkingConfig.Proto.infer(baseURL: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.2")
+        XCTAssertEqual(p, .enable_thinking)
+    }
+
+    func testInferProtocolOpenAIOSeries() {
+        let p = ThinkingConfig.Proto.infer(baseURL: "https://api.openai.com/v1", model: "o3-mini")
+        XCTAssertEqual(p, .reasoning_effort)
+    }
+
+    func testInferProtocolDeepSeekReasoner() {
+        let p = ThinkingConfig.Proto.infer(baseURL: "https://api.deepseek.com/v1", model: "deepseek-r1")
+        XCTAssertEqual(p, .none)
+    }
+
+    func testInferProtocolAnthropic() {
+        let p = ThinkingConfig.Proto.infer(baseURL: "https://api.anthropic.com", model: "claude-sonnet-4-6")
+        XCTAssertEqual(p, .anthropic_native)
+    }
+
     // MARK: - InjectedParameters Tests
 
     func testInjectedParameters_partialFields() throws {

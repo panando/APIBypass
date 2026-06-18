@@ -447,4 +447,21 @@ final class ProxyEngineTests: XCTestCase {
         let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
         XCTAssertEqual(json["enable_thinking"] as? Bool, false)
     }
+
+    // MARK: - Cross-format (OpenAI client → Anthropic upstream) reasoning_effort tests
+
+    func testOpenAIToAnthropic_reasoningEffort() throws {
+        let translator = FormatTranslator()
+        let oaiBody: [String: Any] = [
+            "model": "o3",
+            "messages": [["role": "user", "content": "hi"]],
+            "reasoning_effort": "high"
+        ]
+        let data = try JSONSerialization.data(withJSONObject: oaiBody)
+        let translated = try translator.translateRequest(data, from: .openai, to: .anthropic)
+        let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
+        let thinking = json["thinking"] as? [String: Any]
+        XCTAssertEqual(thinking?["type"] as? String, "enabled")
+        XCTAssertNil(json["reasoning_effort"])
+    }
 }

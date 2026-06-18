@@ -296,7 +296,7 @@ final class FormatTranslator {
             out["tool_choice"] = openAIToolChoiceStringToAnthropic(tcStr)
         }
 
-        // enable_thinking → thinking
+        // enable_thinking / reasoning_effort → thinking
         if let et = json["enable_thinking"] as? Bool {
             if et {
                 var thinking: [String: Any] = ["type": "enabled"]
@@ -307,6 +307,8 @@ final class FormatTranslator {
             } else {
                 out["thinking"] = ["type": "disabled"]
             }
+        } else if let effort = json["reasoning_effort"] as? String, effort != "none" {
+            out["thinking"] = ["type": "enabled"]
         }
 
         // stop → stop_sequences
@@ -318,6 +320,7 @@ final class FormatTranslator {
         out.removeValue(forKey: "stop")
         out.removeValue(forKey: "enable_thinking")
         out.removeValue(forKey: "thinking_budget")
+        out.removeValue(forKey: "reasoning_effort")
         out.removeValue(forKey: "stream_options")
 
         return out

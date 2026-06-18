@@ -22,6 +22,8 @@ struct MappingEditForm: View {
     @Binding var thinkingOverrideEnabled: Bool
     @Binding var thinkingEnabled: Bool
     @Binding var thinkingBudget: String
+    @Binding var thinkingProtocol: ThinkingConfig.ThinkingProtocol
+    @Binding var thinkingEffort: String
 
     // Custom fields
     @Binding var customFields: [CustomField]
@@ -125,28 +127,90 @@ struct MappingEditForm: View {
                     .foregroundColor(.secondary)
 
                 VStack(spacing: 8) {
+                    // Protocol picker
                     HStack {
-                        Text(L10n.t("enable_thinking"))
-                        Spacer()
-                        Toggle("", isOn: $thinkingEnabled)
-                            .toggleStyle(.switch)
-                            .labelsHidden()
-                            .fixedSize()
-                            .disabled(!thinkingOverrideEnabled)
-                    }
-                    if thinkingEnabled,
-                       let pid = selectedProviderId,
-                       let provider = configManager.providers.first(where: { $0.id == pid }),
-                       provider.apiProvider == .anthropic {
-                        HStack {
-                            Text(L10n.t("thinking_budget"))
-                                .frame(width: 120, alignment: .trailing)
-                            TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
-                                .disabled(!thinkingOverrideEnabled)
-                            Text(L10n.t("thinking_budget_eg"))
-                                .foregroundColor(.secondary)
-                                .font(.caption)
+                        Text(L10n.t("thinking_protocol"))
+                            .frame(width: 120, alignment: .trailing)
+                        Picker("", selection: $thinkingProtocol) {
+                            ForEach(ThinkingConfig.ThinkingProtocol.allCases, id: \.self) { p in
+                                Text(p.displayName).tag(p)
+                            }
                         }
+                        .labelsHidden()
+                        .disabled(!thinkingOverrideEnabled)
+                    }
+
+                    // Protocol-specific controls
+                    switch thinkingProtocol {
+                    case .enable_thinking:
+                        HStack {
+                            Text(L10n.t("enable_thinking"))
+                            Spacer()
+                            Toggle("", isOn: $thinkingEnabled)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .fixedSize()
+                                .disabled(!thinkingOverrideEnabled)
+                        }
+                        if thinkingEnabled {
+                            HStack {
+                                Text(L10n.t("thinking_budget"))
+                                    .frame(width: 120, alignment: .trailing)
+                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
+                                    .disabled(!thinkingOverrideEnabled)
+                                Text(L10n.t("thinking_budget_eg"))
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    case .reasoning_effort:
+                        HStack {
+                            Text(L10n.t("enable_thinking"))
+                            Spacer()
+                            Toggle("", isOn: $thinkingEnabled)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .fixedSize()
+                                .disabled(!thinkingOverrideEnabled)
+                        }
+                        if thinkingEnabled {
+                            HStack {
+                                Text(L10n.t("thinking_effort"))
+                                    .frame(width: 120, alignment: .trailing)
+                                Picker("", selection: $thinkingEffort) {
+                                    Text("low").tag("low")
+                                    Text("medium").tag("medium")
+                                    Text("high").tag("high")
+                                }
+                                .labelsHidden()
+                                .disabled(!thinkingOverrideEnabled)
+                            }
+                        }
+                    case .anthropic_native:
+                        HStack {
+                            Text(L10n.t("enable_thinking"))
+                            Spacer()
+                            Toggle("", isOn: $thinkingEnabled)
+                                .toggleStyle(.switch)
+                                .labelsHidden()
+                                .fixedSize()
+                                .disabled(!thinkingOverrideEnabled)
+                        }
+                        if thinkingEnabled {
+                            HStack {
+                                Text(L10n.t("thinking_budget"))
+                                    .frame(width: 120, alignment: .trailing)
+                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
+                                    .disabled(!thinkingOverrideEnabled)
+                                Text(L10n.t("thinking_budget_eg"))
+                                    .foregroundColor(.secondary)
+                                    .font(.caption)
+                            }
+                        }
+                    case .none:
+                        Text(L10n.t("thinking_none_hint"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
                     }
                 }
                 .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)

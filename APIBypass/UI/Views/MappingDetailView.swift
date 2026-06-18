@@ -34,6 +34,8 @@ struct MappingDetailView: View {
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
     @State private var thinkingOverrideEnabled = false
+    @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enable_thinking
+    @State private var thinkingEffort = "medium"
     @State private var isEnabled = true
 
     // 自定义字段
@@ -75,6 +77,8 @@ struct MappingDetailView: View {
            let originalThinking = original.parameters.thinking {
             if currentThinking.enabled != originalThinking.enabled { return true }
             if currentThinking.budgetTokens != originalThinking.budgetTokens { return true }
+            if currentThinking.thinkingProtocol != originalThinking.thinkingProtocol { return true }
+            if currentThinking.effort != originalThinking.effort { return true }
         } else if currentParams.thinking != nil || original.parameters.thinking != nil {
             return true
         }
@@ -198,27 +202,87 @@ struct MappingDetailView: View {
 
                     VStack(spacing: 8) {
                         HStack {
-                            Text(L10n.t("enable_thinking"))
-                            Spacer()
-                            Toggle("", isOn: $thinkingEnabled)
-                                .toggleStyle(.switch)
-                                .labelsHidden()
-                                .fixedSize()
-                                .disabled(!thinkingOverrideEnabled)
-                        }
-                        if thinkingEnabled,
-                           let pid = selectedProviderId,
-                           let provider = configManager.providers.first(where: { $0.id == pid }),
-                           provider.apiProvider == .anthropic {
-                            HStack {
-                                Text(L10n.t("thinking_budget"))
-                                    .frame(width: 120, alignment: .trailing)
-                                TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
-                                    .disabled(!thinkingOverrideEnabled)
-                                Text(L10n.t("thinking_budget_eg"))
-                                    .foregroundColor(.secondary)
-                                    .font(.caption)
+                            Text(L10n.t("thinking_protocol"))
+                                .frame(width: 120, alignment: .trailing)
+                            Picker("", selection: $thinkingProtocol) {
+                                ForEach(ThinkingConfig.ThinkingProtocol.allCases, id: \.self) { p in
+                                    Text(p.displayName).tag(p)
+                                }
                             }
+                            .labelsHidden()
+                            .disabled(!thinkingOverrideEnabled)
+                        }
+
+                        switch thinkingProtocol {
+                        case .enable_thinking:
+                            HStack {
+                                Text(L10n.t("enable_thinking"))
+                                Spacer()
+                                Toggle("", isOn: $thinkingEnabled)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                                    .fixedSize()
+                                    .disabled(!thinkingOverrideEnabled)
+                            }
+                            if thinkingEnabled {
+                                HStack {
+                                    Text(L10n.t("thinking_budget"))
+                                        .frame(width: 120, alignment: .trailing)
+                                    TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
+                                        .disabled(!thinkingOverrideEnabled)
+                                    Text(L10n.t("thinking_budget_eg"))
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                        case .reasoning_effort:
+                            HStack {
+                                Text(L10n.t("enable_thinking"))
+                                Spacer()
+                                Toggle("", isOn: $thinkingEnabled)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                                    .fixedSize()
+                                    .disabled(!thinkingOverrideEnabled)
+                            }
+                            if thinkingEnabled {
+                                HStack {
+                                    Text(L10n.t("thinking_effort"))
+                                        .frame(width: 120, alignment: .trailing)
+                                    Picker("", selection: $thinkingEffort) {
+                                        Text("low").tag("low")
+                                        Text("medium").tag("medium")
+                                        Text("high").tag("high")
+                                    }
+                                    .labelsHidden()
+                                    .disabled(!thinkingOverrideEnabled)
+                                }
+                            }
+                        case .anthropic_native:
+                            HStack {
+                                Text(L10n.t("enable_thinking"))
+                                Spacer()
+                                Toggle("", isOn: $thinkingEnabled)
+                                    .toggleStyle(.switch)
+                                    .labelsHidden()
+                                    .fixedSize()
+                                    .disabled(!thinkingOverrideEnabled)
+                            }
+                            if thinkingEnabled {
+                                HStack {
+                                    Text(L10n.t("thinking_budget"))
+                                        .frame(width: 120, alignment: .trailing)
+                                    TextField(L10n.t("thinking_budget_hint"), text: $thinkingBudget)
+                                        .disabled(!thinkingOverrideEnabled)
+                                    Text(L10n.t("thinking_budget_eg"))
+                                        .foregroundColor(.secondary)
+                                        .font(.caption)
+                                }
+                            }
+                        case .none:
+                            Text(L10n.t("thinking_none_hint"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
                         }
                     }
                     .opacity(thinkingOverrideEnabled ? 1.0 : 0.4)
@@ -416,9 +480,19 @@ struct MappingDetailView: View {
             if let budget = thinking.budgetTokens {
                 thinkingBudget = String(budget)
             }
+            thinkingProtocol = thinking.thinkingProtocol
+            thinkingEffort = thinking.effort ?? "medium"
         } else {
             thinkingEnabled = false
             thinkingBudget = ""
+            // Infer protocol from provider + model when no saved config
+            if let provider = configManager.providers.first(where: { $0.id == mapping.providerConfigId }) {
+                thinkingProtocol = ThinkingConfig.ThinkingProtocol.infer(
+                    baseURL: provider.baseURL.absoluteString,
+                    model: mapping.actualModel
+                )
+            }
+            thinkingEffort = "medium"
         }
         if let enabled = mapping.parameters.thinkingOverrideEnabled {
             thinkingOverrideEnabled = enabled
@@ -478,7 +552,9 @@ struct MappingDetailView: View {
         // 始终保存思考配置数据（即使开关关闭），以便下次开启时恢复
         let thinking = ThinkingConfig(
             enabled: thinkingEnabled,
-            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
+            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil,
+            thinkingProtocol: thinkingProtocol,
+            effort: thinkingProtocol == .reasoning_effort ? thinkingEffort : nil
         )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty

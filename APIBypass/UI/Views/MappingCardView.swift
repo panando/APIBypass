@@ -36,6 +36,8 @@ struct MappingCardView: View {
     @State private var thinkingEnabled = false
     @State private var thinkingBudget = ""
     @State private var thinkingOverrideEnabled = false
+    @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enable_thinking
+    @State private var thinkingEffort = "medium"
 
     @State private var customFields: [CustomField] = []
     @State private var customFieldsEnabled = false
@@ -65,6 +67,8 @@ struct MappingCardView: View {
            let originalThinking = original.parameters.thinking {
             if currentThinking.enabled != originalThinking.enabled { return true }
             if currentThinking.budgetTokens != originalThinking.budgetTokens { return true }
+            if currentThinking.thinkingProtocol != originalThinking.thinkingProtocol { return true }
+            if currentThinking.effort != originalThinking.effort { return true }
         } else if currentParams.thinking != nil || original.parameters.thinking != nil {
             return true
         }
@@ -151,6 +155,8 @@ struct MappingCardView: View {
                     thinkingOverrideEnabled: $thinkingOverrideEnabled,
                     thinkingEnabled: $thinkingEnabled,
                     thinkingBudget: $thinkingBudget,
+                    thinkingProtocol: $thinkingProtocol,
+                    thinkingEffort: $thinkingEffort,
                     customFields: $customFields,
                     customFieldsEnabled: $customFieldsEnabled,
                     focusIncomingModelTrigger: focusIncomingModelTrigger
@@ -256,9 +262,13 @@ struct MappingCardView: View {
         if let thinking = current.parameters.thinking {
             thinkingEnabled = thinking.enabled
             thinkingBudget = thinking.budgetTokens.map { String($0) } ?? ""
+            thinkingProtocol = thinking.thinkingProtocol
+            thinkingEffort = thinking.effort ?? "medium"
         } else {
             thinkingEnabled = false
             thinkingBudget = ""
+            thinkingProtocol = .enable_thinking
+            thinkingEffort = "medium"
         }
         thinkingOverrideEnabled = current.parameters.thinkingOverrideEnabled ?? false
         if current.parameters.thinkingOverrideEnabled == nil && current.parameters.thinking != nil {
@@ -326,7 +336,9 @@ struct MappingCardView: View {
 
         let thinking = ThinkingConfig(
             enabled: thinkingEnabled,
-            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil
+            budgetTokens: thinkingEnabled ? Int(thinkingBudget) : nil,
+            thinkingProtocol: thinkingProtocol,
+            effort: thinkingProtocol == .reasoning_effort ? thinkingEffort : nil
         )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty

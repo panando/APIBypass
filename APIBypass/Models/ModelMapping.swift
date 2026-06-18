@@ -1,12 +1,47 @@
 import Foundation
 
 struct ThinkingConfig: Codable, Equatable {
+    enum `Protocol`: String, Codable, CaseIterable {
+        case enable_thinking      // GLM / Qwen / Kimi / Ark
+        case reasoning_effort     // OpenAI o-series
+        case anthropic_native     // Anthropic 兼容上游
+        case none                 // 不发字段（模型自身即开关）
+
+        var displayName: String {
+            switch self {
+            case .enable_thinking: return "enable_thinking"
+            case .reasoning_effort: return "reasoning_effort"
+            case .anthropic_native: return "thinking (Anthropic)"
+            case .none: return "none"
+            }
+        }
+    }
+
     let enabled: Bool
     let budgetTokens: Int?
+    let `protocol`: `Protocol`
+    let effort: String?
 
-    init(enabled: Bool, budgetTokens: Int? = nil) {
+    init(enabled: Bool,
+         budgetTokens: Int? = nil,
+         `protocol`: `Protocol` = .enable_thinking,
+         effort: String? = nil) {
         self.enabled = enabled
         self.budgetTokens = budgetTokens
+        self.`protocol` = `protocol`
+        self.effort = effort
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case enabled, budgetTokens, `protocol`, effort
+    }
+
+    init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        enabled = try c.decode(Bool.self, forKey: .enabled)
+        budgetTokens = try c.decodeIfPresent(Int.self, forKey: .budgetTokens)
+        `protocol` = try c.decodeIfPresent(`Protocol`.self, forKey: .protocol) ?? .enable_thinking
+        effort = try c.decodeIfPresent(String.self, forKey: .effort)
     }
 }
 

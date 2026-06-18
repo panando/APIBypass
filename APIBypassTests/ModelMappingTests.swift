@@ -43,6 +43,31 @@ final class ModelMappingTests: XCTestCase {
         XCTAssertNil(decoded.budgetTokens)
     }
 
+    func testThinkingConfigCodableWithProtocol() throws {
+        let config = ThinkingConfig(
+            enabled: true,
+            budgetTokens: 5000,
+            protocol: .reasoning_effort,
+            effort: "high"
+        )
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: data)
+        XCTAssertEqual(decoded.enabled, true)
+        XCTAssertEqual(decoded.budgetTokens, 5000)
+        XCTAssertEqual(decoded.protocol, .reasoning_effort)
+        XCTAssertEqual(decoded.effort, "high")
+    }
+
+    func testThinkingConfigBackwardCompatOldFormat() throws {
+        // Old format: no protocol/effort fields
+        let json = #"{"enabled":true,"budgetTokens":10000}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
+        XCTAssertEqual(decoded.enabled, true)
+        XCTAssertEqual(decoded.budgetTokens, 10000)
+        XCTAssertEqual(decoded.protocol, .enable_thinking) // default fallback
+        XCTAssertNil(decoded.effort)
+    }
+
     // MARK: - InjectedParameters Tests
 
     func testInjectedParameters_partialFields() throws {

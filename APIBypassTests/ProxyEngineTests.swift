@@ -373,4 +373,78 @@ final class ProxyEngineTests: XCTestCase {
         XCTAssertNil(json["reasoning_effort"])
         XCTAssertNil(json["thinking"])
     }
+
+    // MARK: - Cross-format (Anthropic client → OpenAI upstream) thinking protocol tests
+
+    func testAnthropicToOpenAI_reasoningEffortProtocol() throws {
+        let translator = FormatTranslator()
+        let anthropicBody: [String: Any] = [
+            "model": "o3",
+            "messages": [["role": "user", "content": "hi"]],
+            "max_tokens": 1024,
+            "thinking": ["type": "enabled"]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: anthropicBody)
+        let translated = try translator.translateRequest(
+            data, from: .anthropic, to: .openai,
+            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .reasoning_effort, effort: "high")
+        )
+        let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
+        XCTAssertEqual(json["reasoning_effort"] as? String, "high")
+        XCTAssertNil(json["enable_thinking"])
+        XCTAssertNil(json["thinking"])
+    }
+
+    func testAnthropicToOpenAI_noneProtocolStripsThinking() throws {
+        let translator = FormatTranslator()
+        let anthropicBody: [String: Any] = [
+            "model": "ds", "messages": [["role": "user", "content": "hi"]],
+            "max_tokens": 1024,
+            "thinking": ["type": "enabled"]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: anthropicBody)
+        let translated = try translator.translateRequest(
+            data, from: .anthropic, to: .openai,
+            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .none)
+        )
+        let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
+        XCTAssertNil(json["enable_thinking"])
+        XCTAssertNil(json["reasoning_effort"])
+        XCTAssertNil(json["thinking"])
+    }
+
+    func testAnthropicToOpenAI_anthropicNativePreservesThinking() throws {
+        let translator = FormatTranslator()
+        let anthropicBody: [String: Any] = [
+            "model": "claude", "messages": [["role": "user", "content": "hi"]],
+            "max_tokens": 1024,
+            "thinking": ["type": "enabled", "budget_tokens": 5000]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: anthropicBody)
+        let translated = try translator.translateRequest(
+            data, from: .anthropic, to: .openai,
+            thinkingConfig: ThinkingConfig(enabled: true, budgetTokens: 5000, thinkingProtocol: .anthropic_native)
+        )
+        let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
+        let thinking = json["thinking"] as? [String: Any]
+        XCTAssertEqual(thinking?["type"] as? String, "enabled")
+        XCTAssertEqual(thinking?["budget_tokens"] as? Int, 5000)
+        XCTAssertNil(json["enable_thinking"])
+    }
+
+    func testAnthropicToOpenAI_enableThinkingOffEmitsFalse() throws {
+        let translator = FormatTranslator()
+        let anthropicBody: [String: Any] = [
+            "model": "glm", "messages": [["role": "user", "content": "hi"]],
+            "max_tokens": 1024,
+            "thinking": ["type": "disabled"]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: anthropicBody)
+        let translated = try translator.translateRequest(
+            data, from: .anthropic, to: .openai,
+            thinkingConfig: ThinkingConfig(enabled: false, thinkingProtocol: .enable_thinking)
+        )
+        let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
+        XCTAssertEqual(json["enable_thinking"] as? Bool, false)
+    }
 }

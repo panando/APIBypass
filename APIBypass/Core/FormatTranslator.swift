@@ -165,7 +165,7 @@ final class FormatTranslator {
     // MARK: - Request Translation
 
     /// Anthropic Messages API → OpenAI Chat Completions API
-    func anthropicToOpenAIRequest(_ json: [String: Any]) -> [String: Any] {
+    func anthropicToOpenAIRequest(_ json: [String: Any], thinkingConfig: ThinkingConfig? = nil) -> [String: Any] {
         var out = json
 
         // system → prepend to messages as system role
@@ -196,15 +196,32 @@ final class FormatTranslator {
             out["tool_choice"] = anthropicToolChoiceToOpenAI(tc)
         }
 
-        // thinking → enable_thinking + thinking_budget
-        // 仅在 thinking 明确启用时才添加字段，避免发送上游不认识的字段
+        // thinking → protocol-specific fields
         if let thinking = json["thinking"] as? [String: Any] {
+            let proto = thinkingConfig?.thinkingProtocol ?? .enable_thinking
             let type = thinking["type"] as? String ?? ""
-            if type == "enabled" {
-                out["enable_thinking"] = true
-                if let budget = thinking["budget_tokens"] as? Int {
+            let enabled = (type == "enabled")
+
+            switch proto {
+            case .enable_thinking:
+                out["enable_thinking"] = enabled
+                if enabled, let budget = thinking["budget_tokens"] as? Int {
                     out["thinking_budget"] = budget
                 }
+            case .reasoning_effort:
+                if enabled {
+                    out["reasoning_effort"] = thinkingConfig?.effort ?? "medium"
+                }
+            case .anthropic_native:
+                var t = thinking
+                if !enabled { t = ["type": "disabled"] }
+                out["thinking"] = t
+            case .none:
+                break
+            }
+
+            if proto != .anthropic_native {
+                out.removeValue(forKey: "thinking")
             }
         }
 
@@ -216,7 +233,6 @@ final class FormatTranslator {
         // Remove Anthropic-specific fields
         out.removeValue(forKey: "system")
         out.removeValue(forKey: "stop_sequences")
-        out.removeValue(forKey: "thinking")
         out.removeValue(forKey: "metadata")
         out.removeValue(forKey: "top_k")
         out.removeValue(forKey: "context_management")
@@ -432,14 +448,14 @@ final class FormatTranslator {
 
     // MARK: - Convenience
 
-    func translateRequest(_ data: Data, from source: APIFormat, to target: APIFormat) throws -> Data {
+    func translateRequest(_ data: Data, from source: APIFormat, to target: APIFormat, thinkingConfig: ThinkingConfig? = nil) throws -> Data {
         guard let json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
             throw ProxyError.invalidJSON
         }
         let result: [String: Any]
         switch (source, target) {
         case (.anthropic, .openai):
-            result = anthropicToOpenAIRequest(json)
+            result = anthropicToOpenAIRequest(json, thinkingConfig: thinkingConfig)
         case (.openai, .anthropic):
             result = openAIToAnthropicRequest(json)
         default:

@@ -1,3 +1,22 @@
+# APIBypass v0.7.7
+
+## What's New
+
+### Fix: Subagent Empty Returns and Thinking Context Loss
+
+Fixed two bugs in the Anthropic→OpenAI request translation path that caused Claude Code subagents (Task tool) to return empty results when routed through APIBypass to GLM / Kimi / DeepSeek upstreams:
+
+- **`tool_result` array content dropped**: Claude Code sends `tool_result.content` as an array of content blocks, but the translator only handled the string form via `as? String`, falling back to an empty string. Parent agents then received empty tool results. Now both string and array forms are parsed correctly.
+- **`thinking` blocks in assistant history dropped**: Assistant messages carrying `thinking` blocks fell through the `default` branch and were silently discarded. GLM / Kimi / DeepSeek require `reasoning_content` to be preserved across turns for multi-turn tool calling — losing it caused 400 errors or degraded reasoning continuity. `thinking` blocks are now carried through as `reasoning_content`.
+
+### TraceLogger
+
+Added an internal trace logger that dumps upstream/downstream SSE events keyed by request ID, wiped and rebuilt on each app launch. Logs are written to `~/Library/Logs/com.apibypass.app/trace/`.
+
+> Note: only affects the Anthropic-client → OpenAI-upstream path. OpenAI→OpenAI passthrough, OpenAI→Anthropic, and Anthropic→Anthropic are unchanged.
+
+---
+
 # APIBypass v0.7.6
 
 ## What's New

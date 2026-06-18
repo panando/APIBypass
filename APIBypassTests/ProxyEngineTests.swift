@@ -1,6 +1,19 @@
 import XCTest
 @testable import APIBypass
 
+extension ProxyError: Equatable {
+    public static func == (lhs: ProxyError, rhs: ProxyError) -> Bool {
+        switch (lhs, rhs) {
+        case (.invalidJSON, .invalidJSON):
+            return true
+        case let (.upstreamError(code1, data1), .upstreamError(code2, data2)):
+            return code1 == code2 && data1 == data2
+        default:
+            return false
+        }
+    }
+}
+
 final class ProxyEngineTests: XCTestCase {
     private var engine: ProxyEngine!
 
@@ -16,8 +29,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: .empty
         )
 
@@ -38,8 +50,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(temperature: 0.7)
         )
 
@@ -60,8 +71,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(maxTokens: 1000)
         )
 
@@ -88,9 +98,8 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "claude",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
-            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: true, budgetTokens: 10000))
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: true, budgetTokens: 10000), thinkingOverrideEnabled: true)
         )
 
         let requestBody: [String: Any] = [
@@ -113,9 +122,8 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "claude",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
-            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: false))
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: false), thinkingOverrideEnabled: true)
         )
 
         let requestBody: [String: Any] = [
@@ -137,9 +145,8 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "claude",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
-            parameters: InjectedParameters(maxTokens: 2048, temperature: 0.8)
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(temperature: 0.8, maxTokens: 2048)
         )
 
         let requestBody: [String: Any] = [
@@ -162,8 +169,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: .empty
         )
 
@@ -184,8 +190,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(topP: 0.9)
         )
 
@@ -206,8 +211,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(frequencyPenalty: 0.5)
         )
 
@@ -228,8 +232,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(presencePenalty: 0.3)
         )
 
@@ -250,8 +253,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "gpt-4o",
-            apiProvider: .openai,
-            baseURL: URL(string: "https://api.openai.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(
                 temperature: 0.7,
                 maxTokens: 2000,
@@ -284,9 +286,8 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test",
             incomingModel: "claude",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
-            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: true))
+            providerConfigId: UUID(),
+            parameters: InjectedParameters(thinking: ThinkingConfig(enabled: true), thinkingOverrideEnabled: true)
         )
 
         let requestBody: [String: Any] = [

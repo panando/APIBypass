@@ -113,8 +113,7 @@ final class ModelMappingTests: XCTestCase {
             name: "Test Config",
             incomingModel: "gpt-4",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
+            providerConfigId: UUID(),
             parameters: InjectedParameters(temperature: 0.5, thinking: ThinkingConfig(enabled: true, budgetTokens: 5000)),
             isEnabled: true
         )
@@ -125,7 +124,7 @@ final class ModelMappingTests: XCTestCase {
         XCTAssertEqual(decoded.name, "Test Config")
         XCTAssertEqual(decoded.incomingModel, "gpt-4")
         XCTAssertEqual(decoded.actualModel, "claude-sonnet-4-6")
-        XCTAssertEqual(decoded.apiProvider, .anthropic)
+        XCTAssertEqual(decoded.providerConfigId, mapping.providerConfigId)
         XCTAssertTrue(decoded.isEnabled)
     }
 
@@ -135,8 +134,7 @@ final class ModelMappingTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
+            providerConfigId: UUID(),
             parameters: .empty,
             isEnabled: true
         )
@@ -151,8 +149,7 @@ final class ModelMappingTests: XCTestCase {
             name: "Test",
             incomingModel: "gpt-4",
             actualModel: "claude-sonnet-4-6",
-            apiProvider: .anthropic,
-            baseURL: URL(string: "https://api.anthropic.com")!,
+            providerConfigId: UUID(),
             parameters: .empty,
             isEnabled: false
         )

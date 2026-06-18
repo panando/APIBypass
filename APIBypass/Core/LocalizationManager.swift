@@ -117,6 +117,8 @@ struct L10n {
         "save": [.chinese: "保存", .english: "Save"],
         "saved": [.chinese: "已保存", .english: "Saved"],
         "ok": [.chinese: "好的", .english: "OK"],
+        "rename": [.chinese: "重命名", .english: "Rename"],
+        "update": [.chinese: "更新", .english: "Update"],
 
         // 新建配置
         "config_name_placeholder": [.chinese: "名称", .english: "Name"],

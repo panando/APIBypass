@@ -415,160 +415,156 @@ struct LaunchClaudeCodeView: View {
 
             Divider()
 
-            // 可配置环境变量
-            Text(L10n.t("model_settings"))
-                .font(.subheadline)
-                .foregroundColor(.secondary)
+            // Grid 保证所有行的下拉左边缘对齐，按钮紧贴菜单右边缘
+            Grid(alignment: .leading, horizontalSpacing: 4, verticalSpacing: 12) {
+                // 配置模板行：Menu + 按钮合并到一个 HStack 跨列1+2，按钮紧贴 Menu
+                GridRow {
+                    Text(L10n.t("config_template"))
+                        .font(.system(.body, design: .monospaced))
+                        .frame(width: 280, alignment: .leading)
+                        .gridCellAnchor(.leading)
 
-            // 配置模板
-            HStack(spacing: 12) {
-                Text(L10n.t("config_template"))
-                    .font(.system(.body, design: .monospaced))
-                    .frame(width: 280, alignment: .leading)
-
-                Menu {
-                    ForEach(templates) { tmpl in
-                        Button {
-                            applyTemplate(tmpl)
-                        } label: {
-                            HStack {
-                                Text(tmpl.name)
-                                if activeTemplateName == tmpl.name && !isTemplateDirty {
-                                    Image(systemName: "checkmark")
+                    HStack(spacing: 4) {
+                        Menu {
+                            ForEach(templates) { tmpl in
+                                Button {
+                                    applyTemplate(tmpl)
+                                } label: {
+                                    HStack {
+                                        Text(tmpl.name)
+                                        if activeTemplateName == tmpl.name && !isTemplateDirty {
+                                            Image(systemName: "checkmark")
+                                        }
+                                    }
                                 }
                             }
-                        }
-                    }
-                    Divider()
-                    if activeTemplateName != nil && isTemplateDirty {
-                        Button {
-                            updateCurrentTemplate()
+                            Divider()
+                            if activeTemplateName != nil && isTemplateDirty {
+                                Button {
+                                    updateCurrentTemplate()
+                                } label: {
+                                    Label(L10n.t("update_template"), systemImage: "checkmark.circle")
+                                }
+                                Button {
+                                    newTemplateName = ""
+                                    showSaveTemplateSheet = true
+                                } label: {
+                                    Label(L10n.t("save_as_new_template"), systemImage: "plus")
+                                }
+                            } else {
+                                Button {
+                                    newTemplateName = ""
+                                    showSaveTemplateSheet = true
+                                } label: {
+                                    Label(L10n.t("save_as_template"), systemImage: "plus")
+                                }
+                            }
+                            Divider()
+                            Button {
+                                restoreDefaults()
+                            } label: {
+                                Label(L10n.t("restore_defaults"), systemImage: "arrow.counterclockwise")
+                            }
                         } label: {
-                            Label(L10n.t("update_template"), systemImage: "checkmark.circle")
+                            Text(templateDisplayText)
+                                .frame(maxWidth: .infinity, alignment: .leading)
                         }
-                        Button {
-                            newTemplateName = ""
-                            showSaveTemplateSheet = true
-                        } label: {
-                            Label(L10n.t("save_as_new_template"), systemImage: "plus")
+                        .menuStyle(.borderedButton)
+                        .menuIndicator(.visible)
+                        .frame(width: 140, alignment: .leading)
+
+                        if activeTemplateName != nil && !isTemplateDirty {
+                            Button {
+                                renameText = activeTemplateName ?? ""
+                                showRenameTemplateSheet = true
+                            } label: {
+                                Text(L10n.t("rename"))
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+
+                            Button {
+                                showDeleteTemplateConfirm = true
+                            } label: {
+                                Text(L10n.t("delete"))
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                        } else if activeTemplateName != nil && isTemplateDirty {
+                            Button {
+                                updateCurrentTemplate()
+                            } label: {
+                                Text(L10n.t("update"))
+                            }
+                            .buttonStyle(.bordered)
+                            .controlSize(.small)
+                            .help(L10n.t("update_template"))
                         }
-                    } else {
-                        Button {
-                            newTemplateName = ""
-                            showSaveTemplateSheet = true
-                        } label: {
-                            Label(L10n.t("save_as_template"), systemImage: "plus")
-                        }
                     }
-                    Divider()
-                    Button {
-                        restoreDefaults()
-                    } label: {
-                        Label(L10n.t("restore_defaults"), systemImage: "arrow.counterclockwise")
-                    }
-                } label: {
-                    Text(templateDisplayText)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
-                .menuStyle(.borderedButton)
-                .menuIndicator(.visible)
-                .frame(width: 140, alignment: .leading)
-
-                // 右侧操作按钮
-                if activeTemplateName != nil && !isTemplateDirty {
-                    Button {
-                        renameText = activeTemplateName ?? ""
-                        showRenameTemplateSheet = true
-                    } label: {
-                        Image(systemName: "pencil")
-                            .frame(width: 16, height: 16)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-
-                    Button {
-                        showDeleteTemplateConfirm = true
-                    } label: {
-                        Image(systemName: "trash")
-                            .frame(width: 16, height: 16)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                } else if activeTemplateName != nil && isTemplateDirty {
-                    Button {
-                        updateCurrentTemplate()
-                    } label: {
-                        Image(systemName: "checkmark.circle")
-                            .frame(width: 16, height: 16)
-                    }
-                    .buttonStyle(.bordered)
-                    .controlSize(.small)
-                    .help(L10n.t("update_template"))
+                    .gridCellColumns(2)
                 }
 
-                Spacer()
-            }
+                // ANTHROPIC_MODEL (必填)
+                modelPickerRow(
+                    name: "ANTHROPIC_MODEL",
+                    providerId: anthropicModelProviderBinding,
+                    model: $savedAnthropicModel,
+                    isRequired: true,
+                    onModelChange: markTemplateDirty
+                )
 
-            // ANTHROPIC_MODEL (必填)
-            modelPickerRow(
-                name: "ANTHROPIC_MODEL",
-                providerId: anthropicModelProviderBinding,
-                model: $savedAnthropicModel,
-                isRequired: true,
-                onModelChange: markTemplateDirty
-            )
+                // 其他模型配置
+                modelPickerRow(
+                    name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
+                    providerId: opusModelProviderBinding,
+                    model: $savedOpusModel,
+                    onModelChange: markTemplateDirty
+                )
 
-            // 其他模型配置
-            modelPickerRow(
-                name: "ANTHROPIC_DEFAULT_OPUS_MODEL",
-                providerId: opusModelProviderBinding,
-                model: $savedOpusModel,
-                onModelChange: markTemplateDirty
-            )
+                modelPickerRow(
+                    name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
+                    providerId: sonnetModelProviderBinding,
+                    model: $savedSonnetModel,
+                    onModelChange: markTemplateDirty
+                )
 
-            modelPickerRow(
-                name: "ANTHROPIC_DEFAULT_SONNET_MODEL",
-                providerId: sonnetModelProviderBinding,
-                model: $savedSonnetModel,
-                onModelChange: markTemplateDirty
-            )
+                modelPickerRow(
+                    name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
+                    providerId: haikuModelProviderBinding,
+                    model: $savedHaikuModel,
+                    onModelChange: markTemplateDirty
+                )
 
-            modelPickerRow(
-                name: "ANTHROPIC_DEFAULT_HAIKU_MODEL",
-                providerId: haikuModelProviderBinding,
-                model: $savedHaikuModel,
-                onModelChange: markTemplateDirty
-            )
+                modelPickerRow(
+                    name: "CLAUDE_CODE_SUBAGENT_MODEL",
+                    providerId: subagentModelProviderBinding,
+                    model: $savedSubagentModel,
+                    onModelChange: markTemplateDirty
+                )
 
-            modelPickerRow(
-                name: "CLAUDE_CODE_SUBAGENT_MODEL",
-                providerId: subagentModelProviderBinding,
-                model: $savedSubagentModel,
-                onModelChange: markTemplateDirty
-            )
+                // EFFORT_LEVEL：Picker 跨 col 1+2，左边缘与上方下拉对齐
+                GridRow {
+                    Text("CLAUDE_CODE_EFFORT_LEVEL")
+                        .font(.system(.body, design: .monospaced))
+                        .frame(width: 280, alignment: .leading)
+                        .gridCellAnchor(.leading)
 
-            // EFFORT_LEVEL
-            HStack(spacing: 12) {
-                Text("CLAUDE_CODE_EFFORT_LEVEL")
-                    .font(.system(.body, design: .monospaced))
-                    .frame(width: 280, alignment: .leading)
-
-                Picker("", selection: $effortLevel) {
-                    Text(L10n.t("none")).tag("")
-                    Text("low").tag("low")
-                    Text("medium").tag("medium")
-                    Text("high").tag("high")
-                    Text("max").tag("max")
+                    Picker("", selection: $effortLevel) {
+                        Text(L10n.t("none")).tag("")
+                        Text("low").tag("low")
+                        Text("medium").tag("medium")
+                        Text("high").tag("high")
+                        Text("max").tag("max")
+                    }
+                    .labelsHidden()
+                    .frame(width: 200, alignment: .leading)
+                    .gridCellColumns(2)
+                    .onChange(of: effortLevel) { _, _ in
+                        guard !isApplyingTemplate else { return }
+                        saveSettings()
+                        markTemplateDirty()
+                    }
                 }
-                .labelsHidden()
-                .frame(width: 200, alignment: .leading)
-                .onChange(of: effortLevel) { _, _ in
-                    guard !isApplyingTemplate else { return }
-                    saveSettings()
-                    markTemplateDirty()
-                }
-
-                Spacer()
             }
 
             Divider()
@@ -656,7 +652,10 @@ struct LaunchClaudeCodeView: View {
     }
 
     private func modelPickerRow(name: String, providerId: Binding<UUID?>, model: Binding<String>, isRequired: Bool = false, onModelChange: (() -> Void)? = nil) -> some View {
-        HStack(spacing: 12) {
+        let selectedProvider = providerId.wrappedValue.flatMap { id in
+            configManager.providers.first(where: { $0.id == id })
+        }
+        return GridRow {
             HStack(spacing: 4) {
                 Text(name)
                     .font(.system(.body, design: .monospaced))
@@ -668,6 +667,7 @@ struct LaunchClaudeCodeView: View {
                 }
             }
             .frame(width: 280, alignment: .leading)
+            .gridCellAnchor(.leading)
 
             Picker("", selection: providerId) {
                 Text(L10n.t("please_select")).tag(UUID?.none)
@@ -677,7 +677,7 @@ struct LaunchClaudeCodeView: View {
             }
             .pickerStyle(.menu)
             .frame(width: 140, alignment: .leading)
-            .offset(x: -8)
+            .labelsHidden()
             .onChange(of: providerId.wrappedValue) { oldValue, newValue in
                 guard !isApplyingTemplate else { return }
                 if oldValue != newValue {
@@ -686,9 +686,6 @@ struct LaunchClaudeCodeView: View {
                 }
             }
 
-            let selectedProvider = providerId.wrappedValue.flatMap { id in
-                configManager.providers.first(where: { $0.id == id })
-            }
             Picker("", selection: model) {
                 Text(isRequired ? L10n.t("please_select") : L10n.t("none")).tag("")
                 if let provider = selectedProvider {
@@ -699,11 +696,8 @@ struct LaunchClaudeCodeView: View {
             }
             .pickerStyle(.menu)
             .frame(width: 200, alignment: .leading)
-            .offset(x: -8)
             .labelsHidden()
             .disabled(selectedProvider == nil)
-
-            Spacer()
         }
         .onChange(of: model.wrappedValue) { _, _ in
             guard !isApplyingTemplate else { return }

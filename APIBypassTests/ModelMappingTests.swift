@@ -47,14 +47,14 @@ final class ModelMappingTests: XCTestCase {
         let config = ThinkingConfig(
             enabled: true,
             budgetTokens: 5000,
-            protocol: .reasoning_effort,
+            thinkingProtocol: .reasoning_effort,
             effort: "high"
         )
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: data)
         XCTAssertEqual(decoded.enabled, true)
         XCTAssertEqual(decoded.budgetTokens, 5000)
-        XCTAssertEqual(decoded.protocol, .reasoning_effort)
+        XCTAssertEqual(decoded.thinkingProtocol, .reasoning_effort)
         XCTAssertEqual(decoded.effort, "high")
     }
 
@@ -64,33 +64,29 @@ final class ModelMappingTests: XCTestCase {
         let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
         XCTAssertEqual(decoded.enabled, true)
         XCTAssertEqual(decoded.budgetTokens, 10000)
-        XCTAssertEqual(decoded.protocol, .enable_thinking) // default fallback
+        XCTAssertEqual(decoded.thinkingProtocol, .enable_thinking) // default fallback
         XCTAssertNil(decoded.effort)
     }
 
-    // MARK: - ThinkingConfig.Protocol.infer Tests
-    // Note: `ThinkingConfig.Protocol` cannot be referenced by its declared name from
-    // outside the type — Swift parses `ThinkingConfig.Protocol` as the protocol-metatype
-    // accessor. The `Proto` typealias (see ModelMapping.swift) is the externally usable
-    // alias, so tests call `ThinkingConfig.Proto.infer(...)`.
+    // MARK: - ThinkingConfig.ThinkingProtocol.infer Tests
 
     func testInferProtocolGLM() {
-        let p = ThinkingConfig.Proto.infer(baseURL: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.2")
+        let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.2")
         XCTAssertEqual(p, .enable_thinking)
     }
 
     func testInferProtocolOpenAIOSeries() {
-        let p = ThinkingConfig.Proto.infer(baseURL: "https://api.openai.com/v1", model: "o3-mini")
+        let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.openai.com/v1", model: "o3-mini")
         XCTAssertEqual(p, .reasoning_effort)
     }
 
     func testInferProtocolDeepSeekReasoner() {
-        let p = ThinkingConfig.Proto.infer(baseURL: "https://api.deepseek.com/v1", model: "deepseek-r1")
+        let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.deepseek.com/v1", model: "deepseek-r1")
         XCTAssertEqual(p, .none)
     }
 
     func testInferProtocolAnthropic() {
-        let p = ThinkingConfig.Proto.infer(baseURL: "https://api.anthropic.com", model: "claude-sonnet-4-6")
+        let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.anthropic.com", model: "claude-sonnet-4-6")
         XCTAssertEqual(p, .anthropic_native)
     }
 

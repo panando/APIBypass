@@ -1,7 +1,7 @@
 import Foundation
 
 struct ThinkingConfig: Codable, Equatable {
-    enum `Protocol`: String, Codable, CaseIterable {
+    enum ThinkingProtocol: String, Codable, CaseIterable {
         case enable_thinking      // GLM / Qwen / Kimi / Ark
         case reasoning_effort     // OpenAI o-series
         case anthropic_native     // Anthropic 兼容上游
@@ -19,28 +19,30 @@ struct ThinkingConfig: Codable, Equatable {
 
     let enabled: Bool
     let budgetTokens: Int?
-    let `protocol`: `Protocol`
+    let thinkingProtocol: ThinkingProtocol
     let effort: String?
 
     init(enabled: Bool,
          budgetTokens: Int? = nil,
-         `protocol`: `Protocol` = .enable_thinking,
+         thinkingProtocol: ThinkingProtocol = .enable_thinking,
          effort: String? = nil) {
         self.enabled = enabled
         self.budgetTokens = budgetTokens
-        self.`protocol` = `protocol`
+        self.thinkingProtocol = thinkingProtocol
         self.effort = effort
     }
 
     private enum CodingKeys: String, CodingKey {
-        case enabled, budgetTokens, `protocol`, effort
+        case enabled, budgetTokens
+        case thinkingProtocol = "protocol"
+        case effort
     }
 
     init(from decoder: Decoder) throws {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         enabled = try c.decode(Bool.self, forKey: .enabled)
         budgetTokens = try c.decodeIfPresent(Int.self, forKey: .budgetTokens)
-        `protocol` = try c.decodeIfPresent(`Protocol`.self, forKey: .protocol) ?? .enable_thinking
+        thinkingProtocol = try c.decodeIfPresent(ThinkingProtocol.self, forKey: .thinkingProtocol) ?? .enable_thinking
         effort = try c.decodeIfPresent(String.self, forKey: .effort)
     }
 }
@@ -128,18 +130,10 @@ struct ModelMapping: Codable, Identifiable, Equatable {
     }
 }
 
-// `ThinkingConfig.Protocol` cannot be referenced by its declared name from outside the
-// type: Swift parses `ThinkingConfig.Protocol` as the protocol-metatype accessor
-// (`T.Protocol`), not as member access on the nested enum. The alias below exposes the
-// enum under a name external callers can actually use.
-extension ThinkingConfig {
-    typealias Proto = `Protocol`
-}
-
-extension ThinkingConfig.`Protocol` {
+extension ThinkingConfig.ThinkingProtocol {
     /// Auto-detect which thinking protocol an upstream expects, based on its baseURL
     /// and the model name. Used when a mapping has no explicit protocol configured.
-    static func infer(baseURL: String, model: String) -> ThinkingConfig.`Protocol` {
+    static func infer(baseURL: String, model: String) -> ThinkingConfig.ThinkingProtocol {
         let lower = baseURL.lowercased()
         let m = model.lowercased()
 

@@ -338,7 +338,8 @@ final class HTTPServer: ObservableObject {
         if needsConversion {
             let translator = FormatTranslator()
             do {
-                finalRequestData = try translator.translateRequest(transformedData, from: format, to: upstreamFormat)
+                let thinkingConfig = (mapping.parameters.thinkingOverrideEnabled == true) ? mapping.parameters.thinking : nil
+                finalRequestData = try translator.translateRequest(transformedData, from: format, to: upstreamFormat, thinkingConfig: thinkingConfig)
             } catch {
                 let errorData = #"{"error": "Format translation failed"}"#.data(using: .utf8)!
                 return Response(

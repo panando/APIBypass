@@ -35,7 +35,8 @@ final class ProxyEngine {
     ]
 
     func transformRequest(data: Data, mapping: ModelMapping, format: APIFormat) throws -> Data {
-        guard var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] else {
+        guard let parsed = try? JSONSerialization.jsonObject(with: data),
+              var json = parsed as? [String: Any] else {
             throw ProxyError.invalidJSON
         }
 

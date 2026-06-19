@@ -60,8 +60,7 @@ struct MenuBarView: View {
             }
 
             Button(L10n.t("about")) {
-                NSApplication.shared.orderFrontStandardAboutPanel(options: aboutPanelOptions())
-                resizeAboutPanel()
+                openAboutWindow()
             }
 
             Divider()
@@ -197,32 +196,34 @@ struct MenuBarView: View {
         window.makeKeyAndOrderFront(nil)
     }
 
-    private func aboutPanelOptions() -> [NSApplication.AboutPanelOptionKey: Any] {
-        if let url = Bundle.module.url(forResource: "Credits", withExtension: "rtf"),
-           let credits = try? NSAttributedString(
-               url: url,
-               options: [.documentType: NSAttributedString.DocumentType.rtf],
-               documentAttributes: nil
-           ) {
-            return [.credits: credits]
-        }
-        return [:]
-    }
+    private func openAboutWindow() {
+        NSApplication.shared.activate(ignoringOtherApps: true)
 
-    private func resizeAboutPanel() {
-        DispatchQueue.main.async {
-            guard let panel = NSApplication.shared.windows.first(where: {
-                $0.title == "About APIBypass" || $0 is NSPanel
-            }) else { return }
-            let frame = panel.frame
-            let targetWidth: CGFloat = 480
-            let delta = targetWidth - frame.width
-            panel.setFrame(NSRect(x: frame.minX - delta / 2,
-                                  y: frame.minY,
-                                  width: targetWidth,
-                                  height: frame.height),
-                           display: true,
-                           animate: false)
+        if let existingWindow = NSApplication.shared.windows.first(where: {
+            $0.identifier?.rawValue == "about-window"
+        }) {
+            existingWindow.makeKeyAndOrderFront(nil)
+            return
         }
+
+        let hostingView = NSHostingView(rootView: AboutView())
+        hostingView.sizingOptions = [.minSize, .intrinsicContentSize]
+
+        let window = NSWindow(
+            contentRect: NSRect(x: 0, y: 0, width: 360, height: 320),
+            styleMask: [.titled, .closable, .fullSizeContentView],
+            backing: .buffered,
+            defer: false
+        )
+        window.title = L10n.t("about")
+        window.titlebarAppearsTransparent = true
+        window.titleVisibility = .hidden
+        window.identifier = NSUserInterfaceItemIdentifier("about-window")
+        window.isReleasedWhenClosed = false
+        window.contentView = hostingView
+        window.level = .floating
+        window.isMovableByWindowBackground = true
+        window.center()
+        window.makeKeyAndOrderFront(nil)
     }
 }

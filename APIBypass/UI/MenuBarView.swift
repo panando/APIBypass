@@ -59,6 +59,11 @@ struct MenuBarView: View {
                 openHelpWindow()
             }
 
+            Button(L10n.t("about")) {
+                NSApplication.shared.orderFrontStandardAboutPanel(options: aboutPanelOptions())
+                resizeAboutPanel()
+            }
+
             Divider()
 
             Button(L10n.t("quit")) {
@@ -103,7 +108,7 @@ struct MenuBarView: View {
 
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 540, height: 480),
-            styleMask: [.titled, .closable],
+            styleMask: [.titled, .closable, .miniaturizable, .resizable],
             backing: .buffered,
             defer: false
         )
@@ -179,7 +184,7 @@ struct MenuBarView: View {
         }
 
         let window = NSWindow(
-            contentRect: NSRect(x: 0, y: 0, width: 800, height: 600),
+            contentRect: NSRect(x: 0, y: 0, width: 960, height: 640),
             styleMask: [.titled, .closable, .resizable, .miniaturizable],
             backing: .buffered,
             defer: false
@@ -190,5 +195,34 @@ struct MenuBarView: View {
         window.contentView = NSHostingView(rootView: HelpView())
         window.center()
         window.makeKeyAndOrderFront(nil)
+    }
+
+    private func aboutPanelOptions() -> [NSApplication.AboutPanelOptionKey: Any] {
+        if let url = Bundle.module.url(forResource: "Credits", withExtension: "rtf"),
+           let credits = try? NSAttributedString(
+               url: url,
+               options: [.documentType: NSAttributedString.DocumentType.rtf],
+               documentAttributes: nil
+           ) {
+            return [.credits: credits]
+        }
+        return [:]
+    }
+
+    private func resizeAboutPanel() {
+        DispatchQueue.main.async {
+            guard let panel = NSApplication.shared.windows.first(where: {
+                $0.title == "About APIBypass" || $0 is NSPanel
+            }) else { return }
+            let frame = panel.frame
+            let targetWidth: CGFloat = 480
+            let delta = targetWidth - frame.width
+            panel.setFrame(NSRect(x: frame.minX - delta / 2,
+                                  y: frame.minY,
+                                  width: targetWidth,
+                                  height: frame.height),
+                           display: true,
+                           animate: false)
+        }
     }
 }

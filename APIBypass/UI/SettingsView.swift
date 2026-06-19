@@ -3,6 +3,7 @@ import SwiftUI
 struct SettingsView: View {
     private let l10n = LocalizationManager.shared
     @AppStorage("serverPort") private var serverPort: Int = 8390
+    @AppStorage("traceLogEnabled") private var traceLogEnabled: Bool = false
 
     private var portString: Binding<String> {
         Binding<String>(
@@ -19,28 +20,25 @@ struct SettingsView: View {
     }
 
     var body: some View {
-        VStack(spacing: 20) {
+        VStack(spacing: 12) {
             // 语言
-            VStack(alignment: .leading, spacing: 12) {
+            HStack(spacing: 0) {
                 Text(L10n.t("language"))
                     .font(.headline)
-
                 Picker("", selection: languageBinding) {
                     ForEach(AppLanguage.allCases, id: \.self) { lang in
                         Text(lang.displayName).tag(lang)
                     }
                 }
                 .pickerStyle(.segmented)
+                .labelsHidden()
                 .frame(width: 240)
-                .frame(maxWidth: .infinity, alignment: .leading)
+                Spacer(minLength: 0)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardStyle()
 
             // 服务端口
-            VStack(alignment: .leading, spacing: 12) {
+            VStack(alignment: .leading, spacing: 8) {
                 Text(L10n.t("server_port"))
                     .font(.headline)
 
@@ -51,6 +49,7 @@ struct SettingsView: View {
                     Text("127.0.0.1:\(String(serverPort))")
                         .font(.callout.monospacedDigit())
                         .foregroundColor(.secondary)
+                    Spacer(minLength: 0)
                 }
 
                 Text(L10n.t("port_hint"))
@@ -58,61 +57,51 @@ struct SettingsView: View {
                     .foregroundColor(.secondary)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
-            .background(Color(NSColor.controlBackgroundColor))
-            .cornerRadius(8)
+            .cardStyle()
 
-            // 关于
-            VStack(alignment: .leading, spacing: 12) {
-                Text(L10n.t("about"))
-                    .font(.headline)
+            // 追踪日志
+            VStack(alignment: .leading, spacing: 8) {
+                HStack(spacing: 12) {
+                    Text(L10n.t("trace_log"))
+                        .font(.headline)
+                    Toggle("", isOn: $traceLogEnabled)
+                        .toggleStyle(.switch)
+                        .labelsHidden()
+                    Spacer(minLength: 0)
+                }
 
-                Text(L10n.t("about_description"))
+                Text(L10n.t("trace_log_desc"))
                     .font(.callout)
                     .foregroundColor(.secondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 8) {
-                    Image(systemName: "info.circle")
-                        .foregroundColor(.secondary)
-                    Text("\(L10n.t("version")): \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "unknown")")
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                }
-
-                Divider()
-
-                HStack(spacing: 8) {
-                    Image(systemName: "link")
-                        .foregroundColor(.secondary)
-                    Text(L10n.t("github_repo"))
-                        .font(.callout)
-                        .foregroundColor(.accentColor)
-                }
-                .onTapGesture {
-                    if let url = URL(string: "https://github.com/panando/APIBypass") {
-                        NSWorkspace.shared.open(url)
+                if traceLogEnabled {
+                    HStack(alignment: .firstTextBaseline, spacing: 6) {
+                        Text("\(L10n.t("trace_log_path")):")
+                            .font(.callout)
+                            .foregroundColor(.secondary)
+                        Text(TraceLogger.traceDirectory.path)
+                            .font(.callout.monospaced())
+                            .foregroundColor(.secondary)
+                            .textSelection(.enabled)
+                            .lineLimit(1)
+                            .truncationMode(.middle)
                     }
                 }
-
-                HStack(spacing: 8) {
-                    Image(systemName: "doc.text")
-                        .foregroundColor(.secondary)
-                    Text(L10n.t("license"))
-                        .font(.callout)
-                        .foregroundColor(.secondary)
-                        .frame(maxWidth: .infinity, alignment: .leading)
-                }
             }
-            .padding(.horizontal, 20)
-            .padding(.vertical, 16)
+            .cardStyle()
+        }
+        .padding(16)
+        .frame(minWidth: 420, idealWidth: 460, minHeight: 280, alignment: .top)
+    }
+}
+
+private extension View {
+    func cardStyle() -> some View {
+        self
+            .padding(.horizontal, 16)
+            .padding(.vertical, 12)
             .background(Color(NSColor.controlBackgroundColor))
             .cornerRadius(8)
-
-            Spacer()
-        }
-        .padding()
-        .frame(minWidth: 460, idealWidth: 500, minHeight: 300)
     }
 }

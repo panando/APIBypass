@@ -30,7 +30,8 @@ let package = Package(
                 .product(name: "Hummingbird", package: "hummingbird"),
                 .product(name: "HummingbirdRouter", package: "hummingbird")
             ],
-            path: "APIBypass"
+            path: "APIBypass",
+            resources: [.copy("Credits.rtf")]
         ),
         .testTarget(
             name: "APIBypassTests",

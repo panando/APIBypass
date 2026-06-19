@@ -1,18 +1,25 @@
 import Foundation
 
 /// 落盘 trace 日志，用于调试流式翻译丢包问题。
-/// 写入 ~/Library/Logs/com.apibypass.app/trace/trace.log，每次请求用 reqId 串联上下游 SSE 事件。
+/// 写入 ~/Library/Logs/APIBypass/trace/trace.log，每次请求用 reqId 串联上下游 SSE 事件。
 /// 每次 app 启动时清理并重建 trace 目录（由 startServer() 触发 shared 访问）。
 final class TraceLogger {
     static let shared = TraceLogger()
 
-    /// trace 根目录：~/Library/Logs/com.apibypass.app/trace/
+    private static let enabledKey = "traceLogEnabled"
+
+    static var isEnabled: Bool {
+        get { UserDefaults.standard.bool(forKey: enabledKey) }
+        set { UserDefaults.standard.set(newValue, forKey: enabledKey) }
+    }
+
+    /// trace 根目录：~/Library/Logs/APIBypass/trace/
     static var traceDirectory: URL {
         let library = FileManager.default.urls(for: .libraryDirectory, in: .userDomainMask).first
             ?? FileManager.default.homeDirectoryForCurrentUser.appendingPathComponent("Library")
         return library
             .appendingPathComponent("Logs", isDirectory: true)
-            .appendingPathComponent("com.apibypass.app", isDirectory: true)
+            .appendingPathComponent("APIBypass", isDirectory: true)
             .appendingPathComponent("trace", isDirectory: true)
     }
 
@@ -34,6 +41,14 @@ final class TraceLogger {
         if fm.fileExists(atPath: dir.path) {
             try? fm.removeItem(at: dir)
         }
+
+        if !Self.isEnabled {
+            self.fileHandle = nil
+            self.dateFormatter = DateFormatter()
+            self.dateFormatter.dateFormat = "HH:mm:ss.SSS"
+            return
+        }
+
         // 重建 trace/ 与 debug/ 子目录
         try? fm.createDirectory(at: debugDir, withIntermediateDirectories: true)
 
@@ -51,6 +66,7 @@ final class TraceLogger {
     }
 
     func log(_ reqId: String, _ msg: String) {
+        guard Self.isEnabled else { return }
         let ts = dateFormatter.string(from: Date())
         let line = "[\(ts)] [req=\(reqId)] \(msg)\n"
         guard let data = line.data(using: .utf8) else { return }

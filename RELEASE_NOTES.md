@@ -1,3 +1,39 @@
+# APIBypass v0.7.9
+
+## What's New
+
+### Help Page Overhaul
+
+The in-app help window was rewritten end to end — new table of contents, new sections, and a proper typographic hierarchy.
+
+- **Reorganized TOC**: Quick Start, Menu Bar, Model Mapping, Parameter Injection, Thinking Protocol, Bypass Mode, Launcher, Codex Adaptor, Custom Models, Settings, FAQ — ordered to follow the natural setup flow.
+- **New sections**: Thinking Protocol (explains the three protocols and the auto-inference), Custom Models (alias / source / context window), plus expanded Codex Adaptor and Launcher coverage (configurable port, reasoning override, auto-detect, cache optimization, rectifier, keychain, templates).
+- **Typographic hierarchy**: section titles bold/black/large; body, bullets, and notes de-emphasized in gray. Feature names inside list items are bolded (e.g. **Custom Models** — ...) so the term is distinguishable from its description.
+- **Bordered group cards**: multi-subtopic sections are wrapped in individual cards with separator borders, mirroring the FAQ styling.
+- **Stable sidebar toggle**: the sidebar visibility button is now pinned to the toolbar's leading edge via `ToolbarItem(.navigation)` — it no longer jumps left/right when clicked.
+- **Wider default window** (960×640) and increased in-paragraph line spacing for readability.
+- Full Chinese/English bilingual content, with jargon like "落盘" replaced by plain wording ("写入文件").
+
+### Settings Window Redesign
+
+- **Language on a single row**: the segmented picker sits inline with the title instead of on a second line.
+- **Auto-sizing window**: the settings window is now resizable and miniaturizable, sizing to its content.
+- **Trace log group tightened**: the toggle is placed directly next to its title, and when enabled the log file path appears below the description in monospaced, selectable text.
+- Renamed "服务端口" → "API中转服务端口" and shortened the trace-log description.
+- Consistent `cardStyle()` across all three groups with tighter spacing.
+
+### About Panel
+
+- The GitHub link (`https://github.com/panando/APIBypass`) now actually renders. `Credits.rtf` is bundled via SPM resources and loaded through `Bundle.module` into the standard About panel.
+- Panel widened to 480pt and centered; copyright set to "MIT License" via `NSHumanReadableCopyright` in Info.plist.
+- An **About** entry was added to the menu-bar menu (previously only accessible via the app menu).
+
+### Trace Log Directory Renamed
+
+The trace log folder moved from `~/Library/Logs/com.apibypass.app/trace/` to `~/Library/Logs/APIBypass/trace/`. The old reverse-DNS name made Finder render it as an app-bundle icon rather than a normal folder. The logger also no longer opens a file handle when trace logging is disabled.
+
+---
+
 # APIBypass v0.7.8
 
 ## What's New

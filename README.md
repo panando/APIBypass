@@ -47,7 +47,43 @@ APIBypass solves all of this at the network layer — one local endpoint, zero c
 
 ### Download (Recommended)
 
-Download the latest `.dmg` from [Releases](https://github.com/panando/APIBypass/releases), drag to Applications, done. On first launch, allow network connections when prompted.
+Download the latest `.dmg` from [Releases](https://github.com/panando/APIBypass/releases) and drag APIBypass to Applications. On first launch, allow network connections when prompted.
+
+### Fixing “APIBypass is damaged and can’t be opened” on macOS
+
+The current Release build uses an ad-hoc signature. It is not signed with an Apple Developer ID certificate and is not notarized by Apple. Because of this, macOS Gatekeeper may show:
+
+> “APIBypass” is damaged and can’t be opened. You should move it to the Trash.
+
+This usually does not mean the app is actually corrupted. It means macOS has attached a quarantine flag to a downloaded app that has not been notarized.
+
+#### Option 1: Open from System Settings
+
+1. Try opening APIBypass once.
+2. If macOS blocks it, open System Settings → Privacy & Security.
+3. In the Security section, look for the APIBypass warning.
+4. Click “Open Anyway”.
+5. Confirm opening the app.
+
+#### Option 2: Fix with Terminal
+
+If “Open Anyway” does not appear, or macOS still says the app is damaged, first drag APIBypass into the Applications folder. Then open Terminal and run:
+
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/APIBypass.app
+```
+
+Enter your Mac login password and press Enter. Terminal will not show password characters while typing. This is normal. Then open APIBypass again.
+
+If you are not sure about the app path, type this command with the trailing space:
+
+```bash
+sudo xattr -dr com.apple.quarantine 
+```
+
+Then drag `APIBypass.app` from Finder into the Terminal window and press Enter.
+
+> Note: Only do this for apps downloaded from sources you trust. If the project obtains an Apple Developer ID certificate in the future, signed and notarized builds will be provided and this manual step will no longer be needed.
 
 ### Build from Source
 

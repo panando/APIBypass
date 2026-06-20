@@ -47,7 +47,43 @@ APIBypass 在网络层解决所有这些问题 —— 一个本地地址，客�
 
 ### 直接下载（推荐）
 
-从 [Releases](https://github.com/panando/APIBypass/releases) 下载最新 `.dmg`，拖入 Applications 即可。首次启动时允许网络连接。
+从 [Releases](https://github.com/panando/APIBypass/releases) 下载最新 `.dmg`，并将 APIBypass 拖入 Applications。首次启动时允许网络连接。
+
+### macOS 提示“已损坏，无法打开”的处理方法
+
+当前 Release 版本使用 ad-hoc 签名，尚未使用 Apple Developer ID 证书签名，也没有经过 Apple notarization。因此，从 GitHub 或浏览器下载后，macOS Gatekeeper 可能会提示：
+
+> “APIBypass”已损坏，无法打开。你应该将它移到废纸篓。
+
+这通常不是应用真的损坏，而是 macOS 给下载的未 notarized 应用添加了 quarantine 隔离标记。
+
+#### 方法一：通过系统设置打开
+
+1. 双击打开 APIBypass。
+2. 如果 macOS 阻止打开，进入系统设置 → 隐私与安全性。
+3. 在“安全性”区域找到 APIBypass 的拦截提示。
+4. 点击“仍要打开”或“Open Anyway”。
+5. 再次确认打开。
+
+#### 方法二：使用 Terminal 修复
+
+如果系统设置里没有出现“仍要打开”，或者仍然提示“已损坏”，请先把 APIBypass 拖到 Applications 文件夹，然后打开 Terminal，运行：
+
+```bash
+sudo xattr -dr com.apple.quarantine /Applications/APIBypass.app
+```
+
+输入你的 Mac 登录密码后按 Enter。Terminal 输入密码时不会显示字符，这是正常的。然后重新打开 APIBypass。
+
+如果你不确定应用路径，可以先输入下面这行命令，注意最后有一个空格：
+
+```bash
+sudo xattr -dr com.apple.quarantine 
+```
+
+然后从 Finder 把 `APIBypass.app` 拖进 Terminal 窗口，再按 Enter。
+
+> 注意：请只对你信任来源的应用执行这个操作。未来如果项目获得 Apple Developer ID 证书，将提供正式签名并 notarized 的版本，届时无需执行上述步骤。
 
 ### 从源码编译
 

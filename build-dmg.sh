@@ -9,6 +9,11 @@ STAGING="dmg_staging"
 echo "==> Building $CONFIG..."
 ./build-app.sh "$CONFIG"
 
+if [[ -x ./verify-release.sh ]]; then
+    echo "==> Verifying app bundle..."
+    ./verify-release.sh APIBypass.app
+fi
+
 echo "==> Preparing DMG staging..."
 rm -rf "$STAGING"
 mkdir "$STAGING"
@@ -24,6 +29,14 @@ hdiutil create -volname "APIBypass $VERSION" \
     -ov \
     -format UDZO \
     "$DMG_NAME"
+
+if [[ -x ./verify-release.sh ]]; then
+    echo "==> Verifying DMG contents..."
+    MOUNT_OUTPUT=$(hdiutil attach "$DMG_NAME" -nobrowse -readonly)
+    MOUNT_POINT=$(printf '%s\n' "$MOUNT_OUTPUT" | grep '/Volumes/' | sed 's#.*\(/Volumes/.*\)#\1#' | tail -n 1)
+    ./verify-release.sh "$MOUNT_POINT/APIBypass.app"
+    hdiutil detach "$MOUNT_POINT"
+fi
 
 echo "==> Cleaning up..."
 rm -rf "$STAGING"

@@ -21,8 +21,11 @@ class CodexConfigService {
 
     private static let templateSlug = "gpt-5.5"
 
-    private init() {
-        let home = FileManager.default.homeDirectoryForCurrentUser.path
+    private convenience init() {
+        self.init(home: FileManager.default.homeDirectoryForCurrentUser.path)
+    }
+
+    init(home: String) {
         self.home = home
         self.configPath = "\(home)/.codex/config.toml"
         self.providersPath = "\(home)/.codex/providers.json"

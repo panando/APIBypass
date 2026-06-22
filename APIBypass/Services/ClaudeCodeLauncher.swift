@@ -1,6 +1,24 @@
 import Foundation
 import AppKit
 
+// MARK: - FileSystem Abstraction
+
+/// Abstract file system operations for testability
+protocol FileSystem {
+    func fileExists(atPath path: String) -> Bool
+    func contentsOfDirectory(atPath path: String) throws -> [String]
+}
+
+/// Production file system backed by FileManager.default
+struct DefaultFileSystem: FileSystem {
+    func fileExists(atPath path: String) -> Bool {
+        FileManager.default.fileExists(atPath: path)
+    }
+    func contentsOfDirectory(atPath path: String) throws -> [String] {
+        try FileManager.default.contentsOfDirectory(atPath: path)
+    }
+}
+
 /// 终端应用配置
 struct TerminalApp: Identifiable, Equatable {
     let id: String
@@ -396,78 +414,141 @@ final class ClaudeCodeLauncher {
 
     /// 查找 Claude Code 可执行文件路径
     func findClaudeCodeExecutable() -> String? {
-        // 1. 尝试从 PATH 查找
-        if let pathFromWhich = findClaudeUsingWhich() {
-            return pathFromWhich
+        // 1. 检查常见安装位置（快速，无需启动进程）
+        if let path = Self.findClaudeInCommonLocations(fs: DefaultFileSystem(), home: NSHomeDirectory()) {
+            return path
         }
 
-        // 2. 检查常见安装位置
-        if let pathFromCommon = findClaudeInCommonLocations() {
-            return pathFromCommon
+        // 2. 通过登录 shell PATH 查找（较慢但全面，覆盖所有安装方式）
+        if let path = findClaudeUsingWhich() {
+            return path
         }
 
         return nil
     }
 
-    /// 使用 `which` 命令查找
+    /// 使用登录 shell 的 `which` 查找（继承用户完整 PATH，覆盖 nvm/fnm/volta 等）
     private func findClaudeUsingWhich() -> String? {
-        let task = Process()
-        task.executableURL = URL(fileURLWithPath: "/usr/bin/which")
-        task.arguments = ["claude"]
+        let shells = ["/bin/zsh", "/bin/bash"]
+        for shell in shells {
+            guard FileManager.default.fileExists(atPath: shell) else { continue }
+            let task = Process()
+            task.executableURL = URL(fileURLWithPath: shell)
+            task.arguments = ["-l", "-c", "which claude"]
 
-        let pipe = Pipe()
-        task.standardOutput = pipe
-        task.standardError = FileHandle.nullDevice
+            let pipe = Pipe()
+            task.standardOutput = pipe
+            task.standardError = FileHandle.nullDevice
 
-        do {
-            try task.run()
-            task.waitUntilExit()
+            do {
+                try task.run()
+                task.waitUntilExit()
 
-            let data = pipe.fileHandleForReading.readDataToEndOfFile()
-            if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
-               !path.isEmpty,
-               FileManager.default.fileExists(atPath: path) {
-                return path
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
+                if let path = String(data: data, encoding: .utf8)?.trimmingCharacters(in: .whitespacesAndNewlines),
+                   !path.isEmpty,
+                   FileManager.default.fileExists(atPath: path) {
+                    return path
+                }
+            } catch {
+                // 忽略错误，尝试下一个 shell
             }
-        } catch {
-            // 忽略错误，继续尝试其他方法
         }
 
         return nil
     }
 
-    /// 在常见安装位置查找
-    private func findClaudeInCommonLocations() -> String? {
-        let homeDirectory = NSHomeDirectory()
-
+    /// 在常见安装位置查找，覆盖所有官方安装方式
+    static func findClaudeInCommonLocations(fs: FileSystem, home: String) -> String? {
+        // 固定路径，按安装方式分组
         let commonPaths = [
-            "\(homeDirectory)/.local/bin/claude",
-            "\(homeDirectory)/.nvm/versions/node/v18.20.4/bin/claude",
-            "\(homeDirectory)/.nvm/versions/node/v20.12.2/bin/claude",
-            "/usr/local/bin/claude",
+            // Native install: curl -fsSL https://claude.ai/install.sh | bash
+            "\(home)/.local/bin/claude",
+
+            // Homebrew (Apple Silicon / Intel)
             "/opt/homebrew/bin/claude",
+            "/usr/local/bin/claude",
+
+            // Volta: npm via volta shim
+            "\(home)/.volta/bin/claude",
+
+            // System
             "/usr/bin/claude"
         ]
 
         for path in commonPaths {
-            if FileManager.default.fileExists(atPath: path) {
+            if fs.fileExists(atPath: path) {
                 return path
             }
         }
 
-        // 尝试匹配 nvm 版本通配符
+        // npm + nvm: 动态扫描所有已安装的 node 版本
+        if let path = findInVersionDirectory("\(home)/.nvm/versions/node", binary: "claude", fs: fs) {
+            return path
+        }
+
+        // npm + fnm (macOS / Linux 路径)
+        let fnmPaths = [
+            "\(home)/Library/Application Support/fnm/node-versions",
+            "\(home)/.local/share/fnm/node-versions"
+        ]
+        for fnmPath in fnmPaths {
+            if let path = findInVersionDirectory(fnmPath, binary: "claude", fs: fs) {
+                return path
+            }
+        }
+
+        // Homebrew cask: brew install --cask claude-code → 在 .app 内搜索 CLI 二进制
+        if let path = findClaudeInAppBundle(fs: fs, home: home) {
+            return path
+        }
+
+        return nil
+    }
+
+    /// 在版本管理器的 node 版本目录中查找可执行文件
+    static func findInVersionDirectory(_ dir: String, binary: String, fs: FileSystem) -> String? {
         do {
-            let files = try FileManager.default.contentsOfDirectory(atPath: "\(homeDirectory)/.nvm/versions/node")
-            for version in files {
-                let path = "\(homeDirectory)/.nvm/versions/node/\(version)/bin/claude"
-                if FileManager.default.fileExists(atPath: path) {
+            let versions = try fs.contentsOfDirectory(atPath: dir)
+            for version in versions.sorted().reversed() {
+                // 标准结构: <version>/bin/<binary>
+                let path = "\(dir)/\(version)/bin/\(binary)"
+                if fs.fileExists(atPath: path) {
                     return path
+                }
+                // fnm 结构: <version>/installation/bin/<binary>
+                let installPath = "\(dir)/\(version)/installation/bin/\(binary)"
+                if fs.fileExists(atPath: installPath) {
+                    return installPath
                 }
             }
         } catch {
-            // 忽略错误
+            // 目录不存在，忽略
         }
+        return nil
+    }
 
+    /// 在 Claude.app 内部搜索 CLI 可执行文件（Homebrew cask 安装方式）
+    static func findClaudeInAppBundle(fs: FileSystem, home: String) -> String? {
+        let appPaths = [
+            "/Applications/Claude.app",
+            "/Applications/Claude Code.app",
+            "\(home)/Applications/Claude.app",
+            "\(home)/Applications/Claude Code.app"
+        ]
+
+        for appPath in appPaths {
+            let macOSDir = (appPath as NSString).appendingPathComponent("Contents/MacOS")
+            do {
+                let files = try fs.contentsOfDirectory(atPath: macOSDir)
+                // 查找名为 claude 的可执行文件（忽略大小写）
+                if let found = files.first(where: { $0.lowercased() == "claude" }) {
+                    return (macOSDir as NSString).appendingPathComponent(found)
+                }
+            } catch {
+                // 目录不存在，忽略
+            }
+        }
         return nil
     }
 

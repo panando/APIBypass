@@ -465,6 +465,9 @@ final class ClaudeCodeLauncher {
             // Native install: curl -fsSL https://claude.ai/install.sh | bash
             "\(home)/.local/bin/claude",
 
+            // Auto-updater / desktop app CLI
+            "\(home)/.claude/bin/claude",
+
             // Homebrew (Apple Silicon / Intel)
             "/opt/homebrew/bin/claude",
             "/usr/local/bin/claude",

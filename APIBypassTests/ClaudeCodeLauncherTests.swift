@@ -130,4 +130,15 @@ final class ClaudeCodeLauncherTests: XCTestCase {
         let result = ClaudeCodeLauncher.findClaudeInCommonLocations(fs: fs, home: home)
         XCTAssertEqual(result, "\(home)/.local/bin/claude")
     }
+
+    // MARK: - ~/.claude/bin (auto-updater / desktop app CLI)
+
+    func testFindsClaudeViaClaudeBinDir() {
+        let fs = FakeFileSystem(
+            existingPaths: ["\(home)/.claude/bin/claude"],
+            directoryContents: [:]
+        )
+        let result = ClaudeCodeLauncher.findClaudeInCommonLocations(fs: fs, home: home)
+        XCTAssertEqual(result, "\(home)/.claude/bin/claude")
+    }
 }

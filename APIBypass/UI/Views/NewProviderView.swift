@@ -36,6 +36,7 @@ struct NewProviderView: View {
                         Picker("", selection: $apiProvider) {
                             Text(L10n.t("provider_type_openai")).tag(APIProvider.openai)
                             Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
+                            Text(L10n.t("provider_type_responses")).tag(APIProvider.responses)
                         }
                         .pickerStyle(.menu)
                         .frame(maxWidth: .infinity, alignment: .leading)
@@ -48,6 +49,25 @@ struct NewProviderView: View {
                         Text(L10n.t("base_url"))
                             .frame(width: 100, alignment: .trailing)
                         TextField(L10n.t("base_url_placeholder"), text: $baseURL)
+                    }
+                    if apiProvider == .responses {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(.orange)
+                                Text(L10n.t("provider_responses_warning_title"))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
+                            Text(L10n.t("provider_responses_warning_desc"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
+                        .padding(.leading, 100)
                     }
                     HStack {
                         Text(L10n.t("api_key"))
@@ -78,7 +98,11 @@ struct NewProviderView: View {
         .frame(width: 450, height: 320)
         .onAppear {
             if name.isEmpty {
-                name = apiProvider == .openai ? "OpenAI" : "Anthropic"
+                switch apiProvider {
+                case .openai: name = "OpenAI"
+                case .anthropic: name = "Anthropic"
+                case .responses: name = "Responses API"
+                }
             }
             baseURL = apiProvider.defaultBaseURL.absoluteString
         }

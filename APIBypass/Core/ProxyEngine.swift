@@ -3,6 +3,7 @@ import Foundation
 enum APIFormat {
     case openai
     case anthropic
+    case responses
 }
 
 enum ProxyError: Error {
@@ -78,7 +79,7 @@ final class ProxyEngine {
         // 思考模式控制 (Anthropic + OpenAI 兼容)
         if let thinking = params.thinking, params.thinkingOverrideEnabled == true {
             switch format {
-            case .anthropic:
+            case .anthropic, .responses:
                 // Anthropic 上游始终用原生 thinking 协议，thinkingProtocol 字段不影响
                 if thinking.enabled {
                     json["thinking"] = ["type": "enabled"]

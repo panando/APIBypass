@@ -377,6 +377,7 @@ final class HTTPServer: ObservableObject {
         switch effectiveFormat {
         case .openai: endpointPath = "chat/completions"
         case .anthropic: endpointPath = "messages"
+        case .responses: endpointPath = "responses"
         }
 
         let path = provider.baseURL.path

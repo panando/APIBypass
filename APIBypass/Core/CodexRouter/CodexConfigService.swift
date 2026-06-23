@@ -393,9 +393,10 @@ class CodexConfigService {
             process.standardError = FileHandle.nullDevice
             do {
                 try process.run()
+                // Read pipe data BEFORE waitUntilExit to avoid deadlock when output exceeds pipe buffer (~64KB)
+                let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 process.waitUntilExit()
                 guard process.terminationStatus == 0 else { continue }
-                let data = pipe.fileHandleForReading.readDataToEndOfFile()
                 guard let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
                       let models = json["models"] as? [[String: Any]] else { continue }
                 if let found = models.first(where: { ($0["slug"] as? String) == Self.templateSlug }) {

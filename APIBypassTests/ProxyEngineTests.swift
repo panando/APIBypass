@@ -464,4 +464,78 @@ final class ProxyEngineTests: XCTestCase {
         XCTAssertEqual(thinking?["type"] as? String, "enabled")
         XCTAssertNil(json["reasoning_effort"])
     }
+
+    // MARK: - Auto-inject max_tokens for Anthropic format
+
+    func testTransformAnthropicRequest_autoInjectsMaxTokens() throws {
+        // Anthropic API requires max_tokens, should auto-inject when missing
+        let mapping = ModelMapping(
+            name: "Test",
+            incomingModel: "claude",
+            actualModel: "claude-sonnet-4-6",
+            providerConfigId: UUID(),
+            parameters: .empty  // No maxTokens configured
+        )
+
+        let requestBody: [String: Any] = [
+            "model": "claude",
+            "messages": [["role": "user", "content": "Hello"]]
+            // No max_tokens provided
+        ]
+        let data = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .anthropic)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+
+        // Should auto-inject default max_tokens
+        XCTAssertNotNil(json["max_tokens"], "max_tokens should be auto-injected for Anthropic format")
+        XCTAssertGreaterThan(json["max_tokens"] as? Int ?? 0, 0)
+    }
+
+    func testTransformAnthropicRequest_preservesExistingMaxTokens() throws {
+        // If max_tokens is already provided, don't override
+        let mapping = ModelMapping(
+            name: "Test",
+            incomingModel: "claude",
+            actualModel: "claude-sonnet-4-6",
+            providerConfigId: UUID(),
+            parameters: .empty
+        )
+
+        let requestBody: [String: Any] = [
+            "model": "claude",
+            "messages": [["role": "user", "content": "Hello"]],
+            "max_tokens": 2048  // Client-provided
+        ]
+        let data = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .anthropic)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+
+        // Should preserve client-provided value
+        XCTAssertEqual(json["max_tokens"] as? Int, 2048)
+    }
+
+    func testTransformOpenAIRequest_doesNotAutoInjectMaxTokens() throws {
+        // OpenAI format should NOT auto-inject max_tokens
+        let mapping = ModelMapping(
+            name: "Test",
+            incomingModel: "gpt-4",
+            actualModel: "gpt-4o",
+            providerConfigId: UUID(),
+            parameters: .empty
+        )
+
+        let requestBody: [String: Any] = [
+            "model": "gpt-4",
+            "messages": [["role": "user", "content": "Hello"]]
+        ]
+        let data = try JSONSerialization.data(withJSONObject: requestBody)
+
+        let transformed = try engine.transformRequest(data: data, mapping: mapping, format: .openai)
+        let json = try JSONSerialization.jsonObject(with: transformed) as! [String: Any]
+
+        // Should NOT auto-inject for OpenAI format
+        XCTAssertNil(json["max_tokens"])
+    }
 }

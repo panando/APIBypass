@@ -61,6 +61,9 @@ final class ProxyEngine {
         }
         if let maxTokens = params.maxTokens {
             json["max_tokens"] = maxTokens
+        } else if format == .anthropic && json["max_tokens"] == nil {
+            // Anthropic API requires max_tokens, auto-inject default
+            json["max_tokens"] = 8192
         }
         if let topP = params.topP {
             json["top_p"] = topP

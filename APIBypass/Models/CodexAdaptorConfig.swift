@@ -7,9 +7,35 @@ struct CodexAdaptorConfig: Codable, Equatable {
     var wireAPI: WireAPI = .chat
     var reasoningOverrideEnabled: Bool = false
     var reasoningConfig: ReasoningConfig?
+
+    // Legacy field - kept for migration compatibility
     var customModels: [CustomModelEntry] = []
+
+    // New fields: protocol-specific model lists
+    var chatCustomModels: [CustomModelEntry] = []
+    var responsesCustomModels: [CustomModelEntry] = []
+
     var cdpSettings: CDPInjectionSettings = CDPInjectionSettings()
     var cdpDebugPort: UInt16 = 9222
+
+    /// Convenience accessor for the current protocol's model list
+    var currentCustomModels: [CustomModelEntry] {
+        get { wireAPI == .chat ? chatCustomModels : responsesCustomModels }
+        set {
+            if wireAPI == .chat { chatCustomModels = newValue }
+            else { responsesCustomModels = newValue }
+        }
+    }
+
+    /// Migrate from legacy customModels to protocol-specific lists
+    mutating func migrateFromLegacy() {
+        // Only migrate if new fields are empty and legacy has data
+        guard chatCustomModels.isEmpty && responsesCustomModels.isEmpty else { return }
+        guard !customModels.isEmpty else { return }
+
+        // Migrate to chatCustomModels (default assumption for existing configs)
+        chatCustomModels = customModels
+    }
 
     enum WireAPI: String, Codable, CaseIterable {
         case chat = "chat"

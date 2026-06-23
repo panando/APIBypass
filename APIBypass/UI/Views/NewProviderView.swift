@@ -95,7 +95,8 @@ struct NewProviderView: View {
             .padding(.bottom, 8)
         }
         .padding()
-        .frame(width: 450, height: 320)
+        .fixedSize(horizontal: false, vertical: true)
+        .frame(width: 480)
         .onAppear {
             if name.isEmpty {
                 switch apiProvider {

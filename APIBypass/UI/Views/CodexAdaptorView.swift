@@ -594,8 +594,23 @@ private struct CodexServerTab: View {
                     .frame(maxWidth: .infinity)
 
                 Picker("", selection: customModelBinding(for: model.id, keyPath: \.modelMappingId)) {
-                    ForEach(CodexConfigBridge.availableMappings(from: configManager)) { mapping in
-                        Text(mapping.incomingModel).tag(mapping.id)
+                    let mappingsWithProvider = CodexConfigBridge.availableMappingsWithProvider(from: configManager)
+                    let chatMappings = mappingsWithProvider.filter { $0.providerType != .responses }
+                    let responsesMappings = mappingsWithProvider.filter { $0.providerType == .responses }
+
+                    if !chatMappings.isEmpty {
+                        Section(L10n.t("provider_group_chat_completions")) {
+                            ForEach(chatMappings) { item in
+                                Text(item.mapping.incomingModel).tag(item.mapping.id)
+                            }
+                        }
+                    }
+                    if !responsesMappings.isEmpty {
+                        Section(L10n.t("provider_group_responses")) {
+                            ForEach(responsesMappings) { item in
+                                Text(item.mapping.incomingModel).tag(item.mapping.id)
+                            }
+                        }
                     }
                 }
                 .labelsHidden()

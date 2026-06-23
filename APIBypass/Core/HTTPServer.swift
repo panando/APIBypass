@@ -314,6 +314,7 @@ final class HTTPServer: ObservableObject {
         switch provider.apiProvider {
         case .openai: upstreamFormat = .openai
         case .anthropic: upstreamFormat = .anthropic
+        case .responses: upstreamFormat = .openai // TODO: Task 2 will add APIFormat.responses
         }
         // 读取 bypassMode 状态
         let bypassMode = UserDefaults.standard.bool(forKey: "bypassMode")

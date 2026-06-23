@@ -186,4 +186,24 @@ final class ModelMappingTests: XCTestCase {
 
         XCTAssertFalse(mapping.matches(model: "gpt-4"))
     }
+
+    // MARK: - APIProvider.responses Tests
+
+    func testAPIProvider_responses_rawValue() {
+        XCTAssertEqual(APIProvider.responses.rawValue, "responses")
+    }
+
+    func testAPIProvider_responses_decodable() {
+        let json = #"{"provider": "responses"}"#.data(using: .utf8)!
+        struct TestContainer: Decodable {
+            let provider: APIProvider
+        }
+        let container = try? JSONDecoder().decode(TestContainer.self, from: json)
+        XCTAssertEqual(container?.provider, .responses)
+    }
+
+    func testAPIProvider_responses_caseIterable() {
+        XCTAssertTrue(APIProvider.allCases.contains(.responses))
+        XCTAssertEqual(APIProvider.allCases.count, 3)
+    }
 }

@@ -27,7 +27,7 @@ final class NetworkService {
 
         // 根据提供商设置认证头
         switch provider {
-        case .openai:
+        case .openai, .responses:
             request.setValue("Bearer \(apiKey)", forHTTPHeaderField: "Authorization")
         case .anthropic:
             request.setValue(apiKey, forHTTPHeaderField: "x-api-key")

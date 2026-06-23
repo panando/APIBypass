@@ -37,6 +37,28 @@ struct CodexConfigBridge {
             }
     }
 
+    /// Get model mappings filtered by protocol type.
+    /// - Parameters:
+    ///   - wireAPI: The protocol type to filter by (.chat or .responses)
+    ///   - configManager: The ConfigManager to get mappings from
+    /// - Returns: Model mappings that belong to providers of the specified protocol type
+    static func availableMappings(for wireAPI: CodexAdaptorConfig.WireAPI, from configManager: ConfigManager) -> [ModelMapping] {
+        let mappingsWithProvider = availableMappingsWithProvider(from: configManager)
+
+        switch wireAPI {
+        case .chat:
+            // Chat protocol includes openai and anthropic providers
+            return mappingsWithProvider
+                .filter { $0.providerType != .responses }
+                .map { $0.mapping }
+        case .responses:
+            // Responses protocol only includes responses providers
+            return mappingsWithProvider
+                .filter { $0.providerType == .responses }
+                .map { $0.mapping }
+        }
+    }
+
     /// Resolve a CustomModelEntry to the actual model name via APIBypass's mappings.
     static func resolveModelName(entry: CustomModelEntry, configManager: ConfigManager) -> String? {
         configManager.mappings.first { $0.id == entry.modelMappingId }?.incomingModel

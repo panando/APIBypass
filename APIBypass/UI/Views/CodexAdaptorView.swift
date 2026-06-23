@@ -117,6 +117,8 @@ private struct CodexServerTab: View {
     @State private var draggingCustomModelId: UUID?
     @State private var customModelDropTarget: CustomModelDropTarget?
     @State private var showReasoningInfo = false
+    @State private var showProtocolSwitchAlert = false
+    @State private var pendingWireAPI: CodexAdaptorConfig.WireAPI?
 
     var body: some View {
         ScrollView {
@@ -165,7 +167,17 @@ private struct CodexServerTab: View {
                         }
                     }
                     .pickerStyle(.segmented)
-                    .onChange(of: config.wireAPI) { _, _ in saveConfig() }
+                    .onChange(of: config.wireAPI) { oldValue, newValue in
+                        // Check for unsaved changes before switching
+                        if hasUnsavedModelChanges {
+                            pendingWireAPI = newValue
+                            config.wireAPI = oldValue  // Revert temporarily
+                            showProtocolSwitchAlert = true
+                        } else {
+                            switchProtocolModelList(to: newValue)
+                            saveConfig()
+                        }
+                    }
                 }
 
                 // Proxy Server
@@ -212,6 +224,31 @@ private struct CodexServerTab: View {
                 proxyURL = "http://127.0.0.1:\(portValue)/v1"
                 saveConfig()
             }
+        }
+        .alert(L10n.t("unsaved_changes"), isPresented: $showProtocolSwitchAlert) {
+            Button(L10n.t("cancel"), role: .cancel) {
+                pendingWireAPI = nil
+            }
+            Button(L10n.t("discard_changes"), role: .destructive) {
+                if let newAPI = pendingWireAPI {
+                    // Discard changes and switch
+                    draftCustomModels = config.currentCustomModels
+                    switchProtocolModelList(to: newAPI)
+                    saveConfig()
+                }
+                pendingWireAPI = nil
+            }
+            Button(L10n.t("save_and_switch")) {
+                if let newAPI = pendingWireAPI {
+                    // Save changes and switch
+                    saveCustomModels()
+                    switchProtocolModelList(to: newAPI)
+                    saveConfig()
+                }
+                pendingWireAPI = nil
+            }
+        } message: {
+            Text(L10n.t("unsaved_changes_msg"))
         }
     }
 
@@ -519,7 +556,7 @@ private struct CodexServerTab: View {
             }
 
             Button {
-                let firstMapping = CodexConfigBridge.availableMappings(from: configManager).first
+                let firstMapping = CodexConfigBridge.availableMappings(for: config.wireAPI, from: configManager).first
                 let entry = CustomModelEntry(
                     alias: "",
                     modelMappingId: firstMapping?.id ?? UUID(),
@@ -594,23 +631,10 @@ private struct CodexServerTab: View {
                     .frame(maxWidth: .infinity)
 
                 Picker("", selection: customModelBinding(for: model.id, keyPath: \.modelMappingId)) {
-                    let mappingsWithProvider = CodexConfigBridge.availableMappingsWithProvider(from: configManager)
-                    let chatMappings = mappingsWithProvider.filter { $0.providerType != .responses }
-                    let responsesMappings = mappingsWithProvider.filter { $0.providerType == .responses }
-
-                    if !chatMappings.isEmpty {
-                        Section(L10n.t("provider_group_chat_completions")) {
-                            ForEach(chatMappings) { item in
-                                Text(item.mapping.incomingModel).tag(item.mapping.id)
-                            }
-                        }
-                    }
-                    if !responsesMappings.isEmpty {
-                        Section(L10n.t("provider_group_responses")) {
-                            ForEach(responsesMappings) { item in
-                                Text(item.mapping.incomingModel).tag(item.mapping.id)
-                            }
-                        }
+                    // Only show mappings for the current protocol
+                    let availableMappings = CodexConfigBridge.availableMappings(for: config.wireAPI, from: configManager)
+                    ForEach(availableMappings) { mapping in
+                        Text(mapping.incomingModel).tag(mapping.id)
                     }
                 }
                 .labelsHidden()
@@ -691,9 +715,12 @@ private struct CodexServerTab: View {
     private func loadConfig() {
         Task {
             config = await CodexAdaptorConfigStore.shared.load()
+            // Run migration for legacy configs
+            config.migrateFromLegacy()
             portText = String(config.port)
             proxyURL = "http://127.0.0.1:\(config.port)/v1"
-            draftCustomModels = config.customModels
+            // Load model list for current protocol
+            draftCustomModels = config.currentCustomModels
 
             // Populate reasoning state
             if let rc = config.reasoningConfig {
@@ -751,16 +778,26 @@ private struct CodexServerTab: View {
     }
 
     private var hasUnsavedModelChanges: Bool {
-        draftCustomModels != config.customModels
+        draftCustomModels != config.currentCustomModels
     }
 
     private func saveCustomModels() {
-        config.customModels = draftCustomModels
+        config.currentCustomModels = draftCustomModels
         saveConfig()
     }
 
     private func cancelCustomModels() {
-        draftCustomModels = config.customModels
+        draftCustomModels = config.currentCustomModels
+    }
+
+    /// Switch to the model list for the specified protocol
+    private func switchProtocolModelList(to newAPI: CodexAdaptorConfig.WireAPI) {
+        // Save current draft to current protocol
+        config.currentCustomModels = draftCustomModels
+        // Switch protocol
+        config.wireAPI = newAPI
+        // Load model list for new protocol
+        draftCustomModels = config.currentCustomModels
     }
 }
 

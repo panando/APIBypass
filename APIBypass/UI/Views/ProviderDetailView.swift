@@ -72,12 +72,13 @@ struct ProviderDetailView: View {
                             Picker("", selection: $apiProvider) {
                                 Text(L10n.t("provider_type_openai")).tag(APIProvider.openai)
                                 Text(L10n.t("provider_type_anthropic")).tag(APIProvider.anthropic)
+                                Text(L10n.t("provider_type_responses")).tag(APIProvider.responses)
                             }
                             .pickerStyle(.menu)
                             .frame(maxWidth: .infinity, alignment: .leading)
                             .offset(x: -8)
                             .onChange(of: apiProvider) { _, newValue in
-                                if baseURL.isEmpty || baseURL == APIProvider.openai.defaultBaseURL.absoluteString || baseURL == APIProvider.anthropic.defaultBaseURL.absoluteString {
+                                if baseURL.isEmpty || baseURL == APIProvider.openai.defaultBaseURL.absoluteString || baseURL == APIProvider.anthropic.defaultBaseURL.absoluteString || baseURL == APIProvider.responses.defaultBaseURL.absoluteString {
                                     baseURL = newValue.defaultBaseURL.absoluteString
                                 }
                             }
@@ -124,6 +125,27 @@ struct ProviderDetailView: View {
                             .padding(.leading, 100)
                             .padding(.top, 4)
                         }
+                    }
+
+                    // Responses API warning banner
+                    if apiProvider == .responses {
+                        VStack(alignment: .leading, spacing: 4) {
+                            HStack(spacing: 4) {
+                                Image(systemName: "exclamationmark.triangle")
+                                    .foregroundColor(.orange)
+                                Text(L10n.t("provider_responses_note_title"))
+                                    .font(.subheadline)
+                                    .fontWeight(.medium)
+                            }
+                            Text(L10n.t("provider_responses_note_desc"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                                .fixedSize(horizontal: false, vertical: true)
+                        }
+                        .padding(8)
+                        .background(Color.orange.opacity(0.1))
+                        .cornerRadius(6)
+                        .padding(.top, 8)
                     }
 
                     // Save button inside provider card

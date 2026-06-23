@@ -113,6 +113,14 @@ final class HTTPServer: ObservableObject {
             return try await self.handleRequestWithConcurrencyLimit(request, context, format: .anthropic)
         }
 
+        // Responses API 端点（带并发限制）
+        router.post("/v1/responses") { [weak self] request, context in
+            guard let self = self else {
+                return Response(status: .internalServerError, body: .init(byteBuffer: ByteBuffer()))
+            }
+            return try await self.handleRequestWithConcurrencyLimit(request, context, format: .responses)
+        }
+
         // 模型列表端点
         router.get("/v1/models") { [weak self] request, context in
             let mappings = await self?.store.getMappings() ?? []
@@ -314,8 +322,24 @@ final class HTTPServer: ObservableObject {
         switch provider.apiProvider {
         case .openai: upstreamFormat = .openai
         case .anthropic: upstreamFormat = .anthropic
-        case .responses: upstreamFormat = .openai // TODO: Task 2 will add APIFormat.responses
+        case .responses: upstreamFormat = .responses
         }
+
+        // Responses API：检查兼容性，直接透传
+        if format == .responses || upstreamFormat == .responses {
+            guard format == upstreamFormat else {
+                let errorMsg: String
+                if format == .responses {
+                    errorMsg = "Responses API endpoint requires a Responses API provider. Please configure a provider with API type 'Responses API'."
+                } else {
+                    errorMsg = "This provider only supports /v1/responses endpoint. Please use the Responses API endpoint instead."
+                }
+                let errorData = #"{"error": "\#(errorMsg)"}"#.data(using: .utf8)!
+                return Response(status: .badRequest, body: .init(byteBuffer: ByteBuffer(data: errorData)))
+            }
+            // 直接透传，跳过格式转换
+        }
+
         // 读取 bypassMode 状态
         let bypassMode = UserDefaults.standard.bool(forKey: "bypassMode")
         let preserveModel = UserDefaults.standard.bool(forKey: "preserveIncomingModel")

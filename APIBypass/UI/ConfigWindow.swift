@@ -178,17 +178,49 @@ struct ConfigWindow: View {
                     }
                 }
             )) {
-                Section {
-                    ForEach(configManager.providers) { provider in
-                        providerRow(provider)
-                    }
-                    .onMove { source, destination in
-                        Task {
-                            await configManager.moveProvider(from: source, to: destination)
+                // Chat Completions 提供商
+                let openaiProviders = configManager.providers.filter { $0.apiProvider == .openai }
+                if !openaiProviders.isEmpty {
+                    Section(L10n.t("provider_group_chat_completions")) {
+                        ForEach(openaiProviders) { provider in
+                            providerRow(provider)
+                        }
+                        .onMove { source, destination in
+                            Task {
+                                await configManager.moveProvider(from: source, to: destination)
+                            }
                         }
                     }
-                } header: {
-                    EmptyView()
+                }
+
+                // Anthropic 提供商
+                let anthropicProviders = configManager.providers.filter { $0.apiProvider == .anthropic }
+                if !anthropicProviders.isEmpty {
+                    Section(L10n.t("provider_group_anthropic")) {
+                        ForEach(anthropicProviders) { provider in
+                            providerRow(provider)
+                        }
+                        .onMove { source, destination in
+                            Task {
+                                await configManager.moveProvider(from: source, to: destination)
+                            }
+                        }
+                    }
+                }
+
+                // Responses API 提供商
+                let responsesProviders = configManager.providers.filter { $0.apiProvider == .responses }
+                if !responsesProviders.isEmpty {
+                    Section(L10n.t("provider_group_responses")) {
+                        ForEach(responsesProviders) { provider in
+                            providerRow(provider)
+                        }
+                        .onMove { source, destination in
+                            Task {
+                                await configManager.moveProvider(from: source, to: destination)
+                            }
+                        }
+                    }
                 }
             }
             .listStyle(.plain)
@@ -199,7 +231,7 @@ struct ConfigWindow: View {
     private func providerRow(_ provider: ProviderConfig) -> some View {
         let isSelected = selectedProviderId == provider.id
         HStack(spacing: 10) {
-            Image(systemName: provider.apiProvider == .openai ? "building.2" : "brain")
+            Image(systemName: iconForProvider(provider.apiProvider))
                 .foregroundColor(isSelected ? .white : .accentColor)
                 .frame(width: 16)
             VStack(alignment: .leading, spacing: 2) {
@@ -227,6 +259,14 @@ struct ConfigWindow: View {
             } label: {
                 Label(L10n.t("delete_provider"), systemImage: "trash")
             }
+        }
+    }
+
+    private func iconForProvider(_ type: APIProvider) -> String {
+        switch type {
+        case .openai: return "building.2"
+        case .anthropic: return "brain"
+        case .responses: return "bolt"
         }
     }
 

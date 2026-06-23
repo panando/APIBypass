@@ -318,6 +318,11 @@ final class FormatTranslator {
         out.removeValue(forKey: "reasoning_effort")
         out.removeValue(forKey: "stream_options")
 
+        // Anthropic API requires max_tokens, auto-inject if missing
+        if out["max_tokens"] == nil {
+            out["max_tokens"] = 4096
+        }
+
         return out
     }
 

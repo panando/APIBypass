@@ -1,3 +1,24 @@
+# APIBypass v0.8.3
+
+## What's New
+
+### Auto-inject `max_tokens` for Anthropic API
+
+Anthropic API requires the `max_tokens` field, but OpenAI-format clients (like Codex Adapter) don't always include it. This release auto-injects a default value when converting OpenAI requests to Anthropic format.
+
+- When `FormatTranslator.openAIToAnthropicRequest()` converts a request without `max_tokens`, it now injects a default value of `4096`.
+- If the client already provides `max_tokens`, the value is preserved.
+- Added unit tests covering auto-injection, preservation of existing values, and non-injection for OpenAI format.
+
+### Codex Adapter Pipe Deadlock Fix
+
+Fixed a potential deadlock in `CodexConfigService` when reading Codex template output:
+
+- Pipe data is now read **before** `waitUntilExit()` to avoid blocking when output exceeds the pipe buffer (~64KB).
+- Previously, large outputs could cause the process to hang indefinitely.
+
+---
+
 # APIBypass v0.8.0
 
 ## What's New

@@ -83,6 +83,8 @@ actor CodexAdaptorConfigStore {
                     contextWindow: contextWindow
                 )
             }
+            // Migrate legacy customModels to protocol-specific lists
+            config.migrateFromLegacy()
         }
 
         // Persist recovered config so future loads hit UserDefaults

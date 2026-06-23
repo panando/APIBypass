@@ -119,6 +119,8 @@ private struct CodexServerTab: View {
     @State private var showReasoningInfo = false
     @State private var showProtocolSwitchAlert = false
     @State private var pendingWireAPI: CodexAdaptorConfig.WireAPI?
+    @State private var isHandlingProtocolSwitch = false  // Prevent onChange re-entry during programmatic switch
+    @State private var isLoading = true  // Disable interactions until config is loaded
 
     var body: some View {
         ScrollView {
@@ -168,13 +170,24 @@ private struct CodexServerTab: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: config.wireAPI) { oldValue, newValue in
-                        // Check for unsaved changes before switching
-                        if hasUnsavedModelChanges {
+                        // Skip if still loading or this is a programmatic change
+                        guard !isLoading else { return }
+                        guard !isHandlingProtocolSwitch else { return }
+
+                        // Check for unsaved changes using OLD protocol's model list
+                        // (draftCustomModels was loaded from old protocol, compare with old protocol's stored list)
+                        let oldProtocolModels: [CustomModelEntry] = oldValue == .chat ? config.chatCustomModels : config.responsesCustomModels
+                        let hasChanges = draftCustomModels != oldProtocolModels
+
+                        if hasChanges {
                             pendingWireAPI = newValue
+                            isHandlingProtocolSwitch = true  // Prevent onChange when reverting
                             config.wireAPI = oldValue  // Revert temporarily
+                            isHandlingProtocolSwitch = false
                             showProtocolSwitchAlert = true
                         } else {
-                            switchProtocolModelList(to: newValue)
+                            // No changes, just switch protocol and load new model list
+                            draftCustomModels = config.currentCustomModels
                             saveConfig()
                         }
                     }
@@ -231,25 +244,31 @@ private struct CodexServerTab: View {
             }
             Button(L10n.t("discard_changes"), role: .destructive) {
                 if let newAPI = pendingWireAPI {
-                    // Discard changes and switch
+                    // Discard changes and switch - don't save draft
+                    isHandlingProtocolSwitch = true
+                    config.wireAPI = newAPI
                     draftCustomModels = config.currentCustomModels
-                    switchProtocolModelList(to: newAPI)
                     saveConfig()
+                    isHandlingProtocolSwitch = false
                 }
                 pendingWireAPI = nil
             }
             Button(L10n.t("save_and_switch")) {
                 if let newAPI = pendingWireAPI {
                     // Save changes and switch
+                    isHandlingProtocolSwitch = true
                     saveCustomModels()
-                    switchProtocolModelList(to: newAPI)
+                    config.wireAPI = newAPI
+                    draftCustomModels = config.currentCustomModels
                     saveConfig()
+                    isHandlingProtocolSwitch = false
                 }
                 pendingWireAPI = nil
             }
         } message: {
             Text(L10n.t("unsaved_changes_msg"))
         }
+        .disabled(isLoading)  // Prevent interactions until config is fully loaded
     }
 
     // MARK: - Card Section Helper
@@ -732,6 +751,9 @@ private struct CodexServerTab: View {
                 reasoningOutputFormat = rc.outputFormat ?? "reasoning_content"
             }
             showReasoningConfig = config.reasoningOverrideEnabled
+
+            // Enable interactions after all state is loaded
+            isLoading = false
         }
     }
 

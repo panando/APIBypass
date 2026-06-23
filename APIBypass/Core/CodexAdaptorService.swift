@@ -113,9 +113,10 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     private func buildModelCatalog(from config: CodexAdaptorConfig) async -> ModelCatalog? {
-        guard !config.customModels.isEmpty else { return nil }
+        let customModels = config.currentCustomModels
+        guard !customModels.isEmpty else { return nil }
         let mappings = await ConfigDataStore.shared.getMappings()
-        let entries = config.customModels.compactMap { entry -> ModelCatalogEntry? in
+        let entries = customModels.compactMap { entry -> ModelCatalogEntry? in
             guard let mapping = mappings.first(where: { $0.id == entry.modelMappingId }) else {
                 return nil
             }

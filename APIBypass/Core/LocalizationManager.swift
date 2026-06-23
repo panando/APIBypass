@@ -257,6 +257,19 @@ struct L10n {
         // API Provider types
         "provider_type_openai": [.chinese: "OpenAI Chat API", .english: "OpenAI Chat API"],
         "provider_type_anthropic": [.chinese: "Anthropic API", .english: "Anthropic API"],
+        "provider_type_responses": [.chinese: "Responses API", .english: "Responses API"],
+
+        // Provider groups
+        "provider_group_chat_completions": [.chinese: "Chat Completions 提供商", .english: "Chat Completions Providers"],
+        "provider_group_anthropic": [.chinese: "Anthropic 提供商", .english: "Anthropic Providers"],
+        "provider_group_responses": [.chinese: "Responses API 提供商", .english: "Responses API Providers"],
+
+        // Responses API warnings
+        "provider_responses_warning_title": [.chinese: "Responses API 提供商", .english: "Responses API Provider"],
+        "provider_responses_warning_desc": [.chinese: "Responses API 提供商仅适用于支持 Responses API 格式的客户端（如 Codex），无法用于 Chat Completions 格式的请求。请求将直接透传，不进行格式转换。", .english: "Responses API providers only support clients that use Responses API format (e.g., Codex). They cannot be used with Chat Completions format requests. Requests will be passed through directly without format conversion."],
+        "provider_responses_note_title": [.chinese: "仅限 Responses API", .english: "Responses API Only"],
+        "provider_responses_note_desc": [.chinese: "此提供商仅接受 /v1/responses 端点的请求，适用于 Codex 等 Responses API 客户端。请求将直接透传，不进行格式转换。", .english: "This provider only accepts requests to /v1/responses endpoint. It works with Codex and other Responses API clients. Requests are passed through directly without format conversion."],
+
         "attribution_header": [.chinese: "禁用 attribution header", .english: "Disable Attribution Header"],
         "attribution_header_desc": [.chinese: "设置 CLAUDE_CODE_ATTRIBUTION_HEADER=0，从源头避免动态 cch 值破坏 prompt 前缀缓存", .english: "Set CLAUDE_CODE_ATTRIBUTION_HEADER=0 to prevent dynamic cch values from breaking prompt prefix caching at the source"],
         "attribution_header_note": [.chinese: "即使不开启此开关，代理层也会自动过滤掉请求中的 billing header", .english: "The proxy layer also automatically filters billing headers from requests even without this switch"],

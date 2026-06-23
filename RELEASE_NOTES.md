@@ -1,3 +1,39 @@
+# APIBypass v0.8.4
+
+## What's New
+
+### Responses API Support
+
+This release adds support for OpenAI Responses API as a new provider type, alongside the existing OpenAI Chat Completions and Anthropic formats.
+
+- Add Responses API provider option when creating new providers
+- Add `/v1/responses` endpoint to the HTTP server
+- Group providers by API type in the provider list for better organization
+
+### Protocol-Bound Model Configuration
+
+The Codex adaptor now maintains separate model lists for each protocol type:
+
+- Chat Completions protocol shows only Chat/Anthropic provider models
+- Responses API protocol shows only Responses API provider models
+- Switching protocols automatically switches to the appropriate model list
+- Unsaved changes are detected and handled before protocol switch
+
+### Bug Fixes
+
+- Fix infinite alert loop when switching protocols with unsaved changes
+- Fix false unsaved changes alert on app launch
+- Fix model catalog not reflecting protocol-specific model lists
+- Fix race conditions during config load by disabling interactions until fully loaded
+- Improve NewProviderView window sizing for Responses API providers
+
+### Migration
+
+- Existing custom models are automatically migrated to the Chat protocol list
+- Configuration is backwards compatible with previous versions
+
+---
+
 # APIBypass v0.8.3
 
 ## What's New

@@ -333,7 +333,7 @@ enum ModelCapabilityRegistry {
         .init(
             id: "kimi-k2.6",
             patterns: ["kimi-k2.6", "kimi-k2.5"],
-            thinkingCapability: .optional(defaultOn: false),
+            thinkingCapability: .optional(defaultOn: true),
             samplingEffectiveInThinking: false,
             nativeParameters: [.maxTokens, .thinkingType],
             constraints: [

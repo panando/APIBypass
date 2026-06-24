@@ -171,16 +171,16 @@ final class ModelCapabilityProfileTests: XCTestCase {
         XCTAssertEqual(profile?.thinkingCapability, .alwaysOn)
     }
 
-    func testKimiK26_OptionalThinking_DefaultOff() {
+    func testKimiK26_OptionalThinking_DefaultOn() {
         let profile = ModelCapabilityRegistry.findProfile(for: "kimi-k2.6")
         XCTAssertNotNil(profile)
-        XCTAssertEqual(profile?.thinkingCapability, .optional(defaultOn: false))
+        XCTAssertEqual(profile?.thinkingCapability, .optional(defaultOn: true))
     }
 
-    func testKimiK25_OptionalThinking_DefaultOff() {
+    func testKimiK25_OptionalThinking_DefaultOn() {
         let profile = ModelCapabilityRegistry.findProfile(for: "kimi-k2.5")
         XCTAssertNotNil(profile)
-        XCTAssertEqual(profile?.thinkingCapability, .optional(defaultOn: false))
+        XCTAssertEqual(profile?.thinkingCapability, .optional(defaultOn: true))
     }
 
     // MARK: - Doubao 系列

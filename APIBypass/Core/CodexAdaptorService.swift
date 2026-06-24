@@ -34,9 +34,11 @@ final class CodexAdaptorService: ObservableObject {
 
         // Start CDP injector if enhancements enabled
         if config.cdpSettings.enhancementsEnabled {
+            var cdpSettings = config.cdpSettings
+            cdpSettings.proxyPort = config.port
             let inj = CodexAppInjector(
                 debugPort: config.cdpDebugPort,
-                settings: config.cdpSettings,
+                settings: cdpSettings,
                 logger: CodexLogStore.shared
             )
             self.injector = inj
@@ -88,7 +90,9 @@ final class CodexAdaptorService: ObservableObject {
 
         // Update CDP settings if running
         if let inj = injector {
-            await inj.updateSettings(config.cdpSettings)
+            var cdpSettings = config.cdpSettings
+            cdpSettings.proxyPort = config.port
+            await inj.updateSettings(cdpSettings)
         }
 
         port = config.port
@@ -97,7 +101,9 @@ final class CodexAdaptorService: ObservableObject {
     func pushInjectionSettings() async {
         guard let inj = injector else { return }
         let config = await CodexAdaptorConfigStore.shared.load()
-        await inj.updateSettings(config.cdpSettings)
+        var cdpSettings = config.cdpSettings
+        cdpSettings.proxyPort = port
+        await inj.updateSettings(cdpSettings)
     }
 
     func currentInjectionSettings() async -> CDPInjectionSettings {

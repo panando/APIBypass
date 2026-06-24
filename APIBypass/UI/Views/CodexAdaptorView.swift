@@ -319,6 +319,24 @@ private struct CodexServerTab: View {
 
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
+                    Text(L10n.t("codex_model_whitelist_unlock")).fontWeight(.medium)
+                    Text(L10n.t("codex_model_whitelist_unlock_desc"))
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                Spacer()
+                Toggle("", isOn: $config.cdpSettings.codexAppModelWhitelistUnlock)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .labelsHidden()
+            }
+            .onChange(of: config.cdpSettings.codexAppModelWhitelistUnlock) { _, _ in
+                saveConfig()
+                Task { await codexAdaptor.pushInjectionSettings() }
+            }
+
+            HStack {
+                VStack(alignment: .leading, spacing: 2) {
                     Text(L10n.t("codex_marketplace_unlock")).fontWeight(.medium)
                     Text(L10n.t("codex_marketplace_unlock_desc"))
                         .font(.caption)

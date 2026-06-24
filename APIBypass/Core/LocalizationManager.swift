@@ -497,6 +497,7 @@ struct L10n {
         "codex_add_model": [.chinese: "添加模型", .english: "Add Model"],
         "codex_enhancements": [.chinese: "Codex 增强", .english: "Codex Enhancements"],
         "codex_plugin_entry_unlock": [.chinese: "强制解锁入口", .english: "Force Entry Unlock"],
+        "codex_model_whitelist_unlock": [.chinese: "模型白名单解锁", .english: "Model Whitelist Unlock"],
         "codex_marketplace_unlock": [.chinese: "插件市场解锁", .english: "Plugin Marketplace Unlock"],
         "codex_force_plugin_install": [.chinese: "特殊插件强制安装", .english: "Force Plugin Install"],
         "codex_logs": [.chinese: "日志", .english: "Logs"],
@@ -553,6 +554,7 @@ struct L10n {
 
         // Codex Adaptor - CDP descriptions
         "codex_plugin_entry_unlock_desc": [.chinese: "通过身份伪装强制显示插件入口按钮。", .english: "Force the Plugins button visible via auth spoofing."],
+        "codex_model_whitelist_unlock_desc": [.chinese: "未登录 ChatGPT 时，将本地模型列表注入 Codex 的模型选择器。", .english: "Inject local model list into Codex's selector when not logged into ChatGPT."],
         "codex_marketplace_unlock_desc": [.chinese: "API Key 模式下扩展插件市场请求，尽量显示完整插件列表。", .english: "Expand marketplace requests under API Key mode to show full plugin list."],
         "codex_force_plugin_install_desc": [.chinese: "解除应用不可用导致的前端安装禁用。", .english: "Unblock install buttons disabled due to app unavailability restrictions."],
 

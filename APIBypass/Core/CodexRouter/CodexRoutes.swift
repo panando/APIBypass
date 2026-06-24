@@ -28,6 +28,18 @@ enum CodexRoutes {
             )
         }
 
+        router.get("/codex-model-catalog") { _, _ in
+            let provider = try? CodexConfigService.shared.getCurrentUpstreamProvider()
+            let body = CodexRequestHandler.makeModelCatalogBody(catalog: provider?.modelCatalog)
+            var headers = HTTPFields()
+            headers[.contentType] = "application/json"
+            return Response(
+                status: .ok,
+                headers: headers,
+                body: .init(byteBuffer: ByteBuffer(data: body))
+            )
+        }
+
         router.get("/v1/models") { request, context in
             return try await requestHandler.handle(request: request, endpoint: .models)
         }

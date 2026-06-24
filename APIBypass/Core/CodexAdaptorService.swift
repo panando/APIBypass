@@ -11,6 +11,7 @@ final class CodexAdaptorService: ObservableObject {
 
     private var server: CodexProxyServer?
     private var injector: CodexAppInjector?
+    private var cdpStatePollingTask: Task<Void, Never>?
 
     init() {
         Task {
@@ -20,6 +21,8 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     func start() async throws {
+        guard !isRunning else { return }
+
         let config = await CodexAdaptorConfigStore.shared.load()
         port = config.port
 
@@ -51,13 +54,13 @@ final class CodexAdaptorService: ObservableObject {
 
     /// Poll CDP connection state from the injector actor every 3 seconds.
     private func startCDPStatePolling() {
-        Task { [weak self] in
-            while self?.isRunning == true {
-                if let inj = await self?.injector {
+        cdpStatePollingTask?.cancel()
+        cdpStatePollingTask = Task { [weak self] in
+            while let strongSelf = self, strongSelf.isRunning, !Task.isCancelled {
+                if let inj = strongSelf.injector {
                     let state = await inj.snapshotState()
-                    await MainActor.run {
-                        self?.cdpConnectionState = state
-                    }
+                    if Task.isCancelled { break }
+                    strongSelf.cdpConnectionState = state
                 }
                 try? await Task.sleep(for: .seconds(3))
             }
@@ -65,6 +68,9 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     func stop() async {
+        cdpStatePollingTask?.cancel()
+        cdpStatePollingTask = nil
+
         await injector?.stop()
         injector = nil
         cdpConnectionState = .disconnected

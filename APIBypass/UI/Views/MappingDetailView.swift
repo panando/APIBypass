@@ -21,9 +21,9 @@ struct MappingDetailView: View {
 
     private var thinkingModelsKey: String {
         switch thinkingProtocol {
-        case .enable_thinking: return "thinking_models_enable_thinking"
-        case .anthropic_native: return "thinking_models_anthropic_native"
-        case .none: return "thinking_models_none"
+        case .enableThinking: return "thinking_models_enable_thinking"
+        case .thinkingType: return "thinking_models_anthropic_native"
+        case .reasoningEffort: return "thinking_models_none"
         }
     }
 
@@ -41,7 +41,7 @@ struct MappingDetailView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingOverrideEnabled = false
-    @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enable_thinking
+    @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enableThinking
     @State private var thinkingEffort = ""
     @State private var isEnabled = true
 
@@ -218,7 +218,7 @@ struct MappingDetailView: View {
                                 .foregroundColor(.secondary)
 
                             switch thinkingProtocol {
-                            case .enable_thinking:
+                            case .enableThinking:
                                 HStack {
                                     Text(L10n.t("enable_thinking"))
                                     Spacer()
@@ -227,7 +227,7 @@ struct MappingDetailView: View {
                                         .labelsHidden()
                                         .fixedSize()
                                 }
-                            case .anthropic_native:
+                            case .thinkingType:
                                 HStack {
                                     Text(L10n.t("enable_thinking"))
                                     Spacer()
@@ -236,7 +236,7 @@ struct MappingDetailView: View {
                                         .labelsHidden()
                                         .fixedSize()
                                 }
-                            case .none:
+                            case .reasoningEffort:
                                 HStack {
                                     Text(L10n.t("thinking_effort"))
                                     TextField(L10n.t("thinking_effort_hint"), text: $thinkingEffort)
@@ -505,7 +505,7 @@ struct MappingDetailView: View {
             enabled: thinkingEnabled,
             budgetTokens: nil,
             thinkingProtocol: thinkingProtocol,
-            effort: (thinkingProtocol == .none && !thinkingEffort.isEmpty) ? thinkingEffort : nil
+            effort: (thinkingProtocol == .reasoningEffort && !thinkingEffort.isEmpty) ? thinkingEffort : nil
         )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty

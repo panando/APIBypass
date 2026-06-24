@@ -423,26 +423,90 @@ struct ConfigWindow: View {
 
     @ViewBuilder
     private var emptyStateView: some View {
-        VStack(spacing: 16) {
-            Image(systemName: "rectangle.stack")
-                .font(.system(size: 48))
-                .foregroundColor(.secondary)
-            Text(L10n.t("select_or_create"))
+        VStack(spacing: 20) {
+            Spacer()
+
+            // App Icon
+            Image(nsImage: NSApplication.shared.applicationIconImage)
+                .resizable()
+                .frame(width: 80, height: 80)
+
+            Text(L10n.t("app_capabilities_title"))
                 .font(.title2)
-                .foregroundColor(.secondary)
-            Text(L10n.t("select_or_create_hint"))
-                .font(.body)
-                .foregroundColor(.secondary)
-                .multilineTextAlignment(.center)
+                .fontWeight(.medium)
+
+            VStack(alignment: .leading, spacing: 10) {
+                capabilityRow(
+                    icon: "arrow.triangle.swap",
+                    title: L10n.t("capability_model_mapping"),
+                    description: L10n.t("capability_model_mapping_desc")
+                )
+                capabilityRow(
+                    icon: "arrow.left.arrow.right",
+                    title: L10n.t("capability_api_protocol"),
+                    description: L10n.t("capability_api_protocol_desc")
+                )
+                capabilityRow(
+                    icon: "brain.head.profile",
+                    title: L10n.t("capability_thinking_protocol"),
+                    description: L10n.t("capability_thinking_protocol_desc")
+                )
+                capabilityRow(
+                    icon: "slider.horizontal.3",
+                    title: L10n.t("capability_param_injection"),
+                    description: L10n.t("capability_param_injection_desc")
+                )
+                capabilityRow(
+                    icon: "terminal",
+                    title: L10n.t("capability_claude_code"),
+                    description: L10n.t("capability_claude_code_desc")
+                )
+                capabilityRow(
+                    icon: "bolt",
+                    title: L10n.t("capability_codex_adaptor"),
+                    description: L10n.t("capability_codex_adaptor_desc")
+                )
+                capabilityRow(
+                    icon: "lock.open",
+                    title: L10n.t("capability_codex_unlock"),
+                    description: L10n.t("capability_codex_unlock_desc")
+                )
+            }
+            .padding(.horizontal, 48)
+
+            Spacer()
+
             Button {
                 showNewProviderSheet = true
             } label: {
                 Label(L10n.t("create_provider"), systemImage: "plus.circle")
+                    .frame(minWidth: 160)
             }
             .buttonStyle(.borderedProminent)
+            .controlSize(.large)
+
+            Spacer()
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .padding()
+    }
+
+    @ViewBuilder
+    private func capabilityRow(icon: String, title: String, description: String) -> some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: icon)
+                .font(.system(size: 20))
+                .foregroundColor(.accentColor)
+                .frame(width: 24)
+            VStack(alignment: .leading, spacing: 2) {
+                Text(title)
+                    .font(.headline)
+                Text(description)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+        }
     }
 
     private func copyProvider(_ provider: ProviderConfig) {

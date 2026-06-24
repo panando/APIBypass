@@ -326,6 +326,81 @@ public let codexPluginInjectionScript: String = """
     requestAnimationFrame(() => runScanStep(scanDeferred));
   }
 
+  // ── Plugin Marketplace Unlock ────────────────────────────────────
+  // Patch Array.prototype.filter to bypass Codex's plugin/marketplace filtering
+
+  function installPluginMarketplacePatch() {
+    if (window.__codexPluginMarketplacePatchInstalled) return;
+    if (pluginPatchDisabledInRelayMode()) return;
+
+    const originalFilter = Array.prototype.__codexOriginalFilter || Array.prototype.filter;
+    if (!Array.prototype.__codexOriginalFilter) {
+      Object.defineProperty(Array.prototype, "__codexOriginalFilter", {
+        value: originalFilter,
+        configurable: true,
+        writable: true,
+      });
+    }
+
+    const patchedFilter = function(callback, thisArg) {
+      // Detect Codex plugin filter pattern
+      if (isCodexPluginFilter(callback, this)) {
+        console.log("[CodexPlus] Plugin filter bypassed, returning all", this.length, "plugins");
+        return Array.from(this);
+      }
+      // Detect Codex marketplace filter pattern
+      if (isCodexMarketplaceFilter(callback, this)) {
+        console.log("[CodexPlus] Marketplace filter bypassed, returning all", this.length, "marketplaces");
+        return Array.from(this);
+      }
+      return originalFilter.call(this, callback, thisArg);
+    };
+
+    Array.prototype.filter = patchedFilter;
+    window.__codexPluginMarketplacePatchInstalled = true;
+    console.log("[CodexPlus] Plugin marketplace patch installed");
+  }
+
+  function isCodexPluginFilter(callback, sample) {
+    if (!Array.isArray(sample) || sample.length === 0) return false;
+    if (typeof callback !== "function") return false;
+
+    let source = "";
+    try { source = Function.prototype.toString.call(callback); } catch { return false; }
+
+    // Known Codex filter patterns for plugins
+    const knownPatterns = [
+      "!u(e.marketplaceName)||e.marketplaceName===r",
+      "!ne(e.marketplaceName)||e.marketplaceName===n"
+    ];
+
+    const isKnownPattern = knownPatterns.some(pattern => source.includes(pattern));
+    if (!isKnownPattern) return false;
+
+    // Verify this is actually filtering official marketplaces
+    return sample.some(item => {
+      const name = item?.marketplaceName || "";
+      return name === "openai-bundled" || name === "openai-curated" || name === "openai-primary-runtime";
+    });
+  }
+
+  function isCodexMarketplaceFilter(callback, sample) {
+    if (!Array.isArray(sample) || sample.length === 0) return false;
+    if (typeof callback !== "function") return false;
+
+    let source = "";
+    try { source = Function.prototype.toString.call(callback); } catch { return false; }
+
+    // Known Codex filter pattern for marketplaces
+    if (!source.includes("!t.includes(e.name)")) return false;
+
+    // Verify this is filtering official marketplaces
+    return sample.some(item => {
+      const name = item?.name || "";
+      return name === "openai-bundled" || name === "openai-curated" || name === "openai-primary-runtime";
+    });
+  }
+
   // ── Settings polling ──────────────────────────────────────────────
   async function fetchBackendSettings() {
     try {
@@ -345,6 +420,7 @@ public let codexPluginInjectionScript: String = """
   // Poll settings and scan
   async function bootstrap() {
     await fetchBackendSettings();
+    installPluginMarketplacePatch();  // Install marketplace unlock patch
     scan();
     // Continue scanning on every animation frame
     function loop() {

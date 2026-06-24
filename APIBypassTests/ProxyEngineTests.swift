@@ -311,7 +311,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test", incomingModel: "glm", actualModel: "glm-5.2",
             providerConfigId: UUID(),
             parameters: InjectedParameters(
-                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .enable_thinking),
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .enableThinking),
                 thinkingOverrideEnabled: true
             )
         )
@@ -328,7 +328,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test", incomingModel: "glm", actualModel: "glm-5.2",
             providerConfigId: UUID(),
             parameters: InjectedParameters(
-                thinking: ThinkingConfig(enabled: false, thinkingProtocol: .enable_thinking),
+                thinking: ThinkingConfig(enabled: false, thinkingProtocol: .enableThinking),
                 thinkingOverrideEnabled: true
             )
         )
@@ -344,7 +344,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test", incomingModel: "o3", actualModel: "o3-mini",
             providerConfigId: UUID(),
             parameters: InjectedParameters(
-                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .none, effort: "high"),
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .reasoningEffort, effort: "high"),
                 thinkingOverrideEnabled: true
             )
         )
@@ -361,7 +361,7 @@ final class ProxyEngineTests: XCTestCase {
             name: "Test", incomingModel: "ds", actualModel: "deepseek-r1",
             providerConfigId: UUID(),
             parameters: InjectedParameters(
-                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .none),
+                thinking: ThinkingConfig(enabled: true, thinkingProtocol: .reasoningEffort),
                 thinkingOverrideEnabled: true
             )
         )
@@ -387,7 +387,7 @@ final class ProxyEngineTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: anthropicBody)
         let translated = try translator.translateRequest(
             data, from: .anthropic, to: .openai,
-            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .none, effort: "high")
+            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .reasoningEffort, effort: "high")
         )
         let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
         XCTAssertEqual(json["reasoning_effort"] as? String, "high")
@@ -405,7 +405,7 @@ final class ProxyEngineTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: anthropicBody)
         let translated = try translator.translateRequest(
             data, from: .anthropic, to: .openai,
-            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .none)
+            thinkingConfig: ThinkingConfig(enabled: true, thinkingProtocol: .reasoningEffort)
         )
         let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
         XCTAssertNil(json["enable_thinking"])
@@ -423,7 +423,7 @@ final class ProxyEngineTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: anthropicBody)
         let translated = try translator.translateRequest(
             data, from: .anthropic, to: .openai,
-            thinkingConfig: ThinkingConfig(enabled: true, budgetTokens: 5000, thinkingProtocol: .anthropic_native)
+            thinkingConfig: ThinkingConfig(enabled: true, budgetTokens: 5000, thinkingProtocol: .thinkingType)
         )
         let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
         let thinking = json["thinking"] as? [String: Any]
@@ -442,7 +442,7 @@ final class ProxyEngineTests: XCTestCase {
         let data = try JSONSerialization.data(withJSONObject: anthropicBody)
         let translated = try translator.translateRequest(
             data, from: .anthropic, to: .openai,
-            thinkingConfig: ThinkingConfig(enabled: false, thinkingProtocol: .enable_thinking)
+            thinkingConfig: ThinkingConfig(enabled: false, thinkingProtocol: .enableThinking)
         )
         let json = try JSONSerialization.jsonObject(with: translated) as! [String: Any]
         XCTAssertEqual(json["enable_thinking"] as? Bool, false)

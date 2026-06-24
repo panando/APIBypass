@@ -120,7 +120,7 @@ private struct CodexServerTab: View {
     @State private var showProtocolSwitchAlert = false
     @State private var pendingWireAPI: CodexAdaptorConfig.WireAPI?
     @State private var isHandlingProtocolSwitch = false  // Prevent onChange re-entry during programmatic switch
-    @State private var isLoading = true  // Disable interactions until config is loaded
+    @State private var isLoading = true  // Disable interactions until config is fully loaded
 
     var body: some View {
         ScrollView {

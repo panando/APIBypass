@@ -88,15 +88,15 @@ final class ProxyEngine {
                 }
             case .openai:
                 switch thinking.thinkingProtocol {
-                case .enable_thinking:
+                case .enableThinking:
                     json["enable_thinking"] = thinking.enabled
-                case .anthropic_native:
+                case .thinkingType:
                     if thinking.enabled {
                         json["thinking"] = ["type": "enabled"]
                     } else {
                         json["thinking"] = ["type": "disabled"]
                     }
-                case .none:
+                case .reasoningEffort:
                     if let effort = thinking.effort, !effort.isEmpty {
                         json["reasoning_effort"] = effort
                     }

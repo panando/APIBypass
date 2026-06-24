@@ -2,26 +2,31 @@ import Foundation
 
 struct ThinkingConfig: Codable, Equatable {
     enum ThinkingProtocol: String, Codable, CaseIterable {
-        case enable_thinking      // Qwen3 系列（DashScope）
-        case anthropic_native     // thinking.type: Anthropic / GLM / Kimi / DeepSeek / Doubao
-        case none                 // 不发开关字段；o 系列可附 reasoning_effort 程度
+        case thinkingType         // thinking.type 参数形式（DeepSeek/GLM/Kimi/MiniMax/Claude 等）
+        case reasoningEffort      // reasoning_effort 参数形式（OpenAI o 系列/GPT-5.x/DeepSeek V4）
+        case enableThinking       // enable_thinking 参数形式（Qwen 系列）
 
         var displayName: String {
             switch self {
-            case .enable_thinking: return "enable_thinking"
-            case .anthropic_native: return "thinking.type"
-            case .none: return "none"
+            case .thinkingType: return "thinking.type"
+            case .reasoningEffort: return "reasoning_effort"
+            case .enableThinking: return "enable_thinking"
             }
         }
 
         init(from decoder: Decoder) throws {
             let raw = try decoder.singleValueContainer().decode(String.self)
             switch raw {
-            case "enable_thinking": self = .enable_thinking
-            case "anthropic_native": self = .anthropic_native
-            case "none": self = .none
-            case "reasoning_effort": self = .none
-            default: self = .enable_thinking
+            // 新名称
+            case "thinkingType": self = .thinkingType
+            case "reasoningEffort": self = .reasoningEffort
+            case "enableThinking": self = .enableThinking
+            // 旧名称（向后兼容）
+            case "anthropic_native": self = .thinkingType
+            case "none": self = .reasoningEffort
+            case "enable_thinking": self = .enableThinking
+            case "reasoning_effort": self = .reasoningEffort
+            default: self = .enableThinking
             }
         }
     }
@@ -33,7 +38,7 @@ struct ThinkingConfig: Codable, Equatable {
 
     init(enabled: Bool,
          budgetTokens: Int? = nil,
-         thinkingProtocol: ThinkingProtocol = .enable_thinking,
+         thinkingProtocol: ThinkingProtocol = .enableThinking,
          effort: String? = nil) {
         self.enabled = enabled
         self.budgetTokens = budgetTokens
@@ -51,7 +56,7 @@ struct ThinkingConfig: Codable, Equatable {
         let c = try decoder.container(keyedBy: CodingKeys.self)
         enabled = try c.decode(Bool.self, forKey: .enabled)
         budgetTokens = try c.decodeIfPresent(Int.self, forKey: .budgetTokens)
-        thinkingProtocol = try c.decodeIfPresent(ThinkingProtocol.self, forKey: .thinkingProtocol) ?? .enable_thinking
+        thinkingProtocol = try c.decodeIfPresent(ThinkingProtocol.self, forKey: .thinkingProtocol) ?? .enableThinking
         effort = try c.decodeIfPresent(String.self, forKey: .effort)
     }
 }
@@ -146,15 +151,15 @@ extension ThinkingConfig.ThinkingProtocol {
         let lower = baseURL.lowercased()
         let m = model.lowercased()
 
-        if lower.contains("anthropic") { return .anthropic_native }
-        if m.hasPrefix("o1") || m.hasPrefix("o3") || m.hasPrefix("o4") { return .none }
-        if m.hasPrefix("deepseek-r") { return .none }
-        if lower.contains("aliyuncs") { return .enable_thinking }
+        if lower.contains("anthropic") { return .thinkingType }
+        if m.hasPrefix("o1") || m.hasPrefix("o3") || m.hasPrefix("o4") { return .reasoningEffort }
+        if m.hasPrefix("deepseek-r") { return .reasoningEffort }
+        if lower.contains("aliyuncs") { return .enableThinking }
         if lower.contains("bigmodel") || lower.contains("z.ai")
             || lower.contains("moonshot")
             || lower.contains("volces") || lower.contains("ark.cn-beijing") {
-            return .anthropic_native
+            return .thinkingType
         }
-        return .enable_thinking
+        return .enableThinking
     }
 }

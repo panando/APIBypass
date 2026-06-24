@@ -35,7 +35,7 @@ struct MappingCardView: View {
     @State private var presencePenalty = ""
     @State private var thinkingEnabled = false
     @State private var thinkingOverrideEnabled = false
-    @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enable_thinking
+    @State private var thinkingProtocol: ThinkingConfig.ThinkingProtocol = .enableThinking
     @State private var thinkingEffort = ""
 
     @State private var customFields: [CustomField] = []
@@ -263,7 +263,7 @@ struct MappingCardView: View {
             thinkingEffort = thinking.effort ?? ""
         } else {
             thinkingEnabled = false
-            thinkingProtocol = .enable_thinking
+            thinkingProtocol = .enableThinking
             thinkingEffort = ""
         }
         thinkingOverrideEnabled = current.parameters.thinkingOverrideEnabled ?? false
@@ -334,7 +334,7 @@ struct MappingCardView: View {
             enabled: thinkingEnabled,
             budgetTokens: nil,
             thinkingProtocol: thinkingProtocol,
-            effort: (thinkingProtocol == .none && !thinkingEffort.isEmpty) ? thinkingEffort : nil
+            effort: (thinkingProtocol == .reasoningEffort && !thinkingEffort.isEmpty) ? thinkingEffort : nil
         )
 
         let customFieldsDict: [String: String]? = customFields.isEmpty

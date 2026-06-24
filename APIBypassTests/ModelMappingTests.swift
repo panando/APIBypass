@@ -47,22 +47,22 @@ final class ModelMappingTests: XCTestCase {
         let config = ThinkingConfig(
             enabled: true,
             budgetTokens: 5000,
-            thinkingProtocol: .none,
+            thinkingProtocol: .reasoningEffort,
             effort: "high"
         )
         let data = try JSONEncoder().encode(config)
         let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: data)
         XCTAssertEqual(decoded.enabled, true)
         XCTAssertEqual(decoded.budgetTokens, 5000)
-        XCTAssertEqual(decoded.thinkingProtocol, .none)
+        XCTAssertEqual(decoded.thinkingProtocol, .reasoningEffort)
         XCTAssertEqual(decoded.effort, "high")
     }
 
     func testThinkingConfigBackwardCompatOldReasoningEffort() throws {
-        // 旧版本 protocol="reasoning_effort" 应迁移到 .none
+        // 旧版本 protocol="reasoning_effort" 应迁移到 .reasoningEffort
         let json = #"{"enabled":true,"budgetTokens":5000,"protocol":"reasoning_effort","effort":"high"}"#.data(using: .utf8)!
         let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
-        XCTAssertEqual(decoded.thinkingProtocol, .none)
+        XCTAssertEqual(decoded.thinkingProtocol, .reasoningEffort)
         XCTAssertEqual(decoded.effort, "high")
     }
 
@@ -72,7 +72,7 @@ final class ModelMappingTests: XCTestCase {
         let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
         XCTAssertEqual(decoded.enabled, true)
         XCTAssertEqual(decoded.budgetTokens, 10000)
-        XCTAssertEqual(decoded.thinkingProtocol, .enable_thinking) // default fallback
+        XCTAssertEqual(decoded.thinkingProtocol, .enableThinking) // default fallback
         XCTAssertNil(decoded.effort)
     }
 
@@ -80,22 +80,22 @@ final class ModelMappingTests: XCTestCase {
 
     func testInferProtocolGLM() {
         let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://open.bigmodel.cn/api/paas/v4", model: "glm-5.2")
-        XCTAssertEqual(p, .anthropic_native)
+        XCTAssertEqual(p, .thinkingType)
     }
 
     func testInferProtocolOpenAIOSeries() {
         let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.openai.com/v1", model: "o3-mini")
-        XCTAssertEqual(p, .none)
+        XCTAssertEqual(p, .reasoningEffort)
     }
 
     func testInferProtocolDeepSeekReasoner() {
         let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.deepseek.com/v1", model: "deepseek-r1")
-        XCTAssertEqual(p, .none)
+        XCTAssertEqual(p, .reasoningEffort)
     }
 
     func testInferProtocolAnthropic() {
         let p = ThinkingConfig.ThinkingProtocol.infer(baseURL: "https://api.anthropic.com", model: "claude-sonnet-4-6")
-        XCTAssertEqual(p, .anthropic_native)
+        XCTAssertEqual(p, .thinkingType)
     }
 
     // MARK: - InjectedParameters Tests
@@ -205,5 +205,48 @@ final class ModelMappingTests: XCTestCase {
     func testAPIProvider_responses_caseIterable() {
         XCTAssertTrue(APIProvider.allCases.contains(.responses))
         XCTAssertEqual(APIProvider.allCases.count, 3)
+    }
+
+    // MARK: - ThinkingProtocol Renaming Tests
+
+    func testThinkingProtocol_thinkingType_displayName() {
+        XCTAssertEqual(ThinkingConfig.ThinkingProtocol.thinkingType.displayName, "thinking.type")
+    }
+
+    func testThinkingProtocol_reasoningEffort_displayName() {
+        XCTAssertEqual(ThinkingConfig.ThinkingProtocol.reasoningEffort.displayName, "reasoning_effort")
+    }
+
+    func testThinkingProtocol_enableThinking_displayName() {
+        XCTAssertEqual(ThinkingConfig.ThinkingProtocol.enableThinking.displayName, "enable_thinking")
+    }
+
+    func testThinkingProtocol_backwardCompat_anthropicNative() throws {
+        // 旧值 "anthropic_native" 应解码为 .thinkingType
+        let json = #"{"enabled":true,"protocol":"anthropic_native"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
+        XCTAssertEqual(decoded.thinkingProtocol, .thinkingType)
+    }
+
+    func testThinkingProtocol_backwardCompat_none() throws {
+        // 旧值 "none" 应解码为 .reasoningEffort
+        let json = #"{"enabled":true,"protocol":"none"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
+        XCTAssertEqual(decoded.thinkingProtocol, .reasoningEffort)
+    }
+
+    func testThinkingProtocol_backwardCompat_enableThinking() throws {
+        // 旧值 "enable_thinking" 应解码为 .enableThinking
+        let json = #"{"enabled":true,"protocol":"enable_thinking"}"#.data(using: .utf8)!
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: json)
+        XCTAssertEqual(decoded.thinkingProtocol, .enableThinking)
+    }
+
+    func testThinkingProtocol_newValues_encodeDecode() throws {
+        // 新值应正确编码解码
+        let config = ThinkingConfig(enabled: true, thinkingProtocol: .thinkingType)
+        let data = try JSONEncoder().encode(config)
+        let decoded = try JSONDecoder().decode(ThinkingConfig.self, from: data)
+        XCTAssertEqual(decoded.thinkingProtocol, .thinkingType)
     }
 }

@@ -19,4 +19,27 @@ enum APIProvider: String, Codable, CaseIterable {
     var transportFormat: APIProvider {
         return self
     }
+
+    /// 该 API 格式支持传输的参数集合
+    var transportableParameters: Set<InjectedParameter> {
+        switch self {
+        case .openai:
+            return [
+                .temperature, .topP, .maxTokens,
+                .frequencyPenalty, .presencePenalty,
+                .reasoningEffort, .thinkingType, .thinkingBudget
+            ]
+        case .anthropic:
+            return [
+                .temperature, .topP, .topK, .maxTokens,
+                .thinkingType, .budgetTokens
+            ]
+        case .responses:
+            return [
+                .temperature, .topP, .maxOutputTokens,
+                .frequencyPenalty, .presencePenalty,
+                .reasoningEffort, .thinkingType, .thinkingBudget
+            ]
+        }
+    }
 }

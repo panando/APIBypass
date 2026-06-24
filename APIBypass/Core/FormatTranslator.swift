@@ -198,24 +198,24 @@ final class FormatTranslator {
 
         // thinking → protocol-specific fields
         if let thinking = json["thinking"] as? [String: Any] {
-            let proto = thinkingConfig?.thinkingProtocol ?? .enable_thinking
+            let proto = thinkingConfig?.thinkingProtocol ?? .enableThinking
             let type = thinking["type"] as? String ?? ""
             let enabled = (type == "enabled")
 
             switch proto {
-            case .enable_thinking:
+            case .enableThinking:
                 out["enable_thinking"] = enabled
-            case .anthropic_native:
+            case .thinkingType:
                 var t = thinking
                 if !enabled { t = ["type": "disabled"] }
                 out["thinking"] = t
-            case .none:
+            case .reasoningEffort:
                 if let effort = thinkingConfig?.effort, !effort.isEmpty {
                     out["reasoning_effort"] = effort
                 }
             }
 
-            if proto != .anthropic_native {
+            if proto != .thinkingType {
                 out.removeValue(forKey: "thinking")
             }
         }

@@ -65,6 +65,26 @@ actor CodexRequestHandler {
         return (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
     }
 
+    /// Format a diagnostic event as a log line: `[CDP] {event} {detailJSON}`.
+    /// Pure function — safe to unit-test.
+    static func formatDiagnosticLogLine(event: String, detail: [String: Any]) -> String {
+        let jsonData = (try? JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys])) ?? Data()
+        let detailJSON = String(data: jsonData, encoding: .utf8) ?? "{}"
+        return "[CDP] \(event) \(detailJSON)"
+    }
+
+    /// Map a diagnostic event name to a log level.
+    /// - `*_failed` → `.error`
+    /// - `*_not_found` → `.info` (webpack module not yet loaded is normal)
+    /// - otherwise → `.info`
+    /// Pure function — safe to unit-test.
+    static func diagnosticLogLevel(for event: String) -> DisplayLogLevel {
+        if event.hasSuffix("_failed") {
+            return .error
+        }
+        return .info
+    }
+
     /// Handle a proxy request.
     func handle(
         request: Request,

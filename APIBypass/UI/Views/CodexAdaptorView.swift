@@ -142,15 +142,6 @@ private struct CodexServerTab: View {
                         Spacer()
                         Button(action: {
                             Task {
-                                await codexAdaptor.launchCodexApp()
-                            }
-                        }) {
-                            Label(L10n.t("codex_launch_app"), systemImage: "rocket")
-                        }
-                        .buttonStyle(.bordered)
-                        .help(L10n.t("codex_launch_app_help"))
-                        Button(action: {
-                            Task {
                                 if codexAdaptor.isRunning {
                                     await codexAdaptor.stop()
                                 } else {
@@ -306,8 +297,37 @@ private struct CodexServerTab: View {
 
     // MARK: - Enhancements Card
 
+    private var cdpStatusColor: Color {
+        switch codexAdaptor.cdpConnectionState {
+        case .disconnected: return .secondary
+        case .connecting, .connected: return .orange
+        case .injected: return .green
+        case .failed: return .red
+        }
+    }
+
+    private var cdpStatusText: String {
+        switch codexAdaptor.cdpConnectionState {
+        case .disconnected: return L10n.t("cdp_status_disconnected")
+        case .connecting, .connected: return L10n.t("cdp_status_connecting")
+        case .injected: return L10n.t("cdp_status_injected")
+        case .failed(let reason): return "\(L10n.t("cdp_status_failed")) — \(reason)"
+        }
+    }
+
     private var enhancementsCard: some View {
         cardSection(header: Label(L10n.t("codex_enhancements"), systemImage: "wand.and.stars")) {
+            HStack(spacing: 8) {
+                Circle()
+                    .fill(cdpStatusColor)
+                    .frame(width: 8, height: 8)
+                Text(cdpStatusText)
+                    .font(.caption)
+                    .foregroundColor(.secondary)
+                Spacer()
+            }
+            .padding(.bottom, 4)
+
             HStack {
                 VStack(alignment: .leading, spacing: 2) {
                     Text(L10n.t("codex_plugin_entry_unlock")).fontWeight(.medium)

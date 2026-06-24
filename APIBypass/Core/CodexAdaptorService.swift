@@ -80,40 +80,10 @@ final class CodexAdaptorService: ObservableObject {
         return config.cdpSettings
     }
 
-    /// Launch Codex.app with --remote-debugging-port so CDP injection can connect.
-    /// Uses `open -W -a` so macOS handles app activation; the process stays attached
-    /// so quitting Codex returns control to the caller.
-    @discardableResult
-    func launchCodexApp() async -> Bool {
-        let config = await CodexAdaptorConfigStore.shared.load()
-        let port = config.cdpDebugPort
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/open")
-        process.arguments = [
-            "-W",
-            "-a", "/Applications/Codex.app",
-            "--args",
-            "--remote-debugging-port=\(port)",
-            "--remote-allow-origins=http://127.0.0.1:\(port)",
-        ]
-
-        do {
-            try process.run()
-            CodexLogStore.shared.info("[CodexAdaptor] Launching Codex.app with remote-debugging-port=\(port)")
-            Task.detached {
-                process.waitUntilExit()
-            }
-            return true
-        } catch {
-            CodexLogStore.shared.info("[CodexAdaptor] Failed to launch Codex.app: \(error.localizedDescription)")
-            return false
-        }
-    }
-
     func handleSettingsGet() async -> (Int, String, String) {
         var settings = await currentInjectionSettings()
         settings.modelProvider = (try? CodexConfigService.shared.getCurrentUpstreamProvider()?.id) ?? ""
+        settings.proxyPort = port
         let jsonData = (try? JSONEncoder().encode(settings)) ?? Data()
         guard let jsonString = String(data: jsonData, encoding: .utf8) else {
             return (500, "application/json", #"{"error":"encode failed"}"#)

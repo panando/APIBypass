@@ -81,10 +81,13 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     func handleSettingsGet() async -> (Int, String, String) {
-        if let inj = injector {
-            return await inj.handleSettingsGet()
+        var settings = await currentInjectionSettings()
+        settings.modelProvider = (try? CodexConfigService.shared.getCurrentUpstreamProvider()?.id) ?? ""
+        let jsonData = (try? JSONEncoder().encode(settings)) ?? Data()
+        guard let jsonString = String(data: jsonData, encoding: .utf8) else {
+            return (500, "application/json", #"{"error":"encode failed"}"#)
         }
-        return (200, "application/json", "{}")
+        return (200, "application/json", jsonString)
     }
 
     /// Sync APIBypass Codex Adaptor config to ~/.codex/ files for Codex CLI compatibility.

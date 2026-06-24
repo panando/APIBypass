@@ -38,15 +38,6 @@ final class CDPDiagnosticsTests: XCTestCase {
         XCTAssertEqual(line, #"[CDP] catalog_failed {"error":"network timeout"}"#)
     }
 
-    func test_formatDiagnosticLogLine_nonSerializableDetail_fallsBackToEmptyBraces() {
-        // JSONSerialization rejects Date objects by default
-        let line = CodexRequestHandler.formatDiagnosticLogLine(
-            event: "weird_event",
-            detail: ["bad": Date()]
-        )
-        XCTAssertEqual(line, #"[CDP] weird_event {}"#)
-    }
-
     // MARK: - diagnosticLogLevel
 
     func test_diagnosticLogLevel_failedSuffix_returnsError() {

@@ -58,7 +58,7 @@ final class CodexAdaptorService: ObservableObject {
     private func startCDPStatePolling() {
         cdpStatePollingTask?.cancel()
         cdpStatePollingTask = Task { [weak self] in
-            while let strongSelf = self, strongSelf.isRunning, !Task.isCancelled {
+            while let strongSelf = self, !Task.isCancelled {
                 if let inj = strongSelf.injector {
                     let state = await inj.snapshotState()
                     if Task.isCancelled { break }

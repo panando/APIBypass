@@ -451,11 +451,15 @@ public let codexPluginInjectionScript: String = """
           ? result
           : { status: "failed", models: [] };
         codexModelCatalogLoadedAt = Date.now();
+        sendCodexPlusDiagnostic("catalog_loaded", {
+          modelCount: Array.isArray(codexModelCatalog.models) ? codexModelCatalog.models.length : 0,
+        });
         return codexModelCatalog;
       })
       .catch(() => {
         codexModelCatalog = { status: "failed", models: [] };
         codexModelCatalogLoadedAt = Date.now();
+        sendCodexPlusDiagnostic("catalog_failed", { error: "fetch failed" });
         return codexModelCatalog;
       })
       .finally(() => {
@@ -665,8 +669,10 @@ public let codexPluginInjectionScript: String = """
   function patchStatsigModelWhitelist() {
     if (!shouldPatchModels()) return;
     try {
+      let clientCount = 0;
       statsigClients().forEach((client) => {
         if (typeof client.getDynamicConfig !== "function") return;
+        clientCount += 1;
         if (!client.__codexPlusModelWhitelistPatched) {
           const originalGetDynamicConfig = client.getDynamicConfig.bind(client);
           client.getDynamicConfig = (name, options) => {
@@ -679,7 +685,12 @@ public let codexPluginInjectionScript: String = """
           patchStatsigModelDynamicConfig(client.getDynamicConfig("107580212", { disableExposureLog: true }));
         } catch (_) {}
       });
-    } catch (_) {}
+      if (clientCount > 0) {
+        sendCodexPlusDiagnostic("statsig_patch_installed", { clientCount: clientCount });
+      }
+    } catch (e) {
+      sendCodexPlusDiagnostic("statsig_patch_failed", { error: String(e?.stack || e) });
+    }
   }
 
   // ── IPC: Intercept model/list dispatch + response ─────────────────
@@ -699,6 +710,7 @@ public let codexPluginInjectionScript: String = """
   function patchAppServerModelMessages() {
     if (window.__codexPlusModelMessagePatchInstalled) return;
     window.__codexPlusModelMessagePatchInstalled = true;
+    sendCodexPlusDiagnostic("appserver_message_patch_installed", {});
     try {
       const originalDispatchEvent = window.dispatchEvent;
       window.dispatchEvent = function patchedCodexPlusDispatchEvent(event) {
@@ -784,8 +796,16 @@ public let codexPluginInjectionScript: String = """
         }
         if (patchedCount > 0) {
           window.__codexPlusAppServerModelRequestPatchInstalled = codexAppServerModelRequestPatchVersion;
+          sendCodexPlusDiagnostic("appserver_request_patch_installed", { patchedCount: patchedCount });
+        } else {
+          sendCodexPlusDiagnostic("appserver_request_patch_not_found", {
+            exportCount: Object.keys(module || {}).length,
+            candidateCount: candidates.length,
+          });
         }
-      } catch (_) {}
+      } catch (e) {
+        sendCodexPlusDiagnostic("appserver_request_patch_failed", { error: String(e?.stack || e) });
+      }
     };
     void patch();
   }
@@ -807,6 +827,7 @@ public let codexPluginInjectionScript: String = """
     if (!shouldPatchModels()) return;
     try {
       window.__codexPlusModelJsonResponsePatchInstalled = "1";
+      sendCodexPlusDiagnostic("json_response_patch_installed", {});
       const originalJson = Response.prototype.json;
       if (typeof originalJson !== "function") return;
       Response.prototype.json = async function codexPlusPatchedResponseJson(...args) {
@@ -861,6 +882,7 @@ public let codexPluginInjectionScript: String = """
     if (!shouldPatchModels()) return;
     durationMs = durationMs || 2500;
     codexModelWhitelistRefreshUntil = Math.max(codexModelWhitelistRefreshUntil, Date.now() + durationMs);
+    sendCodexPlusDiagnostic("model_whitelist_refresh_scheduled", { durationMs: durationMs });
     if (codexModelWhitelistRefreshTimer) return;
     const tick = () => {
       codexModelWhitelistRefreshTimer = 0;

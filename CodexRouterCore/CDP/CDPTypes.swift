@@ -96,3 +96,9 @@ public enum CDPConnectionState: Sendable, Equatable {
         }
     }
 }
+
+/// Logging interface for CDP internals, decoupling `CodexRouterCore` from the app's `CodexLogStore`.
+public protocol CDPLogger: Sendable {
+    func logInfo(_ message: String)
+    func logError(_ message: String)
+}

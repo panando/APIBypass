@@ -10,6 +10,8 @@ public actor CodexAppInjector {
     private var isRunning = false
     private var monitorTask: Task<Void, Never>?
     private var injectedPageId: String?
+    private let logger: CDPLogger?
+    private var connectionState: CDPConnectionState = .disconnected
 
     private static let httpTimeout: TimeInterval = 3
     private static let monitorInterval: TimeInterval = 3
@@ -20,9 +22,10 @@ public actor CodexAppInjector {
         return URLSession(configuration: config)
     }()
 
-    public init(debugPort: UInt16 = 9222, settings: CDPInjectionSettings = CDPInjectionSettings()) {
+    public init(debugPort: UInt16 = 9222, settings: CDPInjectionSettings = CDPInjectionSettings(), logger: CDPLogger? = nil) {
         self.debugPort = debugPort
         self.settings = settings
+        self.logger = logger
     }
 
     /// Start injection. Connects to Codex debug port and injects JS.
@@ -41,6 +44,13 @@ public actor CodexAppInjector {
         await client?.disconnect()
         client = nil
         injectedPageId = nil
+        connectionState = .disconnected
+        logger?.logInfo("[CDP] Injector stopped")
+    }
+
+    /// Snapshot current connection state for UI polling.
+    public func snapshotState() -> CDPConnectionState {
+        return connectionState
     }
 
     /// Update settings and push to injected JS via postMessage.
@@ -53,33 +63,48 @@ public actor CodexAppInjector {
     // MARK: - Private
 
     private func injectIntoCodex() async {
+        connectionState = .connecting
+        logger?.logInfo("[CDP] Connecting to debug port :\(debugPort)")
         do {
-            // Find the Codex page target
             let targets = try await queryCDPTargets()
             guard let target = pickCodexTarget(targets) else {
-                // No Codex page yet - will retry on monitor
+                connectionState = .disconnected
+                logger?.logInfo("[CDP] No Codex page target found, will retry")
                 return
             }
 
             guard let wsURLString = target.webSocketDebuggerUrl,
                   let wsURL = URL(string: wsURLString) else {
+                connectionState = .failed("Invalid WebSocket URL")
+                logger?.logError("[CDP] Invalid WebSocket URL for target")
                 return
             }
 
-            // Connect to CDP WebSocket
             let cdpClient = CDPClient(wsURL: wsURL)
             try await cdpClient.connect()
             self.client = cdpClient
             self.injectedPageId = target.id
+            connectionState = .connected
+            logger?.logInfo("[CDP] WebSocket connected")
 
-            // Push current settings before injecting
-            try? await pushSettings()
+            do {
+                try await pushSettings()
+            } catch {
+                logger?.logError("[CDP] Failed to push settings: \(error.localizedDescription)")
+            }
 
-            // Inject the script
-            try await cdpClient.evaluateJavaScript(codexPluginInjectionScript)
+            do {
+                try await cdpClient.evaluateJavaScript(codexPluginInjectionScript)
+                connectionState = .injected
+                logger?.logInfo("[CDP] Script injected")
+            } catch {
+                connectionState = .failed(error.localizedDescription)
+                logger?.logError("[CDP] Injection failed: \(error.localizedDescription)")
+            }
 
         } catch {
-            // Will retry on monitor
+            connectionState = .failed(error.localizedDescription)
+            logger?.logError("[CDP] \(error.localizedDescription)")
         }
     }
 
@@ -115,24 +140,23 @@ public actor CodexAppInjector {
     }
 
     private func monitorAndReinject() async {
-        // Check if the page is still there
         do {
             let targets = try await queryCDPTargets()
             if let currentId = injectedPageId {
                 let stillExists = targets.contains(where: { $0.id == currentId })
                 if !stillExists {
-                    // Page reloaded or navigated - reconnect
+                    logger?.logInfo("[CDP] Page disappeared, reconnecting")
+                    connectionState = .disconnected
                     await client?.disconnect()
                     client = nil
                     injectedPageId = nil
                     await injectIntoCodex()
                 }
             } else {
-                // No current injection - try to find a target
                 await injectIntoCodex()
             }
         } catch {
-            // Connection issues - will retry
+            logger?.logError("[CDP] Monitor error: \(error.localizedDescription)")
         }
     }
 

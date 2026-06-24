@@ -142,6 +142,15 @@ private struct CodexServerTab: View {
                         Spacer()
                         Button(action: {
                             Task {
+                                await codexAdaptor.launchCodexApp()
+                            }
+                        }) {
+                            Label(L10n.t("codex_launch_app"), systemImage: "rocket")
+                        }
+                        .buttonStyle(.bordered)
+                        .help(L10n.t("codex_launch_app_help"))
+                        Button(action: {
+                            Task {
                                 if codexAdaptor.isRunning {
                                     await codexAdaptor.stop()
                                 } else {

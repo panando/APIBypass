@@ -499,6 +499,8 @@ struct L10n {
         "codex_plugin_entry_unlock": [.chinese: "强制解锁入口", .english: "Force Entry Unlock"],
         "codex_model_whitelist_unlock": [.chinese: "模型白名单解锁", .english: "Model Whitelist Unlock"],
         "codex_marketplace_unlock": [.chinese: "插件市场解锁", .english: "Plugin Marketplace Unlock"],
+        "codex_launch_app": [.chinese: "启动 Codex", .english: "Launch Codex"],
+        "codex_launch_app_help": [.chinese: "以远程调试模式启动 Codex.app（注入增强功能所必需）", .english: "Launch Codex.app with remote debugging enabled (required for enhancements injection)"],
         "codex_force_plugin_install": [.chinese: "特殊插件强制安装", .english: "Force Plugin Install"],
         "codex_logs": [.chinese: "日志", .english: "Logs"],
         "codex_clear_logs": [.chinese: "清除", .english: "Clear"],

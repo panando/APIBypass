@@ -191,7 +191,7 @@ enum ModelCapabilityRegistry {
             patterns: ["deepseek-v4"],
             thinkingCapability: .optional(defaultOn: true),
             samplingEffectiveInThinking: false,
-            nativeParameters: [.maxTokens, .reasoningEffort],
+            nativeParameters: [.maxTokens, .thinkingType, .reasoningEffort],
             constraints: [
                 .init(parameter: .temperature, condition: .whenThinkingEnabled, reason: "思考模式下 temperature 参数无效"),
                 .init(parameter: .topP, condition: .whenThinkingEnabled, reason: "思考模式下 top_p 参数无效"),
@@ -325,8 +325,8 @@ enum ModelCapabilityRegistry {
             samplingEffectiveInThinking: false,
             nativeParameters: [.maxTokens],
             constraints: [
-                .init(parameter: .temperature, condition: .always, reason: "Kimi K2.7 Code 参数固定为 1.0"),
-                .init(parameter: .topP, condition: .always, reason: "Kimi K2.7 Code 参数固定为 0.95")
+                .init(parameter: .temperature, condition: .always, reason: "Kimi K2.7 Code 的 temperature 不可修改"),
+                .init(parameter: .topP, condition: .always, reason: "Kimi K2.7 Code 的 top_p 不可修改")
             ]
         ),
 
@@ -337,10 +337,10 @@ enum ModelCapabilityRegistry {
             samplingEffectiveInThinking: false,
             nativeParameters: [.maxTokens, .thinkingType],
             constraints: [
-                .init(parameter: .temperature, condition: .always, reason: "Kimi 参数固定为 1.0"),
-                .init(parameter: .topP, condition: .always, reason: "Kimi 参数固定为 0.95"),
-                .init(parameter: .frequencyPenalty, condition: .always, reason: "Kimi 参数固定为 0"),
-                .init(parameter: .presencePenalty, condition: .always, reason: "Kimi 参数固定为 0")
+                .init(parameter: .temperature, condition: .always, reason: "Kimi K2.5/K2.6 的 temperature 不可修改"),
+                .init(parameter: .topP, condition: .always, reason: "Kimi K2.5/K2.6 的 top_p 不可修改"),
+                .init(parameter: .frequencyPenalty, condition: .always, reason: "Kimi K2.5/K2.6 不支持 frequency_penalty"),
+                .init(parameter: .presencePenalty, condition: .always, reason: "Kimi K2.5/K2.6 不支持 presence_penalty")
             ]
         ),
 
@@ -397,10 +397,10 @@ enum ModelCapabilityRegistry {
 
         .init(
             id: "claude-4.8",
-            patterns: ["claude-opus-4.8", "claude-opus-4.7"],
+            patterns: ["claude-opus-4.8", "claude-opus-4.7", "claude-fable-5", "claude-mythos-5"],
             thinkingCapability: .adaptive,
             samplingEffectiveInThinking: false,
-            nativeParameters: [.maxTokens, .thinkingType],
+            nativeParameters: [.maxTokens],
             constraints: [
                 .init(parameter: .temperature, condition: .always, reason: "Claude Opus 4.7+ 不支持设置 temperature"),
                 .init(parameter: .topP, condition: .always, reason: "Claude Opus 4.7+ 不支持设置 top_p"),
@@ -410,10 +410,10 @@ enum ModelCapabilityRegistry {
 
         .init(
             id: "claude-4.6",
-            patterns: ["claude-opus-4.6", "claude-sonnet-4.6"],
+            patterns: ["claude-opus-4.6", "claude-sonnet-4.6", "claude-mythos-preview"],
             thinkingCapability: .adaptive,
             samplingEffectiveInThinking: false,
-            nativeParameters: [.maxTokens, .thinkingType],
+            nativeParameters: [.maxTokens],
             constraints: [
                 .init(parameter: .temperature, condition: .always, reason: "Claude 4.6 不支持设置 temperature"),
                 .init(parameter: .topP, condition: .always, reason: "Claude 4.6 不支持设置 top_p"),

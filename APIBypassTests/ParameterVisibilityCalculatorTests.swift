@@ -276,7 +276,7 @@ final class ParameterVisibilityCalculatorTests: XCTestCase {
             thinkingEnabled: false
         )
         if case .disabledWithReason(let reason) = visibility {
-            XCTAssertTrue(reason.contains("固定"))
+            XCTAssertTrue(reason.contains("不可修改"))
         } else {
             XCTFail("Expected disabledWithReason, got \(visibility)")
         }

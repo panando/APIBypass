@@ -3,14 +3,14 @@ import Foundation
 struct ThinkingConfig: Codable, Equatable {
     enum ThinkingProtocol: String, Codable, CaseIterable {
         case thinkingType         // thinking.type 参数形式（DeepSeek/GLM/Kimi/MiniMax/Claude 等）
-        case reasoningEffort      // reasoning_effort 参数形式（OpenAI o 系列/GPT-5.x/DeepSeek V4）
         case enableThinking       // enable_thinking 参数形式（Qwen 系列）
+        case reasoningEffort      // reasoning_effort 参数形式（OpenAI o 系列/GPT-5.x/DeepSeek V4）
 
         var displayName: String {
             switch self {
             case .thinkingType: return "thinking.type"
-            case .reasoningEffort: return "reasoning_effort"
             case .enableThinking: return "enable_thinking"
+            case .reasoningEffort: return "reasoning_effort"
             }
         }
 

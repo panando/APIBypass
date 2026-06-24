@@ -59,6 +59,9 @@ final class ModelCapabilityProfileTests: XCTestCase {
         let profile = ModelCapabilityRegistry.findProfile(for: "deepseek-v4-pro")
         XCTAssertNotNil(profile)
         XCTAssertEqual(profile?.thinkingCapability, .optional(defaultOn: true))
+        // DeepSeek V4 同时支持开关和深度参数
+        XCTAssertTrue(profile?.nativeParameters.contains(.thinkingType) ?? false)
+        XCTAssertTrue(profile?.nativeParameters.contains(.reasoningEffort) ?? false)
     }
 
     func testDeepSeekV32_OptionalThinking_DefaultOff() {
@@ -131,10 +134,25 @@ final class ModelCapabilityProfileTests: XCTestCase {
         let profile = ModelCapabilityRegistry.findProfile(for: "claude-opus-4.8-20250514")
         XCTAssertNotNil(profile)
         XCTAssertEqual(profile?.thinkingCapability, .adaptive)
+        // Opus 4.7/4.8 不支持手动 thinking.type 开关，adaptive only
+        XCTAssertFalse(profile?.nativeParameters.contains(.thinkingType) ?? true)
     }
 
     func testClaudeOpus47_Adaptive() {
         let profile = ModelCapabilityRegistry.findProfile(for: "claude-opus-4.7")
+        XCTAssertNotNil(profile)
+        XCTAssertEqual(profile?.thinkingCapability, .adaptive)
+        XCTAssertFalse(profile?.nativeParameters.contains(.thinkingType) ?? true)
+    }
+
+    func testClaudeFable5_Adaptive() {
+        let profile = ModelCapabilityRegistry.findProfile(for: "claude-fable-5")
+        XCTAssertNotNil(profile)
+        XCTAssertEqual(profile?.thinkingCapability, .adaptive)
+    }
+
+    func testClaudeMythos5_Adaptive() {
+        let profile = ModelCapabilityRegistry.findProfile(for: "claude-mythos-5")
         XCTAssertNotNil(profile)
         XCTAssertEqual(profile?.thinkingCapability, .adaptive)
     }

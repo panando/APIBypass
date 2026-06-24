@@ -129,23 +129,28 @@ struct ProviderDetailView: View {
 
                     // Responses API warning banner
                     if apiProvider == .responses {
-                        VStack(alignment: .leading, spacing: 4) {
-                            HStack(spacing: 4) {
-                                Image(systemName: "exclamationmark.triangle")
-                                    .foregroundColor(.orange)
-                                Text(L10n.t("provider_responses_note_title"))
-                                    .font(.subheadline)
-                                    .fontWeight(.medium)
+                        HStack {
+                            Spacer()
+                            VStack(alignment: .center, spacing: 4) {
+                                HStack(spacing: 4) {
+                                    Image(systemName: "exclamationmark.triangle")
+                                        .foregroundColor(.orange)
+                                    Text(L10n.t("provider_responses_note_title"))
+                                        .font(.subheadline)
+                                        .fontWeight(.medium)
+                                }
+                                Text(L10n.t("provider_responses_note_desc"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                                    .fixedSize(horizontal: false, vertical: true)
                             }
-                            Text(L10n.t("provider_responses_note_desc"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                                .fixedSize(horizontal: false, vertical: true)
+                            .padding(8)
+                            .background(Color.orange.opacity(0.1))
+                            .cornerRadius(6)
+                            .padding(.top, 8)
+                            Spacer()
                         }
-                        .padding(8)
-                        .background(Color.orange.opacity(0.1))
-                        .cornerRadius(6)
-                        .padding(.top, 8)
                     }
 
                     // Save button inside provider card

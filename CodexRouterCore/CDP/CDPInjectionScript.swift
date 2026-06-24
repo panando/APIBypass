@@ -407,12 +407,16 @@ public let codexPluginInjectionScript: String = """
   // ── Settings polling ──────────────────────────────────────────────
   async function fetchBackendSettings() {
     try {
-      const resp = await fetch("http://127.0.0.1:15721/settings/get");
+      const resp = await fetch(codexPlusBackendBase() + "/settings/get");
       if (resp.ok) {
         const data = await resp.json();
         codexPlusBackendSettings = data;
         codexPlusBackendSettingsLoaded = true;
         window.__codexPlusBackendSettings = data;
+        sendCodexPlusDiagnostic("settings_loaded", {
+          modelProvider: data.modelProvider || "",
+          enhancementsEnabled: data.enhancementsEnabled,
+        });
       }
     } catch (_) {}
   }
@@ -440,7 +444,7 @@ public let codexPluginInjectionScript: String = """
   async function loadCodexModelCatalog(force = false) {
     if (!force && codexModelCatalogPromise) return codexModelCatalogPromise;
     if (!force && codexModelCatalogLoadedAt && Date.now() - codexModelCatalogLoadedAt < codexModelCatalogCacheMs) return codexModelCatalog;
-    codexModelCatalogPromise = fetch("http://127.0.0.1:15721/codex-model-catalog")
+    codexModelCatalogPromise = fetch(codexPlusBackendBase() + "/codex-model-catalog")
       .then((resp) => resp.json())
       .then((result) => {
         codexModelCatalog = result && typeof result === "object" && Array.isArray(result.models)
@@ -891,6 +895,32 @@ public let codexPluginInjectionScript: String = """
   }
 
   // ── Bootstrap ─────────────────────────────────────────────────────
+  // ── Diagnostics (ported from Codex Plus Plus) ────────────────────
+  function codexPlusBackendBase() {
+    const port = codexPlusBackendSettings.proxyPort || 15721;
+    return "http://127.0.0.1:" + port;
+  }
+
+  function sendCodexPlusDiagnostic(event, detail) {
+    try {
+      const payload = {
+        event: event,
+        detail: detail || {},
+        location: window.location?.href || "",
+        userAgent: navigator.userAgent || "",
+        timestamp: new Date().toISOString(),
+      };
+      fetch(codexPlusBackendBase() + "/cdp/diagnostic", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload),
+        keepalive: true,
+      }).catch(() => {});
+    } catch (_) {}
+  }
+
+  sendCodexPlusDiagnostic("script_loaded", { version: "apibypass-1" });
+
   window.__codexPlusBackendSettings = codexPlusBackendSettings;
 
   // Poll settings and scan

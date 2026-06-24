@@ -55,6 +55,14 @@ actor CodexRequestHandler {
         request: Request,
         endpoint: ProxyEndpoint
     ) async throws -> Response {
+        // `.models` always returns the local catalog — never forward to upstream.
+        // This keeps Codex's model selector populated even when the upstream is
+        // unreachable or the user is not logged in.
+        if endpoint == .models {
+            let provider = try? CodexConfigService.shared.getCurrentUpstreamProvider()
+            return Self.makeModelsListResponse(catalog: provider?.modelCatalog)
+        }
+
         guard let provider = try CodexConfigService.shared.getCurrentUpstreamProvider() else {
             return Response(
                 status: .serviceUnavailable,
@@ -83,21 +91,6 @@ actor CodexRequestHandler {
         headers["Content-Type"] = "application/json"
         if let token = provider.bearerToken {
             headers["Authorization"] = "Bearer \(token)"
-        }
-
-        // Handle GET requests (models endpoint)
-        if endpoint == .models {
-            do {
-                let (data, status) = try await httpClient.send(
-                    url: upstreamURL, method: .get, headers: headers, body: nil
-                )
-                return Response(status: status, body: .init(byteBuffer: ByteBuffer(data: data)))
-            } catch {
-                return Response(
-                    status: .badGateway,
-                    body: .init(byteBuffer: ByteBuffer(string: #"{"error":"\#(error.localizedDescription)"}"#))
-                )
-            }
         }
 
         // Parse request body for POST requests

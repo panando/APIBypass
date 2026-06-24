@@ -41,6 +41,15 @@ actor CodexRequestHandler {
         return (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
     }
 
+    /// Wrap the models-list body in an HTTP 200 Hummingbird Response.
+    static func makeModelsListResponse(catalog: ModelCatalog?) -> Response {
+        let body = makeModelsListBody(catalog: catalog)
+        return Response(
+            status: .ok,
+            body: .init(byteBuffer: ByteBuffer(data: body))
+        )
+    }
+
     /// Handle a proxy request.
     func handle(
         request: Request,

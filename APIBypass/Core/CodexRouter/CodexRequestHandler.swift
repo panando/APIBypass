@@ -25,6 +25,22 @@ actor CodexRequestHandler {
         self.httpClient = HTTPClient()
     }
 
+    /// Build the OpenAI-compatible `/v1/models` response body from the local catalog.
+    /// Pure function — does not touch the network or singletons, safe to unit-test.
+    /// - Returns: `{"object":"list","data":[{"id":...,"object":"model","owned_by":"apibypass"}]}`
+    static func makeModelsListBody(catalog: ModelCatalog?) -> Data {
+        let entries = catalog?.models ?? []
+        let data: [[String: Any]] = entries.map { entry in
+            [
+                "id": entry.displayName ?? entry.model,
+                "object": "model",
+                "owned_by": "apibypass"
+            ]
+        }
+        let body: [String: Any] = ["object": "list", "data": data]
+        return (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
+    }
+
     /// Handle a proxy request.
     func handle(
         request: Request,

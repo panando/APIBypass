@@ -40,6 +40,26 @@ enum CodexRoutes {
             )
         }
 
+        router.post("/cdp/diagnostic") { request, _ in
+            // Read body (chunk-by-chunk, matching the pattern in CodexRequestHandler.forwardRequest).
+            var bodyBuffer = ByteBuffer()
+            for try await chunk in request.body {
+                var mutableChunk = chunk
+                bodyBuffer.writeBuffer(&mutableChunk)
+            }
+            let body = Data(buffer: bodyBuffer)
+            let json = (try? JSONSerialization.jsonObject(with: body) as? [String: Any]) ?? [:]
+            let event = (json["event"] as? String) ?? "unknown"
+            let detail = (json["detail"] as? [String: Any]) ?? [:]
+            let line = CodexRequestHandler.formatDiagnosticLogLine(event: event, detail: detail)
+            let level = CodexRequestHandler.diagnosticLogLevel(for: event)
+            CodexLogStore.shared.append(level: level, message: line)
+            return Response(
+                status: .ok,
+                body: .init(byteBuffer: ByteBuffer(string: #"{"ok":true}"#))
+            )
+        }
+
         router.get("/v1/models") { request, context in
             return try await requestHandler.handle(request: request, endpoint: .models)
         }

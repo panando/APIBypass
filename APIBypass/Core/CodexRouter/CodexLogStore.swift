@@ -1,4 +1,5 @@
 import Foundation
+import CodexRouterCore
 
 /// Thread-safe ring buffer for Codex Adaptor log entries.
 /// Not an ObservableObject — UI polls via snapshot() to avoid @Published
@@ -39,4 +40,9 @@ final class CodexLogStore: @unchecked Sendable {
         defer { lock.unlock() }
         return entries
     }
+}
+
+extension CodexLogStore: CDPLogger {
+    func logInfo(_ message: String) { info(message) }
+    func logError(_ message: String) { append(level: .error, message: message) }
 }

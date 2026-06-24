@@ -7,6 +7,7 @@ import CodexRouterCore
 final class CodexAdaptorService: ObservableObject {
     @Published var isRunning = false
     @Published var port: Int = 15721
+    @Published var cdpConnectionState: CDPConnectionState = .disconnected
 
     private var server: CodexProxyServer?
     private var injector: CodexAppInjector?
@@ -32,10 +33,12 @@ final class CodexAdaptorService: ObservableObject {
         if config.cdpSettings.enhancementsEnabled {
             let inj = CodexAppInjector(
                 debugPort: config.cdpDebugPort,
-                settings: config.cdpSettings
+                settings: config.cdpSettings,
+                logger: CodexLogStore.shared
             )
             self.injector = inj
             await inj.start()
+            startCDPStatePolling()
         }
 
         try await server.start(port: config.port) { [weak self] in
@@ -46,9 +49,25 @@ final class CodexAdaptorService: ObservableObject {
         CodexLogStore.shared.info("[CodexAdaptor] Service started on port \(config.port)")
     }
 
+    /// Poll CDP connection state from the injector actor every 3 seconds.
+    private func startCDPStatePolling() {
+        Task { [weak self] in
+            while self?.isRunning == true {
+                if let inj = await self?.injector {
+                    let state = await inj.snapshotState()
+                    await MainActor.run {
+                        self?.cdpConnectionState = state
+                    }
+                }
+                try? await Task.sleep(for: .seconds(3))
+            }
+        }
+    }
+
     func stop() async {
         await injector?.stop()
         injector = nil
+        cdpConnectionState = .disconnected
 
         await server?.stop()
         server = nil

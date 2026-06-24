@@ -24,6 +24,8 @@ public let codexPluginInjectionScript: String = """
   const codexPlusBackendSettingMap = {
     pluginEntryUnlock: "codexAppPluginEntryUnlock",
     forcePluginInstall: "codexAppForcePluginInstall",
+    pluginMarketplaceUnlock: "codexAppPluginMarketplaceUnlock",
+    modelWhitelistUnlock: "codexAppModelWhitelistUnlock",
   };
 
   function defaultCodexPlusSettings() {
@@ -332,6 +334,7 @@ public let codexPluginInjectionScript: String = """
   function installPluginMarketplacePatch() {
     if (window.__codexPluginMarketplacePatchInstalled) return;
     if (pluginPatchDisabledInRelayMode()) return;
+    if (!codexPlusSettings().pluginMarketplaceUnlock) return;
 
     const originalFilter = Array.prototype.__codexOriginalFilter || Array.prototype.filter;
     if (!Array.prototype.__codexOriginalFilter) {
@@ -414,6 +417,202 @@ public let codexPluginInjectionScript: String = """
     } catch (_) {}
   }
 
+  // ── Model Whitelist Unlock ────────────────────────────────────────
+  let codexModelCatalog = { status: "loading", models: [] };
+  let codexModelCatalogLoadedAt = 0;
+  let codexModelCatalogPromise = null;
+  const codexModelCatalogCacheMs = 10000;
+
+  function shouldPatchModels() {
+    if (pluginPatchDisabledInRelayMode()) return false;
+    if (codexPlusBackendSettings.modelProvider === "chatgpt") return false;
+    return codexPlusSettings().modelWhitelistUnlock;
+  }
+
+  function codexPlusModelNames() {
+    const models = Array.isArray(codexModelCatalog.models) ? codexModelCatalog.models : [];
+    return Array.from(new Set(models.map((entry) => entry?.displayName || entry?.model).filter((name) => typeof name === "string" && name.length > 0)));
+  }
+
+  async function loadCodexModelCatalog(force = false) {
+    if (!force && codexModelCatalogPromise) return codexModelCatalogPromise;
+    if (!force && codexModelCatalogLoadedAt && Date.now() - codexModelCatalogLoadedAt < codexModelCatalogCacheMs) return codexModelCatalog;
+    codexModelCatalogPromise = fetch("http://127.0.0.1:15721/codex-model-catalog")
+      .then((resp) => resp.json())
+      .then((result) => {
+        codexModelCatalog = result && typeof result === "object" && Array.isArray(result.models)
+          ? result
+          : { status: "failed", models: [] };
+        codexModelCatalogLoadedAt = Date.now();
+        return codexModelCatalog;
+      })
+      .catch(() => {
+        codexModelCatalog = { status: "failed", models: [] };
+        codexModelCatalogLoadedAt = Date.now();
+        return codexModelCatalog;
+      })
+      .finally(() => {
+        codexModelCatalogPromise = null;
+      });
+    return codexModelCatalogPromise;
+  }
+
+  function patchStatsigModelDynamicConfig(config) {
+    try {
+      const names = codexPlusModelNames();
+      const value = config?.value;
+      if (!names.length || !value || typeof value !== "object") return config;
+      const availableModels = Array.isArray(value.available_models) ? [...value.available_models] : [];
+      let changed = false;
+      names.forEach((name) => {
+        if (!availableModels.includes(name)) {
+          availableModels.push(name);
+          changed = true;
+        }
+      });
+      if (!changed) return config;
+      const nextValue = { ...value, available_models: availableModels };
+      try {
+        config.value = nextValue;
+      } catch {
+        return { ...config, value: nextValue };
+      }
+      return config;
+    } catch {
+      return config;
+    }
+  }
+
+  function statsigClients() {
+    try {
+      const root = window.__STATSIG__ || globalThis.__STATSIG__;
+      if (!root || typeof root !== "object") return [];
+      const clients = [root.firstInstance, typeof root.instance === "function" ? root.instance() : null];
+      if (root.instances && typeof root.instances === "object") clients.push(...Object.values(root.instances));
+      return clients.filter((client, index, array) => client && typeof client === "object" && array.indexOf(client) === index);
+    } catch {
+      return [];
+    }
+  }
+
+  function patchStatsigModelWhitelist() {
+    if (!shouldPatchModels()) return;
+    try {
+      statsigClients().forEach((client) => {
+        if (typeof client.getDynamicConfig !== "function") return;
+        if (!client.__codexPlusModelWhitelistPatched) {
+          const originalGetDynamicConfig = client.getDynamicConfig.bind(client);
+          client.getDynamicConfig = (name, options) => {
+            const result = originalGetDynamicConfig(name, options);
+            return patchStatsigModelDynamicConfig(result);
+          };
+          client.__codexPlusModelWhitelistPatched = true;
+        }
+        try {
+          patchStatsigModelDynamicConfig(client.getDynamicConfig("107580212", { disableExposureLog: true }));
+        } catch (_) {}
+      });
+    } catch (_) {}
+  }
+
+  // ── React State Patch (fallback) ──────────────────────────────────
+  function patchModelNameArray(models) {
+    try {
+      if (!Array.isArray(models) || models.length === 0) return false;
+      if (!models.every((item) => typeof item === "string")) return false;
+      const customModels = codexPlusModelNames();
+      if (!customModels.length) return false;
+      let changed = false;
+      customModels.forEach((name) => {
+        if (!models.includes(name)) {
+          models.push(name);
+          changed = true;
+        }
+      });
+      return changed;
+    } catch {
+      return false;
+    }
+  }
+
+  function patchModelContainer(value) {
+    try {
+      if (!value || typeof value !== "object") return false;
+      const names = codexPlusModelNames();
+      if (!names.length) return false;
+      let changed = false;
+      if (value.availableModels instanceof Set) {
+        names.forEach((name) => { if (!value.availableModels.has(name)) { value.availableModels.add(name); changed = true; } });
+      }
+      if (value.available_models instanceof Set) {
+        names.forEach((name) => { if (!value.available_models.has(name)) { value.available_models.add(name); changed = true; } });
+      }
+      if (Array.isArray(value.availableModels)) {
+        names.forEach((name) => { if (!value.availableModels.includes(name)) { value.availableModels.push(name); changed = true; } });
+      }
+      if (Array.isArray(value.available_models)) {
+        names.forEach((name) => { if (!value.available_models.includes(name)) { value.available_models.push(name); changed = true; } });
+      }
+      if (Array.isArray(value.models) && value.models.length > 0 && value.models.every((item) => typeof item === "string")) {
+        if (patchModelNameArray(value.models)) changed = true;
+      }
+      return changed;
+    } catch {
+      return false;
+    }
+  }
+
+  function patchObjectGraphForModels(root, visited, depth) {
+    try {
+      if (!root || typeof root !== "object" || visited.has(root) || depth > 5) return false;
+      visited.add(root);
+      let changed = patchModelContainer(root);
+      if (root instanceof Element || root === window || root === document || root === document.body || root === document.documentElement) return changed;
+      for (const key of Object.keys(root)) {
+        if (key === "ownerDocument" || key === "parentElement" || key === "parentNode" || key === "children" || key === "childNodes") continue;
+        let value;
+        try { value = root[key]; } catch { continue; }
+        if (value && typeof value === "object" && patchObjectGraphForModels(value, visited, depth + 1)) changed = true;
+      }
+      return changed;
+    } catch {
+      return false;
+    }
+  }
+
+  function patchReactModelState() {
+    if (!shouldPatchModels()) return;
+    if (!codexPlusModelNames().length) return;
+    try {
+      const selector = "[role='menu'], [role='dialog'], [role='listbox'], [data-radix-popper-content-wrapper]";
+      const nodes = [document.body, ...document.querySelectorAll(selector)];
+      nodes.forEach((node) => {
+        if (!node) return;
+        patchObjectGraphForModels(node, new WeakSet(), 0);
+      });
+    } catch (_) {}
+  }
+
+  let modelWhitelistMutationObserver = null;
+  function startModelWhitelistObserver() {
+    if (!shouldPatchModels()) return;
+    if (modelWhitelistMutationObserver) return;
+    try {
+      modelWhitelistMutationObserver = new MutationObserver(() => {
+        patchReactModelState();
+      });
+      modelWhitelistMutationObserver.observe(document.body, { childList: true, subtree: true });
+    } catch (_) {}
+  }
+
+  async function bootstrapModelWhitelist() {
+    await loadCodexModelCatalog();
+    if (!shouldPatchModels()) return;
+    patchStatsigModelWhitelist();
+    patchReactModelState();
+    startModelWhitelistObserver();
+  }
+
   // ── Bootstrap ─────────────────────────────────────────────────────
   window.__codexPlusBackendSettings = codexPlusBackendSettings;
 
@@ -421,6 +620,7 @@ public let codexPluginInjectionScript: String = """
   async function bootstrap() {
     await fetchBackendSettings();
     installPluginMarketplacePatch();  // Install marketplace unlock patch
+    void bootstrapModelWhitelist();   // Install model whitelist patch (async)
     scan();
     // Continue scanning on every animation frame
     function loop() {

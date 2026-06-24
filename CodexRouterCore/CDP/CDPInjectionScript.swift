@@ -456,10 +456,10 @@ public let codexPluginInjectionScript: String = """
         });
         return codexModelCatalog;
       })
-      .catch(() => {
+      .catch((err) => {
         codexModelCatalog = { status: "failed", models: [] };
         codexModelCatalogLoadedAt = Date.now();
-        sendCodexPlusDiagnostic("catalog_failed", { error: "fetch failed" });
+        sendCodexPlusDiagnostic("catalog_failed", { error: String(err?.message || err) });
         return codexModelCatalog;
       })
       .finally(() => {
@@ -710,7 +710,6 @@ public let codexPluginInjectionScript: String = """
   function patchAppServerModelMessages() {
     if (window.__codexPlusModelMessagePatchInstalled) return;
     window.__codexPlusModelMessagePatchInstalled = true;
-    sendCodexPlusDiagnostic("appserver_message_patch_installed", {});
     try {
       const originalDispatchEvent = window.dispatchEvent;
       window.dispatchEvent = function patchedCodexPlusDispatchEvent(event) {
@@ -735,6 +734,7 @@ public let codexPluginInjectionScript: String = """
           }
         } catch (_) {}
       }, true);
+      sendCodexPlusDiagnostic("appserver_message_patch_installed", {});
     } catch (_) {}
   }
 
@@ -827,13 +827,13 @@ public let codexPluginInjectionScript: String = """
     if (!shouldPatchModels()) return;
     try {
       window.__codexPlusModelJsonResponsePatchInstalled = "1";
-      sendCodexPlusDiagnostic("json_response_patch_installed", {});
       const originalJson = Response.prototype.json;
       if (typeof originalJson !== "function") return;
       Response.prototype.json = async function codexPlusPatchedResponseJson(...args) {
         const payload = await originalJson.apply(this, args);
         return await patchModelJsonResponse(payload);
       };
+      sendCodexPlusDiagnostic("json_response_patch_installed", {});
     } catch (_) {}
   }
 

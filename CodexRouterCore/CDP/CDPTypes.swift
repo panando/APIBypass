@@ -52,6 +52,7 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
     public var codexAppPluginMarketplaceUnlock: Bool
     public var codexAppModelWhitelistUnlock: Bool
     public var modelProvider: String
+    public var proxyPort: Int
 
     public init(
         codexAppPluginEntryUnlock: Bool = true,
@@ -61,7 +62,8 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
         codexAppVersion: String = "",
         codexAppPluginMarketplaceUnlock: Bool = true,
         codexAppModelWhitelistUnlock: Bool = true,
-        modelProvider: String = ""
+        modelProvider: String = "",
+        proxyPort: Int = 15721
     ) {
         self.codexAppPluginEntryUnlock = codexAppPluginEntryUnlock
         self.codexAppForcePluginInstall = codexAppForcePluginInstall
@@ -71,5 +73,6 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
         self.codexAppPluginMarketplaceUnlock = codexAppPluginMarketplaceUnlock
         self.codexAppModelWhitelistUnlock = codexAppModelWhitelistUnlock
         self.modelProvider = modelProvider
+        self.proxyPort = proxyPort
     }
 }

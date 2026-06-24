@@ -50,6 +50,8 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
     public var launchMode: String
     public var codexAppVersion: String
     public var codexAppPluginMarketplaceUnlock: Bool
+    public var codexAppModelWhitelistUnlock: Bool
+    public var modelProvider: String
 
     public init(
         codexAppPluginEntryUnlock: Bool = true,
@@ -57,7 +59,9 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
         enhancementsEnabled: Bool = true,
         launchMode: String = "patch",
         codexAppVersion: String = "",
-        codexAppPluginMarketplaceUnlock: Bool = true
+        codexAppPluginMarketplaceUnlock: Bool = true,
+        codexAppModelWhitelistUnlock: Bool = true,
+        modelProvider: String = ""
     ) {
         self.codexAppPluginEntryUnlock = codexAppPluginEntryUnlock
         self.codexAppForcePluginInstall = codexAppForcePluginInstall
@@ -65,5 +69,7 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
         self.launchMode = launchMode
         self.codexAppVersion = codexAppVersion
         self.codexAppPluginMarketplaceUnlock = codexAppPluginMarketplaceUnlock
+        self.codexAppModelWhitelistUnlock = codexAppModelWhitelistUnlock
+        self.modelProvider = modelProvider
     }
 }

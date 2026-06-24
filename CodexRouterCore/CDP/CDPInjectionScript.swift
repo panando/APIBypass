@@ -167,6 +167,7 @@ public let codexPluginInjectionScript: String = """
     }
     if (pluginButton.dataset.codexPluginEnabled !== "true") {
       pluginButton.dataset.codexPluginEnabled = "true";
+      sendCodexPlusDiagnostic("plugin_entry_unlocked", { spoofed: spoofed });
       pluginButton.addEventListener("click", () => {
         spoofChatGPTAuthMethod(pluginButton);
       }, true);
@@ -361,6 +362,7 @@ public let codexPluginInjectionScript: String = """
 
     Array.prototype.filter = patchedFilter;
     window.__codexPluginMarketplacePatchInstalled = true;
+    sendCodexPlusDiagnostic("plugin_marketplace_patch_installed", {});
     console.log("[CodexPlus] Plugin marketplace patch installed");
   }
 

@@ -50,6 +50,21 @@ actor CodexRequestHandler {
         )
     }
 
+    /// Build the `/codex-model-catalog` response body from the local catalog.
+    /// Pure function — does not touch the network or singletons, safe to unit-test.
+    /// - Returns: `{"status":"ok","models":[{"model":...,"displayName":...}]}`
+    static func makeModelCatalogBody(catalog: ModelCatalog?) -> Data {
+        let entries = catalog?.models ?? []
+        let models: [[String: Any]] = entries.map { entry in
+            [
+                "model": entry.model,
+                "displayName": entry.displayName ?? entry.model
+            ]
+        }
+        let body: [String: Any] = ["status": "ok", "models": models]
+        return (try? JSONSerialization.data(withJSONObject: body)) ?? Data()
+    }
+
     /// Handle a proxy request.
     func handle(
         request: Request,

@@ -69,7 +69,7 @@ actor CodexRequestHandler {
     /// Pure function — safe to unit-test.
     static func formatDiagnosticLogLine(event: String, detail: [String: Any]) -> String {
         let jsonData = (try? JSONSerialization.data(withJSONObject: detail, options: [.sortedKeys])) ?? Data()
-        let detailJSON = String(data: jsonData, encoding: .utf8) ?? "{}"
+        let detailJSON = jsonData.isEmpty ? "{}" : (String(data: jsonData, encoding: .utf8) ?? "{}")
         return "[CDP] \(event) \(detailJSON)"
     }
 

@@ -76,3 +76,23 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
         self.proxyPort = proxyPort
     }
 }
+
+/// CDP connection state for UI display.
+public enum CDPConnectionState: Sendable, Equatable {
+    case disconnected
+    case connecting
+    case connected
+    case injected
+    case failed(String)
+
+    /// Human-readable label for UI display.
+    public var localizedName: String {
+        switch self {
+        case .disconnected: return "CDP: 未连接"
+        case .connecting: return "CDP: 连接中"
+        case .connected: return "CDP: 连接中"
+        case .injected: return "CDP: 已注入"
+        case .failed(let reason): return "CDP: 失败 — \(reason)"
+        }
+    }
+}

@@ -46,7 +46,7 @@ struct NewMappingView: View {
             }
             .padding()
         }
-        .frame(width: 500, height: 700)
+        .frame(width: 500)
         .sheet(isPresented: $showNewProviderSheet) {
             NewProviderView(configManager: configManager, keychain: keychain) { newProvider in
                 selectedProviderId = newProvider.id

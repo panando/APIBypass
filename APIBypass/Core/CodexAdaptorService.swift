@@ -85,11 +85,25 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     func updateConfig(_ config: CodexAdaptorConfig) async throws {
+        let previousDebugPort: UInt16? = injector != nil
+            ? await injector?.configuredDebugPort
+            : nil
         await CodexAdaptorConfigStore.shared.save(config)
         try await syncCodexConfig(config: config)
 
-        // Update CDP settings if running
-        if let inj = injector {
+        if let inj = injector, let prev = previousDebugPort, prev != config.cdpDebugPort {
+            CodexLogStore.shared.info("[CodexAdaptor] CDP debug port changed \(prev)→\(config.cdpDebugPort), restarting injector")
+            await inj.stop()
+            var cdpSettings = config.cdpSettings
+            cdpSettings.proxyPort = config.port
+            let newInj = CodexAppInjector(
+                debugPort: config.cdpDebugPort,
+                settings: cdpSettings,
+                logger: CodexLogStore.shared
+            )
+            self.injector = newInj
+            await newInj.start()
+        } else if let inj = injector {
             var cdpSettings = config.cdpSettings
             cdpSettings.proxyPort = config.port
             await inj.updateSettings(cdpSettings)

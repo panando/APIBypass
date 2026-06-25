@@ -103,12 +103,15 @@ final class CodexAdaptorService: ObservableObject {
         let config = await CodexAdaptorConfigStore.shared.load()
         var cdpSettings = config.cdpSettings
         cdpSettings.proxyPort = port
+        cdpSettings.modelProvider = (try? CodexConfigService.shared.getCurrentUpstreamProvider()?.id) ?? ""
         await inj.updateSettings(cdpSettings)
     }
 
     func currentInjectionSettings() async -> CDPInjectionSettings {
         let config = await CodexAdaptorConfigStore.shared.load()
-        return config.cdpSettings
+        var settings = config.cdpSettings
+        settings.modelProvider = (try? CodexConfigService.shared.getCurrentUpstreamProvider()?.id) ?? ""
+        return settings
     }
 
     func handleSettingsGet() async -> (Int, String, String) {
@@ -148,19 +151,14 @@ final class CodexAdaptorService: ObservableObject {
     }
 
     private func buildModelCatalog(from config: CodexAdaptorConfig) async -> ModelCatalog? {
-        let customModels = config.currentCustomModels
-        guard !customModels.isEmpty else { return nil }
         let mappings = await ConfigDataStore.shared.getMappings()
-        let entries = customModels.compactMap { entry -> ModelCatalogEntry? in
-            guard let mapping = mappings.first(where: { $0.id == entry.modelMappingId }) else {
-                return nil
-            }
-            return ModelCatalogEntry(
-                model: mapping.incomingModel,
-                displayName: entry.alias.isEmpty ? mapping.incomingModel : entry.alias,
-                contextWindow: entry.contextWindow
-            )
-        }
+        let providers = await ConfigDataStore.shared.getProviders()
+        let entries = CodexConfigBridge.buildCatalogEntries(
+            customModels: config.currentCustomModels,
+            mappings: mappings,
+            providers: providers,
+            wireAPI: config.wireAPI
+        )
         guard !entries.isEmpty else { return nil }
         return ModelCatalog(models: entries)
     }

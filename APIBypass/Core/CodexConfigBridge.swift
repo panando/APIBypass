@@ -81,4 +81,63 @@ struct CodexConfigBridge {
         }
         return ModelCatalog(models: catalogEntries)
     }
+
+    /// Resolve custom model entries to catalog entries, with a fallback to all
+    /// enabled protocol-matching mappings when no custom models are configured.
+    ///
+    /// When `customModels` is empty, every enabled mapping whose provider matches
+    /// `wireAPI` becomes a catalog entry (model = incomingModel, no alias). This
+    /// covers the case where Codex is not logged in and must read its model list
+    /// from the provider's catalog file rather than the ChatGPT server.
+    nonisolated static func buildCatalogEntries(
+        customModels: [CustomModelEntry],
+        mappings: [ModelMapping],
+        providers: [ProviderConfig],
+        wireAPI: CodexAdaptorConfig.WireAPI
+    ) -> [ModelCatalogEntry] {
+        if !customModels.isEmpty {
+            return customModels.compactMap { entry -> ModelCatalogEntry? in
+                guard let mapping = mappings.first(where: { $0.id == entry.modelMappingId }) else {
+                    return nil
+                }
+                return ModelCatalogEntry(
+                    model: mapping.incomingModel,
+                    displayName: entry.alias.isEmpty ? mapping.incomingModel : entry.alias,
+                    contextWindow: entry.contextWindow
+                )
+            }
+        }
+
+        let protocolMappings = availableMappings(for: wireAPI, mappings: mappings, providers: providers)
+        return protocolMappings.map { mapping in
+            ModelCatalogEntry(model: mapping.incomingModel, displayName: mapping.incomingModel)
+        }
+    }
+
+    /// Filter mappings by wireAPI protocol using provider types.
+    /// Same logic as `availableMappings(for:from:)` but operates on raw arrays
+    /// so it's testable without a ConfigManager.
+    nonisolated private static func availableMappings(
+        for wireAPI: CodexAdaptorConfig.WireAPI,
+        mappings: [ModelMapping],
+        providers: [ProviderConfig]
+    ) -> [ModelMapping] {
+        let providerTypeById: [UUID: APIProvider] = Dictionary(
+            providers.map { ($0.id, $0.apiProvider) },
+            uniquingKeysWith: { first, _ in first }
+        )
+
+        return mappings.filter { mapping in
+            guard mapping.isEnabled,
+                  let providerType = providerTypeById[mapping.providerConfigId] else {
+                return false
+            }
+            switch wireAPI {
+            case .chat:
+                return providerType != .responses
+            case .responses:
+                return providerType == .responses
+            }
+        }
+    }
 }

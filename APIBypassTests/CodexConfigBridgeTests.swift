@@ -147,4 +147,152 @@ final class CodexConfigBridgeTests: XCTestCase {
             XCTAssertEqual(chatMappings.first?.incomingModel, "enabled-model")
         }
     }
+
+    // MARK: - buildCatalogEntries: fallback when customModels is empty
+
+    func test_buildCatalogEntries_fallsBackToAllProtocolMatchingMappings_whenCustomModelsEmpty() {
+        let chatProvider = ProviderConfig(
+            name: "Chat Provider",
+            apiProvider: .openai,
+            baseURL: URL(string: "https://api.example.com")!
+        )
+
+        let chatMapping = ModelMapping(
+            name: "Chat Model",
+            incomingModel: "gpt-4o",
+            actualModel: "actual-gpt-4o",
+            providerConfigId: chatProvider.id,
+            parameters: .empty,
+            isEnabled: true
+        )
+
+        let entries = CodexConfigBridge.buildCatalogEntries(
+            customModels: [],
+            mappings: [chatMapping],
+            providers: [chatProvider],
+            wireAPI: .chat
+        )
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.model, "gpt-4o")
+        XCTAssertEqual(entries.first?.displayName, "gpt-4o")
+    }
+
+    // MARK: - buildCatalogEntries: non-empty customModels uses existing resolution
+
+    func test_buildCatalogEntries_usesCustomModelAlias_whenCustomModelsNonEmpty() {
+        let chatProvider = ProviderConfig(
+            name: "Chat Provider",
+            apiProvider: .openai,
+            baseURL: URL(string: "https://api.example.com")!
+        )
+
+        let chatMapping = ModelMapping(
+            name: "Chat Model",
+            incomingModel: "gpt-4o",
+            actualModel: "actual-gpt-4o",
+            providerConfigId: chatProvider.id,
+            parameters: .empty,
+            isEnabled: true
+        )
+
+        let customEntry = CustomModelEntry(
+            alias: "My GPT",
+            modelMappingId: chatMapping.id,
+            contextWindow: 200000
+        )
+
+        let entries = CodexConfigBridge.buildCatalogEntries(
+            customModels: [customEntry],
+            mappings: [chatMapping],
+            providers: [chatProvider],
+            wireAPI: .chat
+        )
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.model, "gpt-4o")
+        XCTAssertEqual(entries.first?.displayName, "My GPT")
+        XCTAssertEqual(entries.first?.contextWindow, 200000)
+    }
+
+    func test_buildCatalogEntries_usesIncomingModel_whenAliasEmpty() {
+        let chatProvider = ProviderConfig(
+            name: "Chat Provider",
+            apiProvider: .openai,
+            baseURL: URL(string: "https://api.example.com")!
+        )
+        let chatMapping = ModelMapping(
+            name: "Chat Model",
+            incomingModel: "gpt-4o",
+            actualModel: "actual-gpt-4o",
+            providerConfigId: chatProvider.id,
+            parameters: .empty
+        )
+        let customEntry = CustomModelEntry(
+            alias: "",
+            modelMappingId: chatMapping.id,
+            contextWindow: nil
+        )
+
+        let entries = CodexConfigBridge.buildCatalogEntries(
+            customModels: [customEntry],
+            mappings: [chatMapping],
+            providers: [chatProvider],
+            wireAPI: .chat
+        )
+
+        XCTAssertEqual(entries.count, 1)
+        XCTAssertEqual(entries.first?.model, "gpt-4o")
+        XCTAssertEqual(entries.first?.displayName, "gpt-4o")
+    }
+
+    // MARK: - buildCatalogEntries: protocol filter on fallback
+
+    func test_buildCatalogEntries_fallbackFiltersByWireAPIProtocol() {
+        let chatProvider = ProviderConfig(
+            name: "Chat Provider",
+            apiProvider: .openai,
+            baseURL: URL(string: "https://api.example.com")!
+        )
+        let responsesProvider = ProviderConfig(
+            name: "Responses Provider",
+            apiProvider: .responses,
+            baseURL: URL(string: "https://responses.example.com")!
+        )
+
+        let chatMapping = ModelMapping(
+            name: "Chat Model",
+            incomingModel: "gpt-4o",
+            actualModel: "actual-gpt-4o",
+            providerConfigId: chatProvider.id,
+            parameters: .empty
+        )
+        let responsesMapping = ModelMapping(
+            name: "Responses Model",
+            incomingModel: "o3-pro",
+            actualModel: "actual-o3-pro",
+            providerConfigId: responsesProvider.id,
+            parameters: .empty
+        )
+
+        // Chat protocol should exclude responses provider's models
+        let chatEntries = CodexConfigBridge.buildCatalogEntries(
+            customModels: [],
+            mappings: [chatMapping, responsesMapping],
+            providers: [chatProvider, responsesProvider],
+            wireAPI: .chat
+        )
+        XCTAssertEqual(chatEntries.count, 1)
+        XCTAssertEqual(chatEntries.first?.model, "gpt-4o")
+
+        // Responses protocol should exclude chat provider's models
+        let responsesEntries = CodexConfigBridge.buildCatalogEntries(
+            customModels: [],
+            mappings: [chatMapping, responsesMapping],
+            providers: [chatProvider, responsesProvider],
+            wireAPI: .responses
+        )
+        XCTAssertEqual(responsesEntries.count, 1)
+        XCTAssertEqual(responsesEntries.first?.model, "o3-pro")
+    }
 }

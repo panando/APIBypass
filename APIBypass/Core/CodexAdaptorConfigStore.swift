@@ -1,12 +1,17 @@
 import Foundation
 import CodexRouterCore
 
-/// Persistence layer for CodexAdaptorConfig using UserDefaults.
-/// Falls back to reading ~/.codex/providers.json when UserDefaults has no stored config.
+/// Persistence layer for CodexAdaptorConfig.
+///
+/// Primary store: UserDefaults (key `com.apibypass.codexAdaptor`).
+/// Mirror store: `~/.codex/apibypass-config.json` — survives app reinstall (UserDefaults
+/// are wiped on reinstall, but `~/.codex/` is not). On load, if UserDefaults is empty
+/// we read the mirror file before falling back to `recoverFromProvidersJSON`.
 actor CodexAdaptorConfigStore {
     static let shared = CodexAdaptorConfigStore()
 
     private let userDefaultsKey = "com.apibypass.codexAdaptor"
+    private let mirrorFileName = "apibypass-config.json"
     private var cached: CodexAdaptorConfig?
     private var didAttemptRecovery = false
 
@@ -19,7 +24,17 @@ actor CodexAdaptorConfigStore {
             cached = config
             return config
         }
-        // No UserDefaults config — try recovery from providers.json
+        // UserDefaults empty (e.g. after app reinstall) — try the mirror file in
+        // ~/.codex/, which is preserved across reinstalls.
+        if let config = loadFromMirrorFile() {
+            cached = config
+            // Re-populate UserDefaults so subsequent loads skip the mirror.
+            if let data = try? JSONEncoder().encode(config) {
+                UserDefaults.standard.set(data, forKey: userDefaultsKey)
+            }
+            return config
+        }
+        // No mirror file — try recovery from providers.json as a last resort.
         if !didAttemptRecovery, let recovered = await recoverFromProvidersJSON() {
             cached = recovered
             didAttemptRecovery = true
@@ -32,9 +47,22 @@ actor CodexAdaptorConfigStore {
 
     func save(_ config: CodexAdaptorConfig) {
         cached = config
-        if let data = try? JSONEncoder().encode(config) {
-            UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        guard let data = try? JSONEncoder().encode(config) else { return }
+        UserDefaults.standard.set(data, forKey: userDefaultsKey)
+        // Mirror to ~/.codex/apibypass-config.json so the config survives app reinstalls.
+        let dir = NSHomeDirectory() + "/.codex"
+        let path = dir + "/" + mirrorFileName
+        if !FileManager.default.fileExists(atPath: dir) {
+            try? FileManager.default.createDirectory(
+                atPath: dir, withIntermediateDirectories: true)
         }
+        try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+    }
+
+    private func loadFromMirrorFile() -> CodexAdaptorConfig? {
+        let path = NSHomeDirectory() + "/.codex/" + mirrorFileName
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+        return try? JSONDecoder().decode(CodexAdaptorConfig.self, from: data)
     }
 
     // MARK: - Recovery from providers.json

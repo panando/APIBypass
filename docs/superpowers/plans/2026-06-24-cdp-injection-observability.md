@@ -369,99 +369,118 @@ git commit -m "feat(cdp): add CDPConnectionState enum with localizedName"
 
 ---
 
-## Task 6: Add `connectionState` + `snapshotState()` to `CodexAppInjector`
+## Task 6: Add `connectionState` + `snapshotState()` + `CDPLogger` to `CodexAppInjector`
+
+> **Architectural note:** `CodexAppInjector` is in the `CodexRouterCore` SPM module, which cannot import the app target where `CodexLogStore` lives. We introduce a `CDPLogger` protocol in core that the app layer conforms to. `CodexLogStore` conformance + passing the logger instance happens in Task 7.
 
 **Files:**
-- Modify: `CodexRouterCore/CDP/CodexAppInjector.swift`
+- Modify: `CodexRouterCore/CDP/CDPTypes.swift` — add `CDPLogger` protocol
+- Modify: `CodexRouterCore/CDP/CodexAppInjector.swift` — add `connectionState` + `snapshotState()` + `logger` field; log via `logger?.logInfo/logError`
 
-- [ ] **Step 1: Add state property and snapshot method**
+- [ ] **Step 1: Add `CDPLogger` protocol to `CDPTypes.swift`**
 
-In `CodexRouterCore/CDP/CodexAppInjector.swift`, add a new property below `private var injectedPageId: String?` (around line 12):
+In `CodexRouterCore/CDP/CDPTypes.swift`, add at the end of the file (after `CDPConnectionState`):
 
 ```swift
+/// Logging interface for CDP internals, decoupling `CodexRouterCore` from the app's `CodexLogStore`.
+public protocol CDPLogger: Sendable {
+    func logInfo(_ message: String)
+    func logError(_ message: String)
+}
+```
+
+- [ ] **Step 2: Add `logger` field + `connectionState` property + `snapshotState()` to `CodexAppInjector`**
+
+In `CodexRouterCore/CDP/CodexAppInjector.swift`, add `logger` field and `connectionState` below `private var injectedPageId: String?`:
+
+```swift
+    private let logger: CDPLogger?
     private var connectionState: CDPConnectionState = .disconnected
 ```
 
-Add a public snapshot method below `stop()` (around line 44):
+Update `init` to accept `logger`:
+
+```swift
+    public init(debugPort: UInt16 = 9222, settings: CDPInjectionSettings = CDPInjectionSettings(), logger: CDPLogger? = nil) {
+        self.debugPort = debugPort
+        self.settings = settings
+        self.logger = logger
+    }
+```
+
+Add a public snapshot method below `stop()`:
 
 ```swift
     /// Snapshot current connection state for UI polling.
-    /// Called from `CodexAdaptorService` which cannot directly read actor state.
     public func snapshotState() -> CDPConnectionState {
         return connectionState
     }
 ```
 
-- [ ] **Step 2: Add state transitions + logging in `injectIntoCodex`**
+- [ ] **Step 3: Add state transitions + logging in `injectIntoCodex`**
 
 Replace the entire `injectIntoCodex()` method with:
 
 ```swift
     private func injectIntoCodex() async {
         connectionState = .connecting
-        CodexLogStore.shared.info("[CDP] Connecting to debug port :\(debugPort)")
+        logger?.logInfo("[CDP] Connecting to debug port :\(debugPort)")
         do {
-            // Find the Codex page target
             let targets = try await queryCDPTargets()
             guard let target = pickCodexTarget(targets) else {
                 connectionState = .disconnected
-                CodexLogStore.shared.info("[CDP] No Codex page target found, will retry")
+                logger?.logInfo("[CDP] No Codex page target found, will retry")
                 return
             }
 
             guard let wsURLString = target.webSocketDebuggerUrl,
                   let wsURL = URL(string: wsURLString) else {
                 connectionState = .failed("Invalid WebSocket URL")
-                CodexLogStore.shared.error("[CDP] Invalid WebSocket URL for target")
+                logger?.logError("[CDP] Invalid WebSocket URL for target")
                 return
             }
 
-            // Connect to CDP WebSocket
             let cdpClient = CDPClient(wsURL: wsURL)
             try await cdpClient.connect()
             self.client = cdpClient
             self.injectedPageId = target.id
             connectionState = .connected
-            CodexLogStore.shared.info("[CDP] WebSocket connected")
+            logger?.logInfo("[CDP] WebSocket connected")
 
-            // Push current settings before injecting
             do {
                 try await pushSettings()
             } catch {
-                CodexLogStore.shared.error("[CDP] Failed to push settings: \(error.localizedDescription)")
+                logger?.logError("[CDP] Failed to push settings: \(error.localizedDescription)")
             }
 
-            // Inject the script
             do {
                 try await cdpClient.evaluateJavaScript(codexPluginInjectionScript)
                 connectionState = .injected
-                CodexLogStore.shared.info("[CDP] Script injected")
+                logger?.logInfo("[CDP] Script injected")
             } catch {
                 connectionState = .failed(error.localizedDescription)
-                CodexLogStore.shared.error("[CDP] Injection failed: \(error.localizedDescription)")
+                logger?.logError("[CDP] Injection failed: \(error.localizedDescription)")
             }
 
         } catch {
             connectionState = .failed(error.localizedDescription)
-            CodexLogStore.shared.error("[CDP] \(error.localizedDescription)")
+            logger?.logError("[CDP] \(error.localizedDescription)")
         }
     }
 ```
 
-- [ ] **Step 3: Add state transition in `monitorAndReinject`**
+- [ ] **Step 4: Add state transition in `monitorAndReinject`**
 
 Replace the entire `monitorAndReinject()` method with:
 
 ```swift
     private func monitorAndReinject() async {
-        // Check if the page is still there
         do {
             let targets = try await queryCDPTargets()
             if let currentId = injectedPageId {
                 let stillExists = targets.contains(where: { $0.id == currentId })
                 if !stillExists {
-                    // Page reloaded or navigated - reconnect
-                    CodexLogStore.shared.info("[CDP] Page disappeared, reconnecting")
+                    logger?.logInfo("[CDP] Page disappeared, reconnecting")
                     connectionState = .disconnected
                     await client?.disconnect()
                     client = nil
@@ -469,22 +488,19 @@ Replace the entire `monitorAndReinject()` method with:
                     await injectIntoCodex()
                 }
             } else {
-                // No current injection - try to find a target
                 await injectIntoCodex()
             }
         } catch {
-            // Connection issues - will retry
-            CodexLogStore.shared.error("[CDP] Monitor error: \(error.localizedDescription)")
+            logger?.logError("[CDP] Monitor error: \(error.localizedDescription)")
         }
     }
 ```
 
-- [ ] **Step 4: Add state transition in `stop`**
+- [ ] **Step 5: Add state transition in `stop`**
 
 Replace the `stop()` method with:
 
 ```swift
-    /// Stop injection and disconnect.
     public func stop() async {
         isRunning = false
         monitorTask?.cancel()
@@ -493,76 +509,70 @@ Replace the `stop()` method with:
         client = nil
         injectedPageId = nil
         connectionState = .disconnected
-        CodexLogStore.shared.info("[CDP] Injector stopped")
+        logger?.logInfo("[CDP] Injector stopped")
     }
 ```
 
-- [ ] **Step 5: Build to verify**
+- [ ] **Step 6: Build to verify**
 
 Run: `cd /Users/panando/ClaudeCode/APIbypass && swift build 2>&1 | tail -5`
 Expected: build succeeds.
 
-- [ ] **Step 6: Run full test suite to verify no regressions**
+- [ ] **Step 7: Run full test suite to verify no regressions**
 
 Run: `cd /Users/panando/ClaudeCode/APIbypass && swift test 2>&1 | tail -10`
 Expected: all tests pass.
 
-- [ ] **Step 7: Commit**
+- [ ] **Step 8: Commit**
 
 ```bash
 cd /Users/panando/ClaudeCode/APIbypass
-git add CodexRouterCore/CDP/CodexAppInjector.swift
-git commit -m "feat(cdp): add connectionState + snapshotState + logging to CodexAppInjector"
+git add CodexRouterCore/CDP/CDPTypes.swift CodexRouterCore/CDP/CodexAppInjector.swift
+git commit -m "feat(cdp): add connectionState + snapshotState + CDPLogger to CodexAppInjector"
 ```
 
 ---
 
-## Task 7: Poll `connectionState` in `CodexAdaptorService`
+## Task 7: Poll `connectionState` in `CodexAdaptorService` + wire `CDPLogger`
 
 **Files:**
-- Modify: `APIBypass/Core/CodexAdaptorService.swift`
+- Modify: `APIBypass/Core/CodexRouter/CodexLogStore.swift` — conform to `CDPLogger`
+- Modify: `APIBypass/Core/CodexAdaptorService.swift` — add `@Published cdpConnectionState`; pass logger to injector; add polling
 
-- [ ] **Step 1: Add published property**
+- [ ] **Step 1: Conform `CodexLogStore` to `CDPLogger`**
 
-In `APIBypass/Core/CodexAdaptorService.swift`, add below `@Published var port: Int = 15721` (around line 9):
+In `APIBypass/Core/CodexRouter/CodexLogStore.swift`, add at the end of the file:
+
+```swift
+extension CodexLogStore: CDPLogger {
+    func logInfo(_ message: String) { info(message) }
+    func logError(_ message: String) { append(level: .error, message: message) }
+}
+```
+
+- [ ] **Step 2: Add published property**
+
+In `APIBypass/Core/CodexAdaptorService.swift`, add below `@Published var port: Int = 15721`:
 
 ```swift
     @Published var cdpConnectionState: CDPConnectionState = .disconnected
 ```
 
-- [ ] **Step 2: Add polling in the monitor loop**
+- [ ] **Step 3: Pass logger + start polling in `start()`**
 
-Find the `start()` method. After `self.injector = inj` and `await inj.start()` (around line 37-38), add a polling task. The `start()` method should now look like:
+In the `start()` method, pass `CodexLogStore.shared` as the logger and call `startCDPStatePolling()`:
 
 ```swift
-    func start() async throws {
-        let config = await CodexAdaptorConfigStore.shared.load()
-        port = config.port
-
-        // Sync config to ~/.codex/ files
-        try await syncCodexConfig(config: config)
-
-        let server = CodexProxyServer()
-        self.server = server
-
-        // Start CDP injector if enhancements enabled
         if config.cdpSettings.enhancementsEnabled {
             let inj = CodexAppInjector(
                 debugPort: config.cdpDebugPort,
-                settings: config.cdpSettings
+                settings: config.cdpSettings,
+                logger: CodexLogStore.shared
             )
             self.injector = inj
             await inj.start()
             startCDPStatePolling()
         }
-
-        try await server.start(port: config.port) { [weak self] in
-            await self?.handleSettingsGet() ?? (200, "application/json", "{}")
-        }
-
-        isRunning = true
-        CodexLogStore.shared.info("[CodexAdaptor] Service started on port \(config.port)")
-    }
 ```
 
 Add the polling method below `start()`:
@@ -584,7 +594,7 @@ Add the polling method below `start()`:
     }
 ```
 
-- [ ] **Step 3: Clear state on stop**
+- [ ] **Step 4: Clear state on stop**
 
 In the `stop()` method, add after `injector = nil`:
 
@@ -592,17 +602,17 @@ In the `stop()` method, add after `injector = nil`:
         cdpConnectionState = .disconnected
 ```
 
-- [ ] **Step 4: Build to verify**
+- [ ] **Step 5: Build to verify**
 
 Run: `cd /Users/panando/ClaudeCode/APIbypass && swift build 2>&1 | tail -5`
 Expected: build succeeds.
 
-- [ ] **Step 5: Commit**
+- [ ] **Step 6: Commit**
 
 ```bash
 cd /Users/panando/ClaudeCode/APIbypass
-git add APIBypass/Core/CodexAdaptorService.swift
-git commit -m "feat(codex): poll CDP connection state and expose to UI"
+git add APIBypass/Core/CodexRouter/CodexLogStore.swift APIBypass/Core/CodexAdaptorService.swift
+git commit -m "feat(codex): wire CDPLogger + poll CDP connection state in CodexAdaptorService"
 ```
 
 ---

@@ -127,7 +127,7 @@ private struct CodexServerTab: View {
     @State private var codexLaunchStatus: String = ""
     @State private var codexLaunchError: String? = nil
     @State private var showRestartConfirm: Bool = false
-    @State private var confirmResponse: Bool? = nil
+    @State private var confirmBox = LaunchConfirmBox()
     @State private var showManualCommand: Bool = false
 
     var body: some View {
@@ -278,10 +278,10 @@ private struct CodexServerTab: View {
         }
         .alert(L10n.t("codex_launch_confirm_title"), isPresented: $showRestartConfirm) {
             Button(L10n.t("cancel"), role: .cancel) {
-                confirmResponse = false
+                confirmBox.resume(false)
             }
             Button(L10n.t("codex_launch_confirm_restart"), role: .destructive) {
-                confirmResponse = true
+                confirmBox.resume(true)
             }
         } message: {
             Text(L10n.t("codex_launch_confirm_message"))
@@ -348,7 +348,7 @@ private struct CodexServerTab: View {
             return
         }
         codexLaunchError = nil
-        Task { @MainActor in
+        Task { @MainActor [confirmBox] in
             isLaunchingCodex = true
             defer { isLaunchingCodex = false }
             do {
@@ -356,13 +356,7 @@ private struct CodexServerTab: View {
                     port: port,
                     onNeedConfirm: {
                         showRestartConfirm = true
-                        while confirmResponse == nil {
-                            try? await Task.sleep(for: .milliseconds(100))
-                            if Task.isCancelled { return false }
-                        }
-                        let ok = confirmResponse == true
-                        confirmResponse = nil
-                        return ok
+                        return await confirmBox.wait()
                     },
                     onProgress: { msg in codexLaunchStatus = msg }
                 )
@@ -1179,6 +1173,30 @@ private struct CodexLogEntryRow: View {
                 .textSelection(.enabled)
         }
         .padding(.vertical, 1)
+    }
+}
+
+// MARK: - Launch Confirmation Bridge
+
+/// Holds the continuation for the "restart Codex?" confirmation alert.
+///
+/// Replaces a polling loop (`while confirmResponse == nil { Task.sleep(100ms) }`)
+/// that corrupted task-local memory and crashed with `swift_task_dealloc` inside
+/// a later `Task.sleep`. The alert buttons call `resume(_:)` directly, resuming
+/// the suspended `wait()` exactly once.
+@MainActor
+final class LaunchConfirmBox {
+    private var continuation: CheckedContinuation<Bool, Never>?
+
+    func wait() async -> Bool {
+        await withCheckedContinuation { cont in
+            continuation = cont
+        }
+    }
+
+    func resume(_ value: Bool) {
+        continuation?.resume(returning: value)
+        continuation = nil
     }
 }
 

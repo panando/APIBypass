@@ -48,6 +48,29 @@ public let codexPluginInjectionScript: String = """
 (function() {
   "use strict";
 
+  // ── JS error capture (installed first so we catch errors from the rest of the script) ──
+  // Errors are sent via a deferred diagnostic — stored on window and flushed once the
+  // bridge is available, since the error handler may fire before __codexSessionDeleteBridge
+  // is installed.
+  window.__codexPlusJsErrors = window.__codexPlusJsErrors || [];
+  function captureJsError(message, filename, lineno, stack) {
+    try {
+      const entry = { message: String(message || "").slice(0, 500), filename: String(filename || "").slice(0, 200), lineno: lineno || 0, stack: String(stack || "").slice(0, 500), at: Date.now() };
+      window.__codexPlusJsErrors.push(entry);
+      if (window.__codexPlusJsErrors.length > 20) window.__codexPlusJsErrors.shift();
+      if (window.__codexSessionDeleteBridge) {
+        window.__codexSessionDeleteBridge("/cdp/diagnostic", JSON.stringify({ event: "injector_js_error", detail: entry })).catch(() => {});
+      }
+    } catch (_) {}
+  }
+  window.addEventListener("error", (e) => {
+    captureJsError(e?.message || "error", e?.filename, e?.lineno, e?.error?.stack || e?.stack);
+  });
+  window.addEventListener("unhandledrejection", (e) => {
+    const reason = e?.reason;
+    captureJsError("unhandledrejection: " + (reason?.message || String(reason)), "", 0, reason?.stack || "");
+  });
+
   // ── Constants ──────────────────────────────────────────────────────
   const codexForcePluginInstallRefreshIntervalMs = 1000;
   const codexPluginLegacyEntryUnlockBeforeVersion = "26.601.2237";
@@ -519,6 +542,17 @@ public let codexPluginInjectionScript: String = """
   const codexPlusModelListRequestIds = new Set();
   const codexAppServerModelRequestPatchVersion = "1";
   const codexAppModulePromises = new Map();
+  let codexAppServerPatchFailedUntil = 0;
+
+  // ── Performance counters (reported via injector_heartbeat) ────────
+  // Track cumulative work done by the graph/React patchers. If these grow
+  // fast while the page is frozen, the patcher is the bottleneck.
+  let codexPlusGraphPatchCalls = 0;
+  let codexPlusGraphPatchNodes = 0;
+  let codexPlusReactNodesScanned = 0;
+  let codexPlusReactFibersScanned = 0;
+  let codexPlusHeartbeatInFlight = false;
+  const codexPlusBootstrapTime = Date.now();
 
   function shouldPatchModels() {
     if (pluginPatchDisabledInRelayMode()) return false;
@@ -656,42 +690,89 @@ public let codexPluginInjectionScript: String = """
     }
   }
 
+  // One-shot diagnostic: logs the shape of the top-level model container so we
+  // can see which fields (models, availableModels, defaultModel) the response
+  // actually carries. Fires at most once per shape signature.
+  let __codexPlusContainerShapeLogged = new Set();
+  let __codexPlusContainerPatchedLogged = new Set();
+  function logModelContainerShape(value) {
+    try {
+      if (!value || typeof value !== "object") return;
+      const sig = [
+        "models:" + (Array.isArray(value.models) ? "arr(" + value.models.length + ")" : typeof value.models),
+        "availableModels:" + (Array.isArray(value.availableModels) ? "arr(" + value.availableModels.length + ")" : typeof value.availableModels),
+        "available_models:" + (Array.isArray(value.available_models) ? "arr(" + value.available_models.length + ")" : typeof value.available_models),
+        "defaultModel:" + (value.defaultModel != null ? "set" : "absent"),
+        "model:" + (value.model != null ? "set" : "absent"),
+      ].join(",");
+      if (__codexPlusContainerShapeLogged.has(sig)) return;
+      __codexPlusContainerShapeLogged.add(sig);
+      sendCodexPlusDiagnostic("model_container_shape", { shape: sig });
+    } catch (_) {}
+  }
+
   function patchModelContainer(value) {
     try {
       if (!value || typeof value !== "object") return false;
       const names = codexPlusModelNames();
       if (!names.length) return false;
       let changed = false;
-      if (patchModelArray(value.models, true)) changed = true;
-      if (patchModelNameArray(value.models)) changed = true;
-      if (patchModelArray(value.data)) changed = true;
-      if (patchModelArray(value.result)) changed = true;
-      if (patchModelArray(value.pages?.[0]?.data)) changed = true;
-      if (patchModelArray(value.result?.data)) changed = true;
-      if (patchModelArray(value.result?.models)) changed = true;
-      if (patchModelArray(value.message?.result?.data)) changed = true;
-      if (patchModelArray(value.message?.result?.models)) changed = true;
-      if (value.availableModels instanceof Set) {
-        names.forEach((name) => { if (!value.availableModels.has(name)) { value.availableModels.add(name); changed = true; } });
-      }
-      if (value.available_models instanceof Set) {
-        names.forEach((name) => { if (!value.available_models.has(name)) { value.available_models.add(name); changed = true; } });
-      }
-      if (Array.isArray(value.availableModels)) {
-        names.forEach((name) => { if (!value.availableModels.includes(name)) { value.availableModels.push(name); changed = true; } });
-      }
-      if (Array.isArray(value.available_models)) {
-        names.forEach((name) => { if (!value.available_models.includes(name)) { value.available_models.push(name); changed = true; } });
-      }
+      const patchedPaths = [];
+      if (patchModelArray(value.models, "defaultModel" in value || "availableModels" in value)) { changed = true; patchedPaths.push("models"); }
+      if (patchModelNameArray(value.models)) { changed = true; patchedPaths.push("models(strings)"); }
+      if (patchModelArray(value.data)) { changed = true; patchedPaths.push("data"); }
+      if (patchModelArray(value.result)) { changed = true; patchedPaths.push("result"); }
+      if (patchModelArray(value.pages?.[0]?.data)) { changed = true; patchedPaths.push("pages[0].data"); }
+      if (patchModelArray(value.result?.data)) { changed = true; patchedPaths.push("result.data"); }
+      if (patchModelArray(value.result?.models)) { changed = true; patchedPaths.push("result.models"); }
+      if (patchModelArray(value.message?.result?.data)) { changed = true; patchedPaths.push("message.result.data"); }
+      if (patchModelArray(value.message?.result?.models)) { changed = true; patchedPaths.push("message.result.models"); }
+      // `availableModels` / `available_models` (string arrays / Sets) are NOT patched here.
+      // They are handled exclusively by `patchStatsigModelDynamicConfig` (the Statsig
+      // dynamic config's `available_models` is the picker's whitelist source). Patching
+      // them here too would make each custom model appear twice in the picker — once
+      // from `models` (object array, metadata) and once from `available_models` (string).
       if (Array.isArray(value.hiddenModels)) {
         const before = value.hiddenModels.length;
         value.hiddenModels = value.hiddenModels.filter((name) => !names.includes(name));
-        if (value.hiddenModels.length !== before) changed = true;
+        if (value.hiddenModels.length !== before) { changed = true; patchedPaths.push("hiddenModels"); }
       }
       if (Array.isArray(value.hidden_models)) {
         const before = value.hidden_models.length;
         value.hidden_models = value.hidden_models.filter((name) => !names.includes(name));
-        if (value.hidden_models.length !== before) changed = true;
+        if (value.hidden_models.length !== before) { changed = true; patchedPaths.push("hidden_models"); }
+      }
+      if (changed) {
+        const sig = [
+          "models:" + (Array.isArray(value.models) ? "arr(" + value.models.length + ")" : typeof value.models),
+          "availableModels:" + (Array.isArray(value.availableModels) ? "arr(" + value.availableModels.length + ")" : typeof value.availableModels),
+          "available_models:" + (Array.isArray(value.available_models) ? "arr(" + value.available_models.length + ")" : typeof value.available_models),
+          "defaultModel:" + (value.defaultModel != null ? "set" : "absent"),
+        ].join(",");
+        const logKey = sig + "|" + patchedPaths.join(",");
+        if (!__codexPlusContainerPatchedLogged.has(logKey)) {
+          __codexPlusContainerPatchedLogged.add(logKey);
+          // Snapshot: count how many custom models ended up in each list. If
+          // customInModels > 0 AND customInAvailable > 0 for the same container,
+          // the picker (which reads both) will show each custom model twice.
+          const namesSet = new Set(names);
+          let customInModels = 0;
+          if (Array.isArray(value.models)) {
+            customInModels = value.models.filter((m) => m && namesSet.has(m.model)).length;
+          }
+          const availArr = Array.isArray(value.availableModels) ? value.availableModels : (Array.isArray(value.available_models) ? value.available_models : []);
+          const customInAvailable = availArr.filter((n) => namesSet.has(n)).length;
+          sendCodexPlusDiagnostic("model_container_patched", {
+            shape: sig,
+            patchedPaths: patchedPaths,
+            after: {
+              modelsCount: Array.isArray(value.models) ? value.models.length : 0,
+              availableModelsCount: availArr.length,
+              customInModels: customInModels,
+              customInAvailable: customInAvailable,
+            },
+          });
+        }
       }
       return changed;
     } catch {
@@ -703,6 +784,8 @@ public let codexPluginInjectionScript: String = """
     try {
       if (!root || typeof root !== "object" || visited.has(root) || depth > 5) return false;
       visited.add(root);
+      codexPlusGraphPatchCalls += 1;
+      codexPlusGraphPatchNodes += 1;
       let changed = patchModelContainer(root);
       if (root instanceof Element || root === window || root === document || root === document.body || root === document.documentElement) return changed;
       for (const key of Object.keys(root)) {
@@ -718,30 +801,19 @@ public let codexPluginInjectionScript: String = """
   }
 
   // ── Statsig SDK patch ─────────────────────────────────────────────
-  function patchStatsigModelDynamicConfig(config) {
-    try {
-      const names = codexPlusModelNames();
-      const value = config?.value;
-      if (!names.length || !value || typeof value !== "object") return config;
-      const availableModels = Array.isArray(value.available_models) ? [...value.available_models] : [];
-      let changed = false;
-      names.forEach((name) => {
-        if (!availableModels.includes(name)) {
-          availableModels.push(name);
-          changed = true;
-        }
-      });
-      if (!changed) return config;
-      const nextValue = { ...value, available_models: availableModels };
-      try {
-        config.value = nextValue;
-      } catch {
-        return { ...config, value: nextValue };
-      }
-      return config;
-    } catch {
-      return config;
-    }
+  function patchStatsigModelDynamicConfig(config, name) {
+    // No-op: previously appended custom model names to `config.value.available_models`.
+    // Removed because the picker renders `available_models` (string array from
+    // Statsig) as a SEPARATE list from the AppServer `model/list` response
+    // (object array with metadata). Patching both made each custom model appear
+    // twice — once with metadata (from AppServer, reasoning controls work) and
+    // once as a bare string (from Statsig, reasoning controls broken). The
+    // AppServer response already carries custom models with full metadata, so
+    // the Statsig patch was redundant and only caused duplication.
+    //
+    // The wrapper in `patchStatsigModelWhitelist` is still installed so future
+    // patching can be re-enabled by restoring the function body.
+    return config;
   }
 
   function statsigClients() {
@@ -767,17 +839,15 @@ public let codexPluginInjectionScript: String = """
           const originalGetDynamicConfig = client.getDynamicConfig.bind(client);
           client.getDynamicConfig = (name, options) => {
             const result = originalGetDynamicConfig(name, options);
-            return patchStatsigModelDynamicConfig(result);
+            return patchStatsigModelDynamicConfig(result, name);
           };
           client.__codexPlusModelWhitelistPatched = true;
+          sendCodexPlusDiagnostic("statsig_patch_installed", { clientCount: 1 });
         }
         try {
-          patchStatsigModelDynamicConfig(client.getDynamicConfig("107580212", { disableExposureLog: true }));
+          patchStatsigModelDynamicConfig(client.getDynamicConfig("107580212", { disableExposureLog: true }), "107580212");
         } catch (_) {}
       });
-      if (clientCount > 0) {
-        sendCodexPlusDiagnostic("statsig_patch_installed", { clientCount: clientCount });
-      }
     } catch (e) {
       sendCodexPlusDiagnostic("statsig_patch_failed", { error: String(e?.stack || e) });
     }
@@ -871,6 +941,12 @@ public let codexPluginInjectionScript: String = """
   function installAppServerModelRequestPatch() {
     if (window.__codexPlusAppServerModelRequestPatchInstalled === codexAppServerModelRequestPatchVersion) return;
     if (!shouldPatchModels()) return;
+    // Failure cooldown: if the last attempt failed, don't retry for 30s. The
+    // failure is usually "asset not loaded yet" — retrying every 120ms (via
+    // the refresh loop) floods the log and stalls the renderer (white-screen
+    // flash on Codex startup). The asset either loads later (success on next
+    // retry) or never does (no amount of retrying helps).
+    if (Date.now() < codexAppServerPatchFailedUntil) return;
     const patch = async () => {
       try {
         const module = await loadCodexAppModule("app-server-manager-signals-");
@@ -894,6 +970,7 @@ public let codexPluginInjectionScript: String = """
           });
         }
       } catch (e) {
+        codexAppServerPatchFailedUntil = Date.now() + 30000;
         sendCodexPlusDiagnostic("appserver_request_patch_failed", { error: String(e?.stack || e) });
       }
     };
@@ -906,6 +983,7 @@ public let codexPluginInjectionScript: String = """
     if (!codexPlusModelNames().length) await loadCodexModelCatalog();
     if (!payload || typeof payload !== "object") return payload;
     try {
+      logModelContainerShape(payload);
       patchModelContainer(payload);
       patchObjectGraphForModels(payload, new WeakSet(), 0);
     } catch (_) {}
@@ -935,9 +1013,12 @@ public let codexPluginInjectionScript: String = """
       const selector = "[role='menu'], [role='dialog'], [role='listbox'], [data-radix-popper-content-wrapper]";
       const nodes = [document.body, ...document.querySelectorAll(selector)];
       let changed = false;
+      codexPlusReactNodesScanned += nodes.length;
       for (const node of nodes.slice(0, 220)) {
         if (!node) continue;
-        for (const key of Object.keys(node).filter((k) => k.startsWith("__reactFiber") || k.startsWith("__reactInternalInstance") || k.startsWith("__reactProps"))) {
+        const fiberKeys = Object.keys(node).filter((k) => k.startsWith("__reactFiber") || k.startsWith("__reactInternalInstance") || k.startsWith("__reactProps"));
+        codexPlusReactFibersScanned += fiberKeys.length;
+        for (const key of fiberKeys) {
           if (patchObjectGraphForModels(node[key], new WeakSet(), 0)) changed = true;
         }
       }
@@ -956,6 +1037,7 @@ public let codexPluginInjectionScript: String = """
   }
 
   function runCodexModelWhitelistRefreshPass() {
+    window.__codexPlusRefreshPassCount = (window.__codexPlusRefreshPassCount || 0) + 1;
     if (!shouldPatchModels() || !codexPlusModelNames().length) return false;
     let changed = false;
     try {
@@ -972,16 +1054,22 @@ public let codexPluginInjectionScript: String = """
     if (!shouldPatchModels()) return;
     durationMs = durationMs || 2500;
     codexModelWhitelistRefreshUntil = Math.max(codexModelWhitelistRefreshUntil, Date.now() + durationMs);
-    sendCodexPlusDiagnostic("model_whitelist_refresh_scheduled", { durationMs: durationMs });
     if (codexModelWhitelistRefreshTimer) return;
+    sendCodexPlusDiagnostic("model_whitelist_refresh_scheduled", { durationMs: durationMs });
     const tick = () => {
-      codexModelWhitelistRefreshTimer = 0;
-      runCodexModelWhitelistRefreshPass();
-      if (Date.now() < codexModelWhitelistRefreshUntil) {
-        codexModelWhitelistRefreshTimer = window.setTimeout(tick, 120);
+      const changed = runCodexModelWhitelistRefreshPass();
+      if (changed && Date.now() < codexModelWhitelistRefreshUntil) {
+        codexModelWhitelistRefreshTimer = window.setTimeout(tick, 1000);
+      } else {
+        codexModelWhitelistRefreshTimer = 0;
       }
     };
-    tick();
+    // Always debounce via setTimeout — never call tick() synchronously. The
+    // MutationObserver fires on every DOM mutation; an immediate tick() would
+    // run a refresh pass per mutation under burst load (550 passes in 2s
+    // observed). The bootstrap pass in `bootstrapModelWhitelist` already
+    // covers the initial patch; subsequent refreshes can wait 1s.
+    codexModelWhitelistRefreshTimer = window.setTimeout(tick, 1000);
   }
 
   let modelWhitelistMutationObserver = null;
@@ -1004,6 +1092,45 @@ public let codexPluginInjectionScript: String = """
     ensureCodexModelWhitelistInstalls();
     runCodexModelWhitelistRefreshPass();
     startModelWhitelistObserver();
+    startInjectorHeartbeat();
+  }
+
+  // ── Injector heartbeat ───────────────────────────────────────────
+  // Reports liveness + cumulative work counters every 5s. If heartbeat stops,
+  // the injector is frozen (JS stuck). If counters spike, the patcher is the
+  // bottleneck. `inFlight` guard prevents ticks from piling up if the CDP
+  // channel is slow.
+  function startInjectorHeartbeat() {
+    if (window.__codexPlusHeartbeatStarted) return;
+    window.__codexPlusHeartbeatStarted = true;
+    const tick = () => {
+      if (codexPlusHeartbeatInFlight) return;
+      codexPlusHeartbeatInFlight = true;
+      try {
+        const detail = {
+          uptimeMs: Date.now() - codexPlusBootstrapTime,
+          patchStats: {
+            json: window.__codexPlusModelJsonResponsePatchInstalled === "1" ? 1 : 0,
+            statsig: typeof window.__STATSIG__ !== "undefined" ? 1 : 0,
+            appserverMsg: window.__codexPlusModelMessagePatchInstalled ? 1 : 0,
+            appserverReq: window.__codexPlusAppServerModelRequestPatchInstalled === codexAppServerModelRequestPatchVersion ? 1 : 0,
+          },
+          graphPatchCalls: codexPlusGraphPatchCalls,
+          graphPatchNodes: codexPlusGraphPatchNodes,
+          reactNodesScanned: codexPlusReactNodesScanned,
+          reactFibersScanned: codexPlusReactFibersScanned,
+          pendingBridgeCalls: window.__codexSessionDeletePending ? window.__codexSessionDeletePending.size : 0,
+          jsErrorsCaptured: window.__codexPlusJsErrors ? window.__codexPlusJsErrors.length : 0,
+        };
+        window.__codexSessionDeleteBridge("/cdp/diagnostic", JSON.stringify({ event: "injector_heartbeat", detail: detail }))
+          .catch(() => {})
+          .finally(() => { codexPlusHeartbeatInFlight = false; });
+      } catch (_) {
+        codexPlusHeartbeatInFlight = false;
+      }
+    };
+    tick();
+    setInterval(tick, 5000);
   }
 
   // ── Bootstrap ─────────────────────────────────────────────────────

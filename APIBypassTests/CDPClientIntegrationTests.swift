@@ -207,14 +207,13 @@ final class CDPClientIntegrationTests: XCTestCase {
                        "Bridge-fetched settings did not reach the renderer")
     }
 
-    /// Verifies the injection script populates an EMPTY model container via the
-    /// patched `Response.prototype.json`.
+    /// Verifies the injection script patches `models` (the object array Codex's
+    /// model picker reads for metadata) via the patched `Response.prototype.json`.
     ///
-    /// This is the tracer for the "Codex not logged in → empty model list" bug:
-    /// when Codex's model picker has `{models: []}` with no `defaultModel` or
-    /// `availableModels` field, the injection script's `patchModelArray` currently
-    /// skips the empty array (because `allowEmpty` is false). The fix is to
-    /// populate empty arrays from the catalog.
+    /// `patchModelContainer` is responsible for object arrays (`models`) only.
+    /// String arrays (`availableModels`, `available_models`) are handled exclusively
+    /// by the Statsig patch to prevent cross-container duplication — the picker
+    /// renders from both lists, so patching both makes each custom model appear twice.
     func test_injectionScript_populatesEmptyModelContainer() async throws {
         guard let wsURL = try? await Self.discoverPageWSURL() else {
             throw XCTSkip("Codex not running with --remote-debugging-port=9222; skipping integration test")
@@ -273,35 +272,401 @@ final class CDPClientIntegrationTests: XCTestCase {
         XCTAssertTrue(patchInstalled,
                       "Response.json patch was not installed. Check that catalog loaded and shouldPatchModels() is true.")
 
-        // Simulate a fetch response with an EMPTY models container — the exact
-        // shape Codex's model picker would have when not logged in.
-        // No `defaultModel` or `availableModels` field, so allowEmpty is false
-        // under the current logic.
+        // Simulate a fetch response with `models` (object array the picker reads
+        // for metadata). The injection script must append custom model objects
+        // and unhide existing models that match custom names.
         let probe = try await client.evaluateJavaScript(#"""
         (async function() {
-          var response = new Response(JSON.stringify({models: []}));
+          var response = new Response(JSON.stringify({
+            models: [{model: "existing-model", displayName: "Existing", hidden: true}]
+          }));
           var data = await response.json();
           return JSON.stringify({
-            modelsLength: (data.models || []).length,
-            firstModel: data.models && data.models[0] ? data.models[0].model : null,
+            models: data.models,
+            length: data.models.length,
           });
         })()
         """#)
 
         XCTAssertNotNil(probe.value, "Response.json probe returned nil")
-        // The empty models array must have been populated from the catalog.
         if let json = probe.value,
            let data = json.data(using: .utf8),
            let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
-            let modelsLength = parsed["modelsLength"] as? Int ?? 0
-            let firstModel = parsed["firstModel"] as? String
-            XCTAssertGreaterThan(modelsLength, 0,
-                                 "Empty model container was not populated. models still empty.")
-            XCTAssertEqual(firstModel, "GPT-5.5",
-                           "First model should be from the catalog (displayName is used as model slug). Got: \(firstModel ?? "nil")")
+            let models = parsed["models"] as? [[String: Any]] ?? []
+            let modelNames = models.compactMap { $0["model"] as? String }
+            // 1 pre-existing + 2 custom models from the catalog
+            XCTAssertGreaterThanOrEqual(models.count, 3,
+                                         "models was not patched. Got \(models.count) items: \(modelNames)")
+            XCTAssertTrue(modelNames.contains("GPT-5.5"),
+                         "models should contain GPT-5.5 from catalog. Got: \(modelNames)")
+            XCTAssertTrue(modelNames.contains("Claude Sonnet 4.6"),
+                         "models should contain Claude Sonnet 4.6 from catalog. Got: \(modelNames)")
+            // Existing model should be unhidden (hidden: false) if it matches a custom name.
+            // "existing-model" doesn't match, so it stays hidden: true. We only check that
+            // custom models were added with hidden: false.
+            let customEntry = models.first(where: { $0["model"] as? String == "GPT-5.5" })
+            XCTAssertEqual(customEntry?["hidden"] as? Bool, false,
+                           "Custom model should be unhidden (hidden: false). Got: \(customEntry ?? [:])")
         } else {
             XCTFail("Could not parse probe result: \(probe.value ?? "nil")")
         }
+    }
+
+    /// Verifies `patchModelContainer` does NOT patch `availableModels` (string array).
+    /// String arrays are handled exclusively by the Statsig patch to prevent
+    /// cross-container duplication (picker renders from both `models` and
+    /// `available_models` — patching both makes each custom model appear twice).
+    func test_injectionScript_doesNotPatchAvailableModelsStringArray() async throws {
+        guard let wsURL = try? await Self.discoverPageWSURL() else {
+            throw XCTSkip("Codex not running with --remote-debugging-port=9222; skipping integration test")
+        }
+
+        let client = CDPClient(wsURL: wsURL)
+        try await client.connect()
+        defer { Task { await client.disconnect() } }
+
+        _ = try? await client.evaluateJavaScript("""
+        delete window.__codexSessionDeleteBridge;
+        delete window.__codexSessionDeleteResolve;
+        delete window.__codexSessionDeleteReject;
+        delete window.__codexSessionDeletePending;
+        delete window.__codexSessionDeleteIdCounter;
+        delete window.__codexPlusBackendSettings;
+        delete window.__codexPlusModelJsonResponsePatchInstalled;
+        delete window.__codexPlusAppServerModelRequestPatchInstalled;
+        """);
+
+        let bridgeSettings = """
+        {"codexAppPluginEntryUnlock":true,"codexAppForcePluginInstall":true,"enhancementsEnabled":true,"launchMode":"patch","codexAppVersion":"","codexAppPluginMarketplaceUnlock":true,"codexAppModelWhitelistUnlock":true,"modelProvider":"apibypass","proxyPort":15721}
+        """
+        let mockCatalog = """
+        {"status":"ok","models":[{"model":"gpt-5.5","displayName":"GPT-5.5","contextWindow":128000},{"model":"claude-sonnet-4-6","displayName":"Claude Sonnet 4.6","contextWindow":200000}]}
+        """
+
+        try await client.addBinding(name: cdpBridgeBindingName) { request in
+            let response: String
+            switch request.path {
+            case "/settings/get": response = bridgeSettings
+            case "/codex-model-catalog": response = mockCatalog
+            case "/cdp/diagnostic": response = "{}"
+            default: response = "{\"error\":\"unknown\"}"
+            }
+            return response.data(using: .utf8) ?? Data()
+        }
+
+        try await client.addScriptToEvaluateOnNewDocument(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(codexPluginInjectionScript)
+
+        var patchInstalled = false
+        for _ in 0..<40 {
+            let result = try await client.evaluateJavaScript(
+                "window.__codexPlusModelJsonResponsePatchInstalled === '1'"
+            )
+            if result.value == "true" {
+                patchInstalled = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(patchInstalled,
+                      "Response.json patch was not installed. Check that catalog loaded and shouldPatchModels() is true.")
+
+        // Container with ONLY `availableModels` (string array), no `models`.
+        // patchModelContainer must NOT touch this — Statsig patch handles it.
+        let probe = try await client.evaluateJavaScript(#"""
+        (async function() {
+          var response = new Response(JSON.stringify({availableModels: ["existing-model"]}));
+          var data = await response.json();
+          return JSON.stringify({
+            availableModels: data.availableModels,
+            length: data.availableModels.length,
+          });
+        })()
+        """#)
+
+        XCTAssertNotNil(probe.value, "Response.json probe returned nil")
+        if let json = probe.value,
+           let data = json.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let available = parsed["availableModels"] as? [String] ?? []
+            // Should remain unchanged — patchModelContainer must not patch string arrays.
+            XCTAssertEqual(available, ["existing-model"],
+                           "availableModels was patched by patchModelContainer (should only be patched by Statsig). Got: \(available)")
+        } else {
+            XCTFail("Could not parse probe result: \(probe.value ?? "nil")")
+        }
+    }
+
+    /// Verifies `patchStatsigModelDynamicConfig` only patches the model whitelist
+    /// config ("107580212"), not every Statsig dynamic config. Codex registers
+    /// multiple dynamic configs whose `value` happens to contain an
+    /// `available_models` array; patching all of them causes each custom model
+    /// to appear once per config in the picker (×2 duplication).
+    ///
+    /// Root cause confirmed via diagnostic log: `statsig_config_patched` fired
+    /// with two distinct shapes — one with 5 built-ins + 2 custom (the real
+    /// whitelist) and one with 0 built-ins + 2 custom (some other config whose
+    /// `available_models` was originally empty). The picker merges both → 4
+    /// entries for 2 custom models.
+    func test_injectionScript_doesNotPatchNonWhitelistStatsigConfigs() async throws {
+        guard let wsURL = try? await Self.discoverPageWSURL() else {
+            throw XCTSkip("Codex not running with --remote-debugging-port=9222; skipping integration test")
+        }
+
+        let client = CDPClient(wsURL: wsURL)
+        try await client.connect()
+        defer { Task { await client.disconnect() } }
+
+        _ = try? await client.evaluateJavaScript("""
+        delete window.__codexSessionDeleteBridge;
+        delete window.__codexSessionDeleteResolve;
+        delete window.__codexSessionDeleteReject;
+        delete window.__codexSessionDeletePending;
+        delete window.__codexSessionDeleteIdCounter;
+        delete window.__codexPlusBackendSettings;
+        delete window.__codexPlusModelJsonResponsePatchInstalled;
+        delete window.__codexPlusAppServerModelRequestPatchInstalled;
+        window.__savedStatsig = window.__STATSIG__;
+        window.__STATSIG__ = {
+          firstInstance: {
+            getDynamicConfig: function(name, options) {
+              return { value: { available_models: ["gpt-5"] } };
+            }
+          }
+        };
+        """)
+
+        let bridgeSettings = """
+        {"codexAppPluginEntryUnlock":true,"codexAppForcePluginInstall":true,"enhancementsEnabled":true,"launchMode":"patch","codexAppVersion":"","codexAppPluginMarketplaceUnlock":true,"codexAppModelWhitelistUnlock":true,"modelProvider":"apibypass","proxyPort":15721}
+        """
+        let mockCatalog = """
+        {"status":"ok","models":[{"model":"gpt-5.5","displayName":"GPT-5.5","contextWindow":128000},{"model":"claude-sonnet-4-6","displayName":"Claude Sonnet 4.6","contextWindow":200000}]}
+        """
+
+        try await client.addBinding(name: cdpBridgeBindingName) { request in
+            let response: String
+            switch request.path {
+            case "/settings/get": response = bridgeSettings
+            case "/codex-model-catalog": response = mockCatalog
+            case "/cdp/diagnostic": response = "{}"
+            default: response = "{\"error\":\"unknown\"}"
+            }
+            return response.data(using: .utf8) ?? Data()
+        }
+
+        try await client.addScriptToEvaluateOnNewDocument(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(codexPluginInjectionScript)
+
+        var patchInstalled = false
+        for _ in 0..<40 {
+            let result = try await client.evaluateJavaScript(
+                "window.__STATSIG__.firstInstance.__codexPlusModelWhitelistPatched === true"
+            )
+            if result.value == "true" {
+                patchInstalled = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(patchInstalled, "Statsig patch was not installed on mock client")
+
+        let probe = try await client.evaluateJavaScript(#"""
+        (function() {
+          var result = window.__STATSIG__.firstInstance.getDynamicConfig("other_config", {disableExposureLog: true});
+          return JSON.stringify({ available_models: result.value.available_models });
+        })()
+        """#)
+
+        XCTAssertNotNil(probe.value, "Statsig probe returned nil")
+        if let json = probe.value,
+           let data = json.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let available = parsed["available_models"] as? [String] ?? []
+            XCTAssertEqual(available, ["gpt-5"],
+                           "Non-whitelist Statsig config was patched (should only patch config name '107580212'). Got: \(available)")
+        } else {
+            XCTFail("Could not parse probe result: \(probe.value ?? "nil")")
+        }
+
+        _ = try? await client.evaluateJavaScript("window.__STATSIG__ = window.__savedStatsig; delete window.__savedStatsig;")
+    }
+
+    /// Companion regression test: when the config name IS "107580212", custom
+    /// models must still be appended. Guards against over-filtering.
+    /// Verifies `patchStatsigModelDynamicConfig` does NOT append custom models
+    /// to the Statsig `available_models` string array. The picker renders
+    /// `available_models` as a SEPARATE list from the AppServer `model/list`
+    /// response (object array with metadata) — patching both makes each custom
+    /// model appear twice: once with metadata (reasoning works) and once as a
+    /// bare string (reasoning broken). The AppServer response already carries
+    /// custom models with full metadata, so the Statsig patch is redundant.
+    ///
+    /// RED state: current code appends custom names → `available_models` grows
+    /// beyond `["gpt-5"]` → this assertion fails. GREEN: `patchStatsigModelDynamicConfig`
+    /// becomes a no-op → `available_models` stays `["gpt-5"]`.
+    func test_injectionScript_doesNotPatchStatsigConfig_107580212_availableModels() async throws {
+        guard let wsURL = try? await Self.discoverPageWSURL() else {
+            throw XCTSkip("Codex not running with --remote-debugging-port=9222; skipping integration test")
+        }
+
+        let client = CDPClient(wsURL: wsURL)
+        try await client.connect()
+        defer { Task { await client.disconnect() } }
+
+        _ = try? await client.evaluateJavaScript("""
+        delete window.__codexSessionDeleteBridge;
+        delete window.__codexSessionDeleteResolve;
+        delete window.__codexSessionDeleteReject;
+        delete window.__codexSessionDeletePending;
+        delete window.__codexSessionDeleteIdCounter;
+        delete window.__codexPlusBackendSettings;
+        delete window.__codexPlusModelJsonResponsePatchInstalled;
+        delete window.__codexPlusAppServerModelRequestPatchInstalled;
+        window.__savedStatsig = window.__STATSIG__;
+        window.__STATSIG__ = {
+          firstInstance: {
+            getDynamicConfig: function(name, options) {
+              return { value: { available_models: ["gpt-5"] } };
+            }
+          }
+        };
+        """)
+
+        let bridgeSettings = """
+        {"codexAppPluginEntryUnlock":true,"codexAppForcePluginInstall":true,"enhancementsEnabled":true,"launchMode":"patch","codexAppVersion":"","codexAppPluginMarketplaceUnlock":true,"codexAppModelWhitelistUnlock":true,"modelProvider":"apibypass","proxyPort":15721}
+        """
+        let mockCatalog = """
+        {"status":"ok","models":[{"model":"gpt-5.5","displayName":"GPT-5.5","contextWindow":128000},{"model":"claude-sonnet-4-6","displayName":"Claude Sonnet 4.6","contextWindow":200000}]}
+        """
+
+        try await client.addBinding(name: cdpBridgeBindingName) { request in
+            let response: String
+            switch request.path {
+            case "/settings/get": response = bridgeSettings
+            case "/codex-model-catalog": response = mockCatalog
+            case "/cdp/diagnostic": response = "{}"
+            default: response = "{\"error\":\"unknown\"}"
+            }
+            return response.data(using: .utf8) ?? Data()
+        }
+
+        try await client.addScriptToEvaluateOnNewDocument(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(codexPluginInjectionScript)
+
+        var patchInstalled = false
+        for _ in 0..<40 {
+            let result = try await client.evaluateJavaScript(
+                "window.__STATSIG__.firstInstance.__codexPlusModelWhitelistPatched === true"
+            )
+            if result.value == "true" {
+                patchInstalled = true
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+        XCTAssertTrue(patchInstalled, "Statsig patch was not installed on mock client")
+
+        let probe = try await client.evaluateJavaScript(#"""
+        (function() {
+          var result = window.__STATSIG__.firstInstance.getDynamicConfig("107580212", {disableExposureLog: true});
+          return JSON.stringify({ available_models: result.value.available_models });
+        })()
+        """#)
+
+        XCTAssertNotNil(probe.value, "Statsig probe returned nil")
+        if let json = probe.value,
+           let data = json.data(using: .utf8),
+           let parsed = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            let available = parsed["available_models"] as? [String] ?? []
+            XCTAssertEqual(available, ["gpt-5"],
+                           "Statsig `available_models` must NOT be patched — custom models come from the AppServer response (with metadata). Patching both causes duplication. Got: \(available)")
+        } else {
+            XCTFail("Could not parse probe result: \(probe.value ?? "nil")")
+        }
+
+        _ = try? await client.evaluateJavaScript("window.__STATSIG__ = window.__savedStatsig; delete window.__savedStatsig;")
+    }
+
+    /// Verifies `scheduleCodexModelWhitelistRefresh` debounces the refresh tick
+    /// aggressively. Before the fix, the tick ran every 120ms for the full
+    /// 2500ms refresh window, and the window kept getting extended by every
+    /// DOM mutation — so under a mutation burst the tick chain ran indefinitely
+    /// at ~8Hz, each tick calling `patchReactModelState` (up to 220 DOM nodes)
+    /// and indirectly `patchObjectGraphForModels` (~200 calls/s total).
+    /// Diagnostic log showed 7112 `graphPatchCalls` in 35s → renderer saturated
+    /// → continuous white screen.
+    ///
+    /// After the fix, the tick interval is 1000ms and the chain stops when a
+    /// pass reports no React state changes. Under a 50-mutation burst over 1s,
+    /// refresh pass count over 2s must stay bounded (< 10).
+    func test_injectionScript_debouncesModelWhitelistRefresh() async throws {
+        guard let wsURL = try? await Self.discoverPageWSURL() else {
+            throw XCTSkip("Codex not running with --remote-debugging-port=9222; skipping integration test")
+        }
+
+        let client = CDPClient(wsURL: wsURL)
+        try await client.connect()
+        defer { Task { await client.disconnect() } }
+
+        _ = try? await client.evaluateJavaScript("""
+        delete window.__codexSessionDeleteBridge;
+        delete window.__codexSessionDeleteResolve;
+        delete window.__codexSessionDeleteReject;
+        delete window.__codexSessionDeletePending;
+        delete window.__codexSessionDeleteIdCounter;
+        delete window.__codexPlusBackendSettings;
+        delete window.__codexPlusModelJsonResponsePatchInstalled;
+        delete window.__codexPlusAppServerModelRequestPatchInstalled;
+        window.__codexPlusRefreshPassCount = 0;
+        """)
+
+        let bridgeSettings = """
+        {"codexAppPluginEntryUnlock":true,"codexAppForcePluginInstall":true,"enhancementsEnabled":true,"launchMode":"patch","codexAppVersion":"","codexAppPluginMarketplaceUnlock":true,"codexAppModelWhitelistUnlock":true,"modelProvider":"apibypass","proxyPort":15721}
+        """
+        let mockCatalog = """
+        {"status":"ok","models":[{"model":"gpt-5.5","displayName":"GPT-5.5","contextWindow":128000},{"model":"claude-sonnet-4-6","displayName":"Claude Sonnet 4.6","contextWindow":200000}]}
+        """
+
+        try await client.addBinding(name: cdpBridgeBindingName) { request in
+            let response: String
+            switch request.path {
+            case "/settings/get": response = bridgeSettings
+            case "/codex-model-catalog": response = mockCatalog
+            case "/cdp/diagnostic": response = "{}"
+            default: response = "{\"error\":\"unknown\"}"
+            }
+            return response.data(using: .utf8) ?? Data()
+        }
+
+        try await client.addScriptToEvaluateOnNewDocument(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(codexPluginInjectionScript)
+
+        // Wait for bootstrap to finish (initial refresh pass + observer start).
+        try await Task.sleep(for: .milliseconds(500))
+        _ = try await client.evaluateJavaScript("window.__codexPlusRefreshPassCount = 0;")
+
+        // Burst 50 DOM mutations over ~1s — simulates React re-renders triggering
+        // the MutationObserver. Before the fix, this would extend the refresh
+        // window repeatedly and run ~8 ticks/s.
+        for _ in 0..<50 {
+            _ = try? await client.evaluateJavaScript("""
+            (function(){ var d = document.createElement('div'); d.id = 'mutation-probe'; document.body.appendChild(d); document.body.removeChild(d); })();
+            """)
+            try await Task.sleep(for: .milliseconds(20))
+        }
+
+        // Wait 1s after the burst for any scheduled ticks to fire.
+        try await Task.sleep(for: .milliseconds(1000))
+
+        let result = try await client.evaluateJavaScript("String(window.__codexPlusRefreshPassCount || 0)")
+        let count = Int(result.value ?? "0") ?? 0
+
+        XCTAssertLessThan(count, 10,
+                         "Refresh pass ran \(count) times during a 50-mutation burst — debounce regressed. Before-fix rate was ~16; after-fix should be < 10.")
     }
 
     /// Verifies the injection script's scan loop is NOT a tight requestAnimationFrame

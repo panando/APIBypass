@@ -28,6 +28,9 @@ public actor CodexAppInjector {
         self.logger = logger
     }
 
+    /// Read-only accessor for the configured debug port.
+    public var configuredDebugPort: UInt16 { debugPort }
+
     /// Start injection. Connects to Codex debug port and injects JS.
     public func start() async {
         guard !isRunning else { return }
@@ -80,12 +83,30 @@ public actor CodexAppInjector {
                 return
             }
 
+            logger?.logInfo("[CDP] Connecting to WebSocket: \(wsURLString)")
+
             let cdpClient = CDPClient(wsURL: wsURL)
             try await cdpClient.connect()
             self.client = cdpClient
             self.injectedPageId = target.id
             connectionState = .connected
             logger?.logInfo("[CDP] WebSocket connected")
+
+            // Install the CDP binding bridge before the injection script so
+            // __codexSessionDeleteBridge is available when the script runs.
+            // The bridge routes JS calls through a native CDP binding, bypassing
+            // Codex's renderer CSP which blocks fetch() to localhost.
+            let bridge = CDPBridgeHandler(port: settings.proxyPort)
+            do {
+                try await cdpClient.addBinding(name: cdpBridgeBindingName) { request in
+                    try await bridge.handle(request)
+                }
+                try await cdpClient.addScriptToEvaluateOnNewDocument(cdpBridgeScript)
+                _ = try await cdpClient.evaluateJavaScript(cdpBridgeScript)
+                logger?.logInfo("[CDP] Bridge installed")
+            } catch {
+                logger?.logError("[CDP] Bridge installation failed: \(error.localizedDescription)")
+            }
 
             do {
                 try await pushSettings()
@@ -163,10 +184,7 @@ public actor CodexAppInjector {
     // MARK: - CDP Target Discovery
 
     private func queryCDPTargets() async throws -> [CDPTarget] {
-        let urls = [
-            "http://127.0.0.1:\(debugPort)/json",
-            "http://[::1]:\(debugPort)/json",
-        ]
+        let urls = CDPProbeURLs(port: debugPort)
 
         for urlString in urls {
             guard let url = URL(string: urlString) else { continue }

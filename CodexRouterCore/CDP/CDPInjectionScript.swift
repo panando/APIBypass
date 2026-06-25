@@ -1,5 +1,47 @@
 // MARK: - Ported injection JavaScript for plugin entry unlock and force install
 
+/// Name of the CDP binding used by the bridge. JS calls
+/// `window.{bindingName}(JSON.stringify({id, path, payload}))` which is delivered
+/// as a `Runtime.bindingCalled` event to the native side.
+public let cdpBridgeBindingName = "codexSessionDeleteV2"
+
+/// Installs the CDP binding bridge on the renderer.
+///
+/// Defines `window.__codexSessionDeleteBridge(path, payload)` returning a Promise
+/// that resolves with the response body string (or rejects on HTTP error). The
+/// bridge routes through a native CDP binding instead of `fetch()`, bypassing
+/// Codex's `connect-src` CSP which blocks localhost requests from the page.
+///
+/// Installed via `Page.addScriptToEvaluateOnNewDocument` so it survives reloads,
+/// and also `Runtime.evaluate`d once for the current page. Idempotent — uses `||`
+/// guards so re-evaluation after a reload is a no-op.
+public let cdpBridgeScript: String = """
+(function() {
+  if (window.__codexSessionDeleteBridge) return;
+  window.__codexSessionDeleteIdCounter = 0;
+  window.__codexSessionDeletePending = new Map();
+  window.__codexSessionDeleteBridge = function(path, payload) {
+    return new Promise(function(resolve, reject) {
+      var id = ++window.__codexSessionDeleteIdCounter;
+      window.__codexSessionDeletePending.set(id, { resolve: resolve, reject: reject });
+      window.\(cdpBridgeBindingName)(JSON.stringify({ id: id, path: path, payload: payload || null }));
+    });
+  };
+  window.__codexSessionDeleteResolve = function(id, result) {
+    var entry = window.__codexSessionDeletePending.get(id);
+    if (!entry) return;
+    window.__codexSessionDeletePending.delete(id);
+    entry.resolve(result);
+  };
+  window.__codexSessionDeleteReject = function(id, error) {
+    var entry = window.__codexSessionDeletePending.get(id);
+    if (!entry) return;
+    window.__codexSessionDeletePending.delete(id);
+    entry.reject(new Error(typeof error === "string" ? error : String(error)));
+  };
+})();
+"""
+
 /// The complete injection script, ported from CodexPlusPlus renderer-inject.js.
 /// Contains only the plugin entry unlock and force plugin install features.
 public let codexPluginInjectionScript: String = """
@@ -307,6 +349,7 @@ public let codexPluginInjectionScript: String = """
 
   // ── Scan ──────────────────────────────────────────────────────────
   function scanDeferred() {
+    window.__codexPlusScanCount = (window.__codexPlusScanCount || 0) + 1;
     if (pluginPatchDisabledInRelayMode()) {
       clearPluginPatchArtifacts();
       refreshForcePluginInstallUnlockLoop();
@@ -327,6 +370,53 @@ public let codexPluginInjectionScript: String = """
 
   function scan() {
     requestAnimationFrame(() => runScanStep(scanDeferred));
+  }
+
+  // ── Mutation filtering (ported from CodexPlusPlus) ────────────────
+  // Only schedule scans for mutations on scan-relevant DOM (sidebar threads,
+  // chat content, install buttons). Without this filter, the MutationObserver
+  // fires on every React re-render — including re-renders triggered by
+  // `spoofChatGPTAuthMethod` inside `enablePluginEntry` — creating a feedback
+  // loop that freezes Codex on startup when `pluginEntryUnlock` is enabled.
+  function scanRelevantSelector() {
+    const parts = [
+      '[data-message-author-role]',
+      '[data-testid="conversation-turn"]',
+      '[class*="user-message"]',
+      '[class*="UserMessage"]',
+      '.composer-footer',
+    ];
+    if (!pluginPatchDisabledInRelayMode()) parts.push(selectors.disabledInstallButton);
+    return parts.join(", ");
+  }
+
+  function nodeSelfOrAncestorMatchesScanRelevance(node) {
+    if (node.nodeType !== 1) return false;
+    const relevantSelector = scanRelevantSelector();
+    return !!node.matches?.(relevantSelector) || !!node.closest?.(relevantSelector);
+  }
+
+  function isScanRelevantNode(node) {
+    if (node.nodeType !== 1) return false;
+    return nodeSelfOrAncestorMatchesScanRelevance(node) || !!node.querySelector?.(scanRelevantSelector());
+  }
+
+  function isChatContentMutation(mutation) {
+    const target = mutation.target;
+    if (!target?.closest?.('[data-message-author-role], [data-testid="conversation-turn"], main .prose')) return false;
+    return !Array.from(mutation.addedNodes).some((node) => node.nodeType === 1 && isScanRelevantNode(node)) &&
+      !Array.from(mutation.removedNodes).some((node) => node.nodeType === 1 && isScanRelevantNode(node));
+  }
+
+  function shouldScheduleScan(mutations) {
+    if (!mutations) return true;
+    return mutations.some((mutation) => {
+      if (isChatContentMutation(mutation)) return false;
+      const target = mutation.target;
+      if (target?.nodeType === 1 && nodeSelfOrAncestorMatchesScanRelevance(target)) return true;
+      const changedNodes = [...Array.from(mutation.addedNodes), ...Array.from(mutation.removedNodes)];
+      return changedNodes.some((node) => node.nodeType === 1 && isScanRelevantNode(node));
+    });
   }
 
   // ── Plugin Marketplace Unlock ────────────────────────────────────
@@ -409,17 +499,15 @@ public let codexPluginInjectionScript: String = """
   // ── Settings polling ──────────────────────────────────────────────
   async function fetchBackendSettings() {
     try {
-      const resp = await fetch(codexPlusBackendBase() + "/settings/get");
-      if (resp.ok) {
-        const data = await resp.json();
-        codexPlusBackendSettings = data;
-        codexPlusBackendSettingsLoaded = true;
-        window.__codexPlusBackendSettings = data;
-        sendCodexPlusDiagnostic("settings_loaded", {
-          modelProvider: data.modelProvider || "",
-          enhancementsEnabled: data.enhancementsEnabled,
-        });
-      }
+      const body = await window.__codexSessionDeleteBridge("/settings/get", null);
+      const data = JSON.parse(body);
+      codexPlusBackendSettings = data;
+      codexPlusBackendSettingsLoaded = true;
+      window.__codexPlusBackendSettings = data;
+      sendCodexPlusDiagnostic("settings_loaded", {
+        modelProvider: data.modelProvider || "",
+        enhancementsEnabled: data.enhancementsEnabled,
+      });
     } catch (_) {}
   }
 
@@ -446,8 +534,8 @@ public let codexPluginInjectionScript: String = """
   async function loadCodexModelCatalog(force = false) {
     if (!force && codexModelCatalogPromise) return codexModelCatalogPromise;
     if (!force && codexModelCatalogLoadedAt && Date.now() - codexModelCatalogLoadedAt < codexModelCatalogCacheMs) return codexModelCatalog;
-    codexModelCatalogPromise = fetch(codexPlusBackendBase() + "/codex-model-catalog")
-      .then((resp) => resp.json())
+    codexModelCatalogPromise = window.__codexSessionDeleteBridge("/codex-model-catalog", null)
+      .then((body) => JSON.parse(body))
       .then((result) => {
         codexModelCatalog = result && typeof result === "object" && Array.isArray(result.models)
           ? result
@@ -574,7 +662,7 @@ public let codexPluginInjectionScript: String = """
       const names = codexPlusModelNames();
       if (!names.length) return false;
       let changed = false;
-      if (patchModelArray(value.models, "defaultModel" in value || "availableModels" in value)) changed = true;
+      if (patchModelArray(value.models, true)) changed = true;
       if (patchModelNameArray(value.models)) changed = true;
       if (patchModelArray(value.data)) changed = true;
       if (patchModelArray(value.result)) changed = true;
@@ -934,12 +1022,7 @@ public let codexPluginInjectionScript: String = """
         userAgent: navigator.userAgent || "",
         timestamp: new Date().toISOString(),
       };
-      fetch(codexPlusBackendBase() + "/cdp/diagnostic", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-        keepalive: true,
-      }).catch(() => {});
+      window.__codexSessionDeleteBridge("/cdp/diagnostic", JSON.stringify(payload)).catch(() => {});
     } catch (_) {}
   }
 
@@ -953,12 +1036,31 @@ public let codexPluginInjectionScript: String = """
     installPluginMarketplacePatch();  // Install marketplace unlock patch
     void bootstrapModelWhitelist();   // Install model whitelist patch (async)
     scan();
-    // Continue scanning on every animation frame
-    function loop() {
-      scan();
-      requestAnimationFrame(loop);
+    // Schedule subsequent scans via MutationObserver + debounce (matches
+    // CodexPlusPlus's scheduleScan pattern). A tight requestAnimationFrame
+    // loop runs scanDeferred ~60fps; combined with spoofChatGPTAuthMethod's
+    // React fiber traversal this freezes Codex on startup when
+    // pluginEntryUnlock is enabled.
+    let scanPending = false;
+    function scheduleScan(mutations) {
+      if (!shouldScheduleScan(mutations)) return;
+      if (scanPending) return;
+      scanPending = true;
+      setTimeout(() => {
+        scanPending = false;
+        scan();
+      }, 200);
     }
-    requestAnimationFrame(loop);
+    function attachObserver() {
+      window.__codexPlusScanObserver?.disconnect();
+      window.__codexPlusScanObserver = new MutationObserver(scheduleScan);
+      window.__codexPlusScanObserver.observe(document.body, { childList: true, subtree: true });
+    }
+    if (document.body) {
+      attachObserver();
+    } else {
+      document.addEventListener("DOMContentLoaded", attachObserver);
+    }
   }
 
   // Wait for document to be ready

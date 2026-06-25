@@ -1,5 +1,32 @@
 import Foundation
 
+/// Ordered probe URLs for the CDP `/json` discovery endpoint.
+///
+/// `127.0.0.1` is first because `URLSessionWebSocketTask` does not fall back from
+/// IPv6 to IPv4 when `localhost` resolves to both: the DevTools server only binds
+/// IPv4, so an IPv6-first WS attempt fails with ENOTCONN. Using `127.0.0.1` for
+/// discovery makes Chromium echo back a `ws://127.0.0.1:...` URL that the WS
+/// task can connect to directly.
+public func CDPProbeURLs(port: UInt16) -> [String] {
+    return [
+        "http://127.0.0.1:\(port)/json",
+        "http://localhost:\(port)/json",
+        "http://[::1]:\(port)/json",
+    ]
+}
+
+/// Derive the `Origin` header value matching a CDP WebSocket URL.
+///
+/// `URLSessionWebSocketTask` does not send an `Origin` header by default, but
+/// Chromium's `--remote-allow-origins` check requires one — without it, the WS
+/// upgrade is rejected even when `*` is configured. The Origin must match the
+/// host:port of the WS URL (scheme flipped to `http`).
+public func CDPOriginHeader(for wsURL: URL) -> String? {
+    guard let host = wsURL.host, let port = wsURL.port else { return nil }
+    let bracketed = host.contains(":") ? "[\(host)]" : host
+    return "http://\(bracketed):\(port)"
+}
+
 /// Represents a debuggable page target from /json endpoint.
 public struct CDPTarget: Codable, Sendable {
     public let id: String

@@ -562,7 +562,8 @@ public let codexPluginInjectionScript: String = """
 
   function codexPlusModelNames() {
     const models = Array.isArray(codexModelCatalog.models) ? codexModelCatalog.models : [];
-    return Array.from(new Set(models.map((entry) => entry?.displayName || entry?.model).filter((name) => typeof name === "string" && name.length > 0)));
+    // Config uses "slug" field as model ID; fall back to "model" for compatibility
+    return Array.from(new Set(models.map((entry) => entry?.slug || entry?.model).filter((name) => typeof name === "string" && name.length > 0)));
   }
 
   async function loadCodexModelCatalog(force = false) {
@@ -622,18 +623,39 @@ public let codexPluginInjectionScript: String = """
   }
 
   // ── Model descriptor + array patching ─────────────────────────────
+  function modelReasoningEfforts() {
+    return ["minimal", "low", "medium", "high", "xhigh"].map((reasoningEffort) => ({ reasoningEffort, description: `${reasoningEffort} effort` }));
+  }
+
+  function findModelEntry(modelName) {
+    const models = Array.isArray(codexModelCatalog.models) ? codexModelCatalog.models : [];
+    // Match by slug (config format) or model (fallback)
+    return models.find((entry) => (entry?.slug || entry?.model) === modelName);
+  }
+
   function codexPlusModelDescriptor(modelName) {
+    const entry = findModelEntry(modelName);
+    // Config uses snake_case: display_name, supported_reasoning_levels
+    const displayName = entry?.display_name || entry?.displayName || modelName;
+    const rawReasoningLevels = entry?.supported_reasoning_levels || entry?.supportedReasoningEfforts;
+    // Convert {effort, description} to {reasoningEffort, description} if needed
+    const reasoningEfforts = rawReasoningLevels
+      ? rawReasoningLevels.map((level) => ({
+          reasoningEffort: level.reasoningEffort || level.effort,
+          description: level.description || `${level.reasoningEffort || level.effort} effort`,
+        }))
+      : modelReasoningEfforts();
     return {
       model: modelName,
       id: modelName,
       slug: modelName,
-      name: modelName,
-      displayName: modelName,
-      description: "Custom model",
+      name: displayName,
+      displayName: displayName,
+      description: codexModelCatalog.provider_name || codexModelCatalog.model_provider || "Custom model",
       hidden: false,
-      isDefault: false,
+      isDefault: (codexModelCatalog.default_model || codexModelCatalog.model) === modelName,
       defaultReasoningEffort: "medium",
-      supportedReasoningEfforts: ["minimal", "low", "medium", "high", "xhigh"],
+      supportedReasoningEfforts: reasoningEfforts,
     };
   }
 
@@ -665,25 +687,40 @@ public let codexPluginInjectionScript: String = """
     }
   }
 
-  function patchModelArray(models, allowEmpty) {
+  function patchModelArray(models, allowEmpty, path = "unknown") {
     try {
       if (!modelArrayLooksPatchable(models, allowEmpty)) return false;
       const customModels = codexPlusModelNames();
       if (!customModels.length) return false;
       let changed = false;
+      const beforeCount = models.length;
+
+      // Step 1: Add custom models that don't exist
       const existing = new Map(models.map((item) => [item.model, item]));
-      models.forEach((item) => {
-        if (customModels.includes(item.model) && item.hidden !== false) {
-          item.hidden = false;
-          changed = true;
-        }
-      });
       customModels.forEach((modelName) => {
         if (!existing.has(modelName)) {
           models.push(codexPlusModelDescriptor(modelName));
           changed = true;
         }
       });
+
+      // Step 2: Remove non-custom models (complete replacement)
+      // Filter in place to keep only custom models
+      const customSet = new Set(customModels);
+      let writeIndex = 0;
+      for (let readIndex = 0; readIndex < models.length; readIndex++) {
+        if (customSet.has(models[readIndex].model)) {
+          if (writeIndex !== readIndex) {
+            models[writeIndex] = models[readIndex];
+            changed = true;
+          }
+          writeIndex++;
+        } else {
+          changed = true; // Removing a non-custom model
+        }
+      }
+      models.length = writeIndex;
+
       return changed;
     } catch {
       return false;
@@ -718,20 +755,49 @@ public let codexPluginInjectionScript: String = """
       if (!names.length) return false;
       let changed = false;
       const patchedPaths = [];
-      if (patchModelArray(value.models, "defaultModel" in value || "availableModels" in value)) { changed = true; patchedPaths.push("models"); }
+      if (patchModelArray(value.models, "defaultModel" in value || "availableModels" in value, "models")) { changed = true; patchedPaths.push("models"); }
+      // CPP-aligned: also patch string arrays in value.models
       if (patchModelNameArray(value.models)) { changed = true; patchedPaths.push("models(strings)"); }
-      if (patchModelArray(value.data)) { changed = true; patchedPaths.push("data"); }
-      if (patchModelArray(value.result)) { changed = true; patchedPaths.push("result"); }
-      if (patchModelArray(value.pages?.[0]?.data)) { changed = true; patchedPaths.push("pages[0].data"); }
-      if (patchModelArray(value.result?.data)) { changed = true; patchedPaths.push("result.data"); }
-      if (patchModelArray(value.result?.models)) { changed = true; patchedPaths.push("result.models"); }
-      if (patchModelArray(value.message?.result?.data)) { changed = true; patchedPaths.push("message.result.data"); }
-      if (patchModelArray(value.message?.result?.models)) { changed = true; patchedPaths.push("message.result.models"); }
-      // `availableModels` / `available_models` (string arrays / Sets) are NOT patched here.
-      // They are handled exclusively by `patchStatsigModelDynamicConfig` (the Statsig
-      // dynamic config's `available_models` is the picker's whitelist source). Patching
-      // them here too would make each custom model appear twice in the picker — once
-      // from `models` (object array, metadata) and once from `available_models` (string).
+      if (patchModelArray(value.data, false, "data")) { changed = true; patchedPaths.push("data"); }
+      if (patchModelArray(value.result, false, "result")) { changed = true; patchedPaths.push("result"); }
+      if (patchModelArray(value.pages?.[0]?.data, false, "pages[0].data")) { changed = true; patchedPaths.push("pages[0].data"); }
+      if (patchModelArray(value.result?.data, false, "result.data")) { changed = true; patchedPaths.push("result.data"); }
+      if (patchModelArray(value.result?.models, false, "result.models")) { changed = true; patchedPaths.push("result.models"); }
+      if (patchModelArray(value.message?.result?.data, false, "message.result.data")) { changed = true; patchedPaths.push("message.result.data"); }
+      if (patchModelArray(value.message?.result?.models, false, "message.result.models")) { changed = true; patchedPaths.push("message.result.models"); }
+      // CPP-aligned: patch availableModels / available_models (Sets and arrays)
+      if (value.availableModels instanceof Set) {
+        names.forEach((name) => {
+          if (!value.availableModels.has(name)) {
+            value.availableModels.add(name);
+            changed = true;
+          }
+        });
+      }
+      if (value.available_models instanceof Set) {
+        names.forEach((name) => {
+          if (!value.available_models.has(name)) {
+            value.available_models.add(name);
+            changed = true;
+          }
+        });
+      }
+      if (Array.isArray(value.availableModels)) {
+        names.forEach((name) => {
+          if (!value.availableModels.includes(name)) {
+            value.availableModels.push(name);
+            changed = true;
+          }
+        });
+      }
+      if (Array.isArray(value.available_models)) {
+        names.forEach((name) => {
+          if (!value.available_models.includes(name)) {
+            value.available_models.push(name);
+            changed = true;
+          }
+        });
+      }
       if (Array.isArray(value.hiddenModels)) {
         const before = value.hiddenModels.length;
         value.hiddenModels = value.hiddenModels.filter((name) => !names.includes(name));
@@ -741,6 +807,14 @@ public let codexPluginInjectionScript: String = """
         const before = value.hidden_models.length;
         value.hidden_models = value.hidden_models.filter((name) => !names.includes(name));
         if (value.hidden_models.length !== before) { changed = true; patchedPaths.push("hidden_models"); }
+      }
+      // CPP-aligned: set defaultModel if not present
+      if (value.defaultModel == null && names.length > 0) {
+        value.defaultModel = codexPlusModelDescriptor(names[0]);
+        changed = true;
+      } else if (typeof value.defaultModel === "string" && names.includes(value.defaultModel) && value.model == null) {
+        value.model = value.defaultModel;
+        changed = true;
       }
       if (changed) {
         const sig = [
@@ -752,9 +826,6 @@ public let codexPluginInjectionScript: String = """
         const logKey = sig + "|" + patchedPaths.join(",");
         if (!__codexPlusContainerPatchedLogged.has(logKey)) {
           __codexPlusContainerPatchedLogged.add(logKey);
-          // Snapshot: count how many custom models ended up in each list. If
-          // customInModels > 0 AND customInAvailable > 0 for the same container,
-          // the picker (which reads both) will show each custom model twice.
           const namesSet = new Set(names);
           let customInModels = 0;
           if (Array.isArray(value.models)) {
@@ -911,12 +982,13 @@ public let codexPluginInjectionScript: String = """
   }
 
   function patchAppServerModelResult(method, result) {
-    if (method !== "list-models-for-host" && method !== "model/list") return result;
+    // CPP-aligned: only handle "list-models-for-host", not "model/list"
+    if (method !== "list-models-for-host") return result;
     try {
       if (!shouldPatchModels()) return result;
-      if (Array.isArray(result)) patchModelArray(result, true);
-      if (Array.isArray(result?.data)) patchModelArray(result.data, true);
-      if (Array.isArray(result?.models)) patchModelArray(result.models, true);
+      if (Array.isArray(result)) patchModelArray(result, true, "appserver.result");
+      if (Array.isArray(result?.data)) patchModelArray(result.data, true, "appserver.result.data");
+      if (Array.isArray(result?.models)) patchModelArray(result.models, true, "appserver.result.models");
       patchModelContainer(result);
       patchObjectGraphForModels(result, new WeakSet(), 0);
     } catch (_) {}

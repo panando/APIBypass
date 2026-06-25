@@ -1,0 +1,16 @@
+{
+  "name": "api-bypass-js-tests",
+  "version": "1.0.0",
+  "description": "JavaScript tests for CDP injection script",
+  "scripts": {
+    "test": "jest",
+    "test:watch": "jest --watch"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0"
+  },
+  "jest": {
+    "testEnvironment": "node",
+    "verbose": true
+  }
+}

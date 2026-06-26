@@ -43,7 +43,7 @@ struct L10n {
         // 菜单栏
         "apibypass_service": [.chinese: "APIBypass服务", .english: "APIBypass Service"],
         "codex_adaptor_service": [.chinese: "Codex适配服务", .english: "Codex Adaptor Service"],
-        "launch_codex": [.chinese: "启动Codex", .english: "Launch Codex"],
+        "launch_codex": [.chinese: "启动 Codex", .english: "Launch Codex"],
         "bypass_mode": [.chinese: "纯代理模式", .english: "Bypass Mode"],
         "configure_apibypass": [.chinese: "配置: APIBypass", .english: "Configure: APIBypass"],
         "configure_codex_adaptor": [.chinese: "配置: Codex适配", .english: "Configure: Codex Adaptor"],

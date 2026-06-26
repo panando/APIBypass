@@ -113,13 +113,15 @@ struct HelpView: View {
             sectionTitle(L10n.t("help_menu_bar"))
             body(L10n.t("help_menu_bar_desc"))
             bulletList([
-                L10n.t("help_menu_status"),
-                L10n.t("help_menu_control"),
-                L10n.t("help_menu_codex_control"),
+                L10n.t("help_menu_icon_status"),
+                L10n.t("help_menu_indicator"),
+                L10n.t("help_menu_apibypass_service"),
+                L10n.t("help_menu_codex_service"),
                 L10n.t("help_menu_bypass"),
+                L10n.t("help_menu_launch_codex"),
                 L10n.t("help_menu_launcher"),
-                L10n.t("help_menu_codex_window"),
                 L10n.t("help_menu_configure"),
+                L10n.t("help_menu_codex_window"),
                 L10n.t("help_menu_settings"),
                 L10n.t("help_menu_help"),
                 L10n.t("help_menu_about"),
@@ -221,6 +223,18 @@ struct HelpView: View {
         VStack(alignment: .leading, spacing: 20) {
             sectionTitle(L10n.t("help_codex_adaptor_title"))
             body(L10n.t("help_codex_adaptor_desc"))
+
+            // 界面结构
+            group(L10n.t("help_codex_ui_title")) {
+                body(L10n.t("help_codex_ui_desc"))
+                bulletList([
+                    L10n.t("help_codex_ui_tab_service"),
+                    L10n.t("help_codex_ui_tab_enhancements"),
+                    L10n.t("help_codex_ui_tab_logs")
+                ])
+            }
+
+            // 使用方法
             group(L10n.t("help_codex_usage_title")) {
                 numberedList([
                     L10n.t("help_codex_usage_1"),
@@ -229,6 +243,8 @@ struct HelpView: View {
                 ])
                 note(L10n.t("help_codex_usage_note"))
             }
+
+            // 配置项
             group(L10n.t("help_codex_config_title")) {
                 bulletList([
                     L10n.t("help_codex_config_1"),
@@ -238,14 +254,36 @@ struct HelpView: View {
                     L10n.t("help_codex_config_5")
                 ])
             }
+
+            // 自动检测
             group(L10n.t("help_codex_autodetect_title")) {
                 body(L10n.t("help_codex_autodetect_desc"))
             }
+
+            // CDP 注入
+            group(L10n.t("help_codex_cdp_injection_title")) {
+                body(L10n.t("help_codex_cdp_injection_desc"))
+                bulletList([
+                    L10n.t("help_codex_cdp_launch"),
+                    L10n.t("help_codex_cdp_debug_port"),
+                    L10n.t("help_codex_cdp_status")
+                ])
+            }
+
+            // 插件设置
+            group(L10n.t("help_codex_plugin_settings_title")) {
+                body(L10n.t("help_codex_plugin_settings_desc"))
+                bulletList([
+                    L10n.t("help_codex_plugin_entry"),
+                    L10n.t("help_codex_plugin_whitelist"),
+                    L10n.t("help_codex_plugin_marketplace"),
+                    L10n.t("help_codex_plugin_force_install")
+                ])
+            }
+
+            // 日志与排错
             group(L10n.t("help_codex_logs_title")) {
                 body(L10n.t("help_codex_logs_desc"))
-            }
-            group(L10n.t("help_codex_cdp_title")) {
-                body(L10n.t("help_codex_cdp_desc"))
             }
         }
     }
@@ -287,6 +325,9 @@ struct HelpView: View {
             faqItem(L10n.t("help_faq_q5"), L10n.t("help_faq_a5"))
             faqItem(L10n.t("help_faq_q6"), L10n.t("help_faq_a6"))
             faqItem(L10n.t("help_faq_q7"), L10n.t("help_faq_a7"))
+            faqItem(L10n.t("help_faq_q8"), L10n.t("help_faq_a8"))
+            faqItem(L10n.t("help_faq_q9"), L10n.t("help_faq_a9"))
+            faqItem(L10n.t("help_faq_q10"), L10n.t("help_faq_a10"))
         }
     }
 

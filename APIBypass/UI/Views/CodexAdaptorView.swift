@@ -841,9 +841,13 @@ private struct CodexEnhancementsTab: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
-                // Launch Codex
-                cardSection(header: Label(L10n.t("codex_launch_codex"), systemImage: "play.circle")) {
+                // CDP Injection
+                cardSection(header: Label(L10n.t("codex_launch_codex"), systemImage: "syringe")) {
                     HStack(spacing: 8) {
+                        Text(L10n.t("codex_launch_description"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
                         Button {
                             startLaunchCodexFlow()
                         } label: {
@@ -858,14 +862,13 @@ private struct CodexEnhancementsTab: View {
                         }
                         .buttonStyle(.borderedProminent)
                         .disabled(isLaunchingCodex || isCodexRunning)
+                    }
 
-                        if let err = codexLaunchError {
-                            Text(err)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .lineLimit(2)
-                        }
-                        Spacer()
+                    if let err = codexLaunchError {
+                        Text(err)
+                            .font(.caption)
+                            .foregroundColor(.red)
+                            .lineLimit(2)
                     }
                 }
 

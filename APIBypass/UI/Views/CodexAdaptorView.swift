@@ -32,8 +32,6 @@ struct CodexAdaptorView: View {
                             .frame(width: 7, height: 7)
                     }
                     sidebarItem(tab: .enhancements, icon: "wand.and.stars")
-                }
-                Section {
                     sidebarItem(tab: .logs, icon: "doc.text.magnifyingglass")
                 }
             }
@@ -844,7 +842,7 @@ private struct CodexEnhancementsTab: View {
         ScrollView {
             VStack(spacing: 16) {
                 // CDP Status
-                cardSection(header: Label(L10n.t("codex_enhancements"), systemImage: "wand.and.stars")) {
+                cardSection(header: Label(L10n.t("codex_cdp_status"), systemImage: "wand.and.stars")) {
                     HStack(spacing: 8) {
                         Circle()
                             .fill(cdpStatusColor)

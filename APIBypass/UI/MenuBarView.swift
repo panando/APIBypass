@@ -12,43 +12,75 @@ struct MenuBarView: View {
     @ObservedObject private var l10n = LocalizationManager.shared
     @AppStorage("bypassMode") var bypassMode: Bool = false
 
+    private var isCodexRunning: Bool {
+        switch codexAdaptor.cdpConnectionState {
+        case .connected, .injected: return true
+        default: return false
+        }
+    }
+
     var body: some View {
         VStack {
-            Button(isRunning ? L10n.t("stop_server") : L10n.t("start_server")) {
-                if isRunning {
-                    onStop()
-                } else {
-                    onStart()
+            // APIBypass服务 - toggle with status indicator
+            Button {
+                if isRunning { onStop() } else { onStart() }
+            } label: {
+                HStack {
+                    Text(L10n.t("apibypass_service"))
+                    Spacer()
+                    Circle()
+                        .fill(isRunning ? Color.green : Color.gray)
+                        .frame(width: 8, height: 8)
                 }
             }
 
-            Button(codexAdaptor.isRunning ? L10n.t("stop_codex_adaptor") : L10n.t("start_codex_adaptor")) {
-                if codexAdaptor.isRunning {
-                    onStopCodex()
-                } else {
-                    onStartCodex()
+            // Codex适配服务 - toggle with status indicator
+            Button {
+                if codexAdaptor.isRunning { onStopCodex() } else { onStartCodex() }
+            } label: {
+                HStack {
+                    Text(L10n.t("codex_adaptor_service"))
+                    Spacer()
+                    Circle()
+                        .fill(codexAdaptor.isRunning ? Color.green : Color.gray)
+                        .frame(width: 8, height: 8)
                 }
             }
 
             Divider()
 
-            Button(bypassMode ? L10n.t("bypass_mode") : L10n.t("bypass_mode_off")) {
-                bypassMode.toggle()
+            // 启动Codex - disabled when already running
+            Button(L10n.t("launch_codex")) {
+                launchCodex()
             }
+            .disabled(isCodexRunning)
 
             Button(L10n.t("launch_claude_code")) {
                 openLaunchClaudeCodeWindow()
             }
             .disabled(configManager.providers.isEmpty)
 
-            Button(L10n.t("codex_adaptor")) {
-                openCodexAdaptorWindow()
+            // 纯代理模式 - toggle with status indicator
+            Button {
+                bypassMode.toggle()
+            } label: {
+                HStack {
+                    Text(L10n.t("bypass_mode"))
+                    Spacer()
+                    Circle()
+                        .fill(bypassMode ? Color.green : Color.gray)
+                        .frame(width: 8, height: 8)
+                }
             }
 
             Divider()
 
-            Button(L10n.t("configure")) {
+            Button(L10n.t("configure_apibypass")) {
                 openConfigWindow()
+            }
+
+            Button(L10n.t("configure_codex_adaptor")) {
+                openCodexAdaptorWindow()
             }
 
             Button(L10n.t("settings")) {
@@ -67,6 +99,15 @@ struct MenuBarView: View {
 
             Button(L10n.t("quit")) {
                 NSApplication.shared.terminate(nil)
+            }
+        }
+    }
+
+    private func launchCodex() {
+        Task {
+            // Start adaptor service if not running
+            if !codexAdaptor.isRunning {
+                try? await codexAdaptor.start()
             }
         }
     }

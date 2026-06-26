@@ -767,17 +767,6 @@ public let codexPluginInjectionScript: String = """
       const names = codexPlusModelNames();
       if (!names.length) return false;
 
-      // Debug: log when we find a container with any model-related field
-      if (value.models != null || value.availableModels != null || value.available_models != null || value.defaultModel != null) {
-        sendCodexPlusDiagnostic("model_container_found", {
-          hasModels: value.models != null,
-          hasAvailableModels: value.availableModels != null,
-          hasAvailableModelsSnake: value.available_models != null,
-          hasDefaultModel: value.defaultModel != null,
-          modelNames: names.slice(0, 5).join(",") + (names.length > 5 ? "..." : ""),
-        });
-      }
-
       let changed = false;
       const patchedPaths = [];
       if (patchModelArray(value.models, "defaultModel" in value || "availableModels" in value, "models")) { changed = true; patchedPaths.push("models"); }

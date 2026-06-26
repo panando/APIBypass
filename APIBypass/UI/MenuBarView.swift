@@ -155,6 +155,11 @@ struct MenuBarView: View {
             return
         }
 
+        // Pre-load config to populate cache before view appears
+        Task {
+            _ = await CodexAdaptorConfigStore.shared.load()
+        }
+
         let window = NSWindow(
             contentRect: NSRect(x: 0, y: 0, width: 780, height: 560),
             styleMask: [.titled, .closable, .resizable],

@@ -121,6 +121,7 @@ private struct CodexServerTab: View {
     @State private var pendingWireAPI: CodexAdaptorConfig.WireAPI?
     @State private var isHandlingProtocolSwitch = false  // Prevent onChange re-entry during programmatic switch
     @State private var isLoading = true  // Disable interactions until config is fully loaded
+    @State private var hasLoadedConfig = false  // Prevent multiple loads from onAppear
     // CDP launch
     @State private var cdpPortText: String = "9222"
     @State private var isLaunchingCodex: Bool = false
@@ -909,6 +910,8 @@ private struct CodexServerTab: View {
     }
 
     private func loadConfig() {
+        guard !hasLoadedConfig else { return }
+        hasLoadedConfig = true
         Task {
             config = await CodexAdaptorConfigStore.shared.load()
             // Run migration for legacy configs

@@ -124,4 +124,26 @@ final class CodexAdaptorConfigTests: XCTestCase {
         XCTAssertEqual(decoded.responsesCustomModels.count, 1)
         XCTAssertEqual(decoded.wireAPI, .chat)
     }
+
+    // MARK: - Test 1.5: 配置缓存一致性
+
+    func test_load_returnsSavedConfig() async {
+        // 保存一个自定义配置
+        var config = CodexAdaptorConfig()
+        config.port = 12345
+        config.wireAPI = .responses
+        let entry = CustomModelEntry(alias: "test-model", modelMappingId: UUID(), contextWindow: 200000)
+        config.chatCustomModels = [entry]
+
+        await CodexAdaptorConfigStore.shared.save(config)
+
+        // 加载配置
+        let loaded = await CodexAdaptorConfigStore.shared.load()
+
+        // 验证加载的配置与保存的一致
+        XCTAssertEqual(loaded.port, 12345)
+        XCTAssertEqual(loaded.wireAPI, .responses)
+        XCTAssertEqual(loaded.chatCustomModels.count, 1)
+        XCTAssertEqual(loaded.chatCustomModels.first?.alias, "test-model")
+    }
 }

@@ -234,6 +234,32 @@ describe("createModelPatcher", () => {
       expect(container.hiddenModels).not.toContain("glm-5-qf");
       expect(container.hiddenModels).toContain("some-other");
     });
+
+    it("should create models array when container has defaultModel but no models", () => {
+      // This is the critical case: Codex returns { defaultModel: {...} } without models array
+      const container = {
+        defaultModel: { model: "old-model", name: "Old Model" },
+      };
+
+      const changed = patcher.patchModelContainer(container);
+
+      expect(changed).toBe(true);
+      expect(Array.isArray(container.models)).toBe(true);
+      expect(container.models.length).toBe(2); // 2 custom models from catalog
+      expect(container.models.map((m) => m.model)).toContain("deepseek-v4-flash");
+      expect(container.models.map((m) => m.model)).toContain("glm-5-qf");
+    });
+
+    it("should not create models array when container has no model-related fields", () => {
+      const container = {
+        otherData: "value",
+      };
+
+      const changed = patcher.patchModelContainer(container);
+
+      expect(changed).toBe(false);
+      expect(container.models).toBeUndefined();
+    });
   });
 
   describe("patchMcpModelResponseData", () => {

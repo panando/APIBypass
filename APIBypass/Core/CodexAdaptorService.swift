@@ -167,12 +167,21 @@ final class CodexAdaptorService: ObservableObject {
     private func buildModelCatalog(from config: CodexAdaptorConfig) async -> ModelCatalog? {
         let mappings = await ConfigDataStore.shared.getMappings()
         let providers = await ConfigDataStore.shared.getProviders()
+
+        // Debug: log what we have
+        CodexLogStore.shared.info("[CodexAdaptor] buildModelCatalog: customModels=\(config.currentCustomModels.count), mappings=\(mappings.count), providers=\(providers.count), wireAPI=\(config.wireAPI.rawValue)")
+        for entry in config.currentCustomModels {
+            let found = mappings.first { $0.id == entry.modelMappingId }
+            CodexLogStore.shared.info("[CodexAdaptor] CustomModelEntry: alias='\(entry.alias)', mappingId=\(entry.modelMappingId), found=\(found != nil)")
+        }
+
         let entries = CodexConfigBridge.buildCatalogEntries(
             customModels: config.currentCustomModels,
             mappings: mappings,
             providers: providers,
             wireAPI: config.wireAPI
         )
+        CodexLogStore.shared.info("[CodexAdaptor] buildCatalogEntries returned \(entries.count) entries")
         guard !entries.isEmpty else { return nil }
         return ModelCatalog(models: entries)
     }

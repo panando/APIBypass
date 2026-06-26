@@ -153,6 +153,17 @@ function createModelPatcher(deps) {
       if (patchModelArray(value.message?.result?.data)) changed = true;
       if (patchModelArray(value.message?.result?.models)) changed = true;
 
+      // Create models array if container has model-related fields but no models array
+      // This handles the case where Codex returns { defaultModel: {...} } without models array
+      if (
+        value.models == null &&
+        (value.defaultModel != null || value.availableModels != null || value.available_models != null) &&
+        names.length > 0
+      ) {
+        value.models = names.map((name) => codexPlusModelDescriptor(name));
+        changed = true;
+      }
+
       // availableModels / available_models (CPP-aligned: patch these)
       if (value.availableModels instanceof Set) {
         names.forEach((name) => {
@@ -199,7 +210,14 @@ function createModelPatcher(deps) {
       }
 
       // CPP-aligned: set defaultModel if not present
-      if (value.defaultModel == null && names.length > 0) {
+      // Only set if container already has model-related fields
+      const hasModelFields =
+        value.models != null ||
+        value.availableModels != null ||
+        value.available_models != null ||
+        value.defaultModel != null ||
+        value.model != null;
+      if (value.defaultModel == null && names.length > 0 && hasModelFields) {
         value.defaultModel = codexPlusModelDescriptor(names[0]);
         changed = true;
       } else if (

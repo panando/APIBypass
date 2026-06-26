@@ -106,6 +106,9 @@ class CodexConfigService {
         let bearerToken = providerTable?["experimental_bearer_token"]?.string
         let usesChatCompletions = (meta.upstreamWireAPI ?? "chat").lowercased() == "chat"
 
+        // Read modelCatalog from file (single source of truth)
+        let modelCatalog = try? readModelCatalog(for: providerId)
+
         return UpstreamProvider(
             id: providerId,
             name: name,
@@ -113,7 +116,7 @@ class CodexConfigService {
             usesChatCompletions: usesChatCompletions,
             bearerToken: bearerToken,
             reasoningConfig: meta.reasoningConfig,
-            modelCatalog: meta.modelCatalog
+            modelCatalog: modelCatalog
         )
     }
 
@@ -133,7 +136,7 @@ class CodexConfigService {
             let name = section["name"]?.string ?? providerId
             let bearerToken = section["experimental_bearer_token"]?.string
 
-            let modelCatalog = (try? readModelCatalog(for: providerId)) ?? meta?.modelCatalog
+            let modelCatalog = try? readModelCatalog(for: providerId)
 
             providers.append(CodexModelProvider(
                 id: providerId,
@@ -247,13 +250,12 @@ class CodexConfigService {
 
         try writeConfig(table)
 
-        // 2. Write proxy metadata to providers.json
+        // 2. Write proxy metadata to providers.json (no modelCatalog - read from file instead)
         var store = readProviderStore()
         store.providers[provider.id] = ProviderMetaEntry(
             upstreamBaseURL: provider.baseURL.isEmpty ? nil : provider.baseURL,
             upstreamWireAPI: provider.upstreamWireAPI.isEmpty ? "chat" : provider.upstreamWireAPI,
-            reasoningConfig: provider.reasoningConfig,
-            modelCatalog: store.providers[provider.id]?.modelCatalog ?? provider.modelCatalog
+            reasoningConfig: provider.reasoningConfig
         )
         try writeProviderStore(store)
     }
@@ -276,8 +278,7 @@ class CodexConfigService {
             if let first = otherIds.first {
                 table["model_provider"] = first
                 // Try to also switch model
-                let store = readProviderStore()
-                if let catalog = store.providers[first]?.modelCatalog ?? (try? readModelCatalog(for: first)),
+                if let catalog = try? readModelCatalog(for: first),
                    let firstModel = catalog.models.first?.model {
                     table["model"] = firstModel
                 }
@@ -472,11 +473,11 @@ struct ProviderStore: Codable {
 }
 
 /// Proxy-internal metadata for a provider. Mirrors EchoBird's ~/.echobird/codex.json pattern.
+/// Note: modelCatalog is NOT stored here - it lives in {providerId}-model-catalog.json files.
 struct ProviderMetaEntry: Codable {
     var upstreamBaseURL: String?
     var upstreamWireAPI: String?
     var reasoningConfig: ReasoningConfig?
-    var modelCatalog: ModelCatalog?
     var enabled: Bool?
 }
 

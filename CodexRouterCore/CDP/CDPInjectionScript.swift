@@ -601,6 +601,19 @@ public let codexPluginInjectionScript: String = """
         ...Array.from(document.querySelectorAll("link[href]") || []).map((link) => link.href),
         ...performance.getEntriesByType("resource").map((entry) => entry.name),
       ].filter(Boolean);
+
+      // Debug: log available assets containing key patterns
+      const assetUrls = urls.filter((url) => url.includes("/assets/") && url.split("?")[0].endsWith(".js"));
+      if (!window.__codexPlusAssetsLogged) {
+        window.__codexPlusAssetsLogged = true;
+        const patterns = ["signals", "app-server", "model", "manager"];
+        const matches = {};
+        for (const p of patterns) {
+          matches[p] = assetUrls.filter((u) => u.includes(p)).map((u) => u.split("/").pop().split("?")[0]).slice(0, 3);
+        }
+        sendCodexPlusDiagnostic("assets_available", matches);
+      }
+
       return urls.find((url) => url.includes("/assets/") && url.includes(namePart) && url.split("?")[0].endsWith(".js")) || "";
     } catch {
       return "";
@@ -753,6 +766,18 @@ public let codexPluginInjectionScript: String = """
       if (!value || typeof value !== "object") return false;
       const names = codexPlusModelNames();
       if (!names.length) return false;
+
+      // Debug: log when we find a container with any model-related field
+      if (value.models != null || value.availableModels != null || value.available_models != null || value.defaultModel != null) {
+        sendCodexPlusDiagnostic("model_container_found", {
+          hasModels: value.models != null,
+          hasAvailableModels: value.availableModels != null,
+          hasAvailableModelsSnake: value.available_models != null,
+          hasDefaultModel: value.defaultModel != null,
+          modelNames: names.slice(0, 5).join(",") + (names.length > 5 ? "..." : ""),
+        });
+      }
+
       let changed = false;
       const patchedPaths = [];
       if (patchModelArray(value.models, "defaultModel" in value || "availableModels" in value, "models")) { changed = true; patchedPaths.push("models"); }
@@ -765,6 +790,13 @@ public let codexPluginInjectionScript: String = """
       if (patchModelArray(value.result?.models, false, "result.models")) { changed = true; patchedPaths.push("result.models"); }
       if (patchModelArray(value.message?.result?.data, false, "message.result.data")) { changed = true; patchedPaths.push("message.result.data"); }
       if (patchModelArray(value.message?.result?.models, false, "message.result.models")) { changed = true; patchedPaths.push("message.result.models"); }
+      // Create models array if container has model-related fields but no models array
+      // This handles the case where Codex returns { defaultModel: {...} } without models array
+      if (value.models == null && (value.defaultModel != null || value.availableModels != null || value.available_models != null) && names.length > 0) {
+        value.models = names.map((name) => codexPlusModelDescriptor(name));
+        changed = true;
+        patchedPaths.push("models(created)");
+      }
       // CPP-aligned: patch availableModels / available_models (Sets and arrays)
       if (value.availableModels instanceof Set) {
         names.forEach((name) => {
@@ -809,7 +841,9 @@ public let codexPluginInjectionScript: String = """
         if (value.hidden_models.length !== before) { changed = true; patchedPaths.push("hidden_models"); }
       }
       // CPP-aligned: set defaultModel if not present
-      if (value.defaultModel == null && names.length > 0) {
+      // Only set if container already has model-related fields
+      const hasModelFields = value.models != null || value.availableModels != null || value.available_models != null || value.defaultModel != null || value.model != null;
+      if (value.defaultModel == null && names.length > 0 && hasModelFields) {
         value.defaultModel = codexPlusModelDescriptor(names[0]);
         changed = true;
       } else if (typeof value.defaultModel === "string" && names.includes(value.defaultModel) && value.model == null) {
@@ -873,17 +907,32 @@ public let codexPluginInjectionScript: String = """
 
   // ── Statsig SDK patch ─────────────────────────────────────────────
   function patchStatsigModelDynamicConfig(config, name) {
-    // No-op: previously appended custom model names to `config.value.available_models`.
-    // Removed because the picker renders `available_models` (string array from
-    // Statsig) as a SEPARATE list from the AppServer `model/list` response
-    // (object array with metadata). Patching both made each custom model appear
-    // twice — once with metadata (from AppServer, reasoning controls work) and
-    // once as a bare string (from Statsig, reasoning controls broken). The
-    // AppServer response already carries custom models with full metadata, so
-    // the Statsig patch was redundant and only caused duplication.
-    //
-    // The wrapper in `patchStatsigModelWhitelist` is still installed so future
-    // patching can be re-enabled by restoring the function body.
+    const names = codexPlusModelNames();
+    const value = config?.value;
+    if (!names.length || !value || typeof value !== "object") return config;
+
+    const availableModels = Array.isArray(value.available_models) ? [...value.available_models] : [];
+    let changed = false;
+    names.forEach((n) => {
+      if (!availableModels.includes(n)) {
+        availableModels.push(n);
+        changed = true;
+      }
+    });
+
+    const nextValue = {
+      ...value,
+      available_models: availableModels,
+      default_model: names[0] || value.default_model,
+    };
+
+    if (!changed && nextValue.default_model === value.default_model) return config;
+
+    try {
+      config.value = nextValue;
+    } catch {
+      return { ...config, value: nextValue };
+    }
     return config;
   }
 

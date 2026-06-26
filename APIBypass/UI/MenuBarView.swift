@@ -28,9 +28,8 @@ struct MenuBarView: View {
                 HStack {
                     Text(L10n.t("apibypass_service"))
                     Spacer()
-                    Circle()
-                        .fill(isRunning ? Color.green : Color.gray)
-                        .frame(width: 8, height: 8)
+                    Text("●")
+                        .foregroundColor(isRunning ? .green : .gray)
                 }
             }
 
@@ -41,9 +40,8 @@ struct MenuBarView: View {
                 HStack {
                     Text(L10n.t("codex_adaptor_service"))
                     Spacer()
-                    Circle()
-                        .fill(codexAdaptor.isRunning ? Color.green : Color.gray)
-                        .frame(width: 8, height: 8)
+                    Text("●")
+                        .foregroundColor(codexAdaptor.isRunning ? .green : .gray)
                 }
             }
 
@@ -67,9 +65,8 @@ struct MenuBarView: View {
                 HStack {
                     Text(L10n.t("bypass_mode"))
                     Spacer()
-                    Circle()
-                        .fill(bypassMode ? Color.green : Color.gray)
-                        .frame(width: 8, height: 8)
+                    Text("●")
+                        .foregroundColor(bypassMode ? .green : .gray)
                 }
             }
 
@@ -82,6 +79,8 @@ struct MenuBarView: View {
             Button(L10n.t("configure_codex_adaptor")) {
                 openCodexAdaptorWindow()
             }
+
+            Divider()
 
             Button(L10n.t("settings")) {
                 openSettingsWindow()

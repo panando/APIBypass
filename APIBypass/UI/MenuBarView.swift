@@ -25,24 +25,14 @@ struct MenuBarView: View {
             Button {
                 if isRunning { onStop() } else { onStart() }
             } label: {
-                HStack {
-                    Text(L10n.t("apibypass_service"))
-                    Spacer()
-                    Text("●")
-                        .foregroundColor(isRunning ? .green : .gray)
-                }
+                Text("\(L10n.t("apibypass_service"))  \(isRunning ? "●" : "○")")
             }
 
             // Codex适配服务 - toggle with status indicator
             Button {
                 if codexAdaptor.isRunning { onStopCodex() } else { onStartCodex() }
             } label: {
-                HStack {
-                    Text(L10n.t("codex_adaptor_service"))
-                    Spacer()
-                    Text("●")
-                        .foregroundColor(codexAdaptor.isRunning ? .green : .gray)
-                }
+                Text("\(L10n.t("codex_adaptor_service"))  \(codexAdaptor.isRunning ? "●" : "○")")
             }
 
             Divider()
@@ -62,12 +52,7 @@ struct MenuBarView: View {
             Button {
                 bypassMode.toggle()
             } label: {
-                HStack {
-                    Text(L10n.t("bypass_mode"))
-                    Spacer()
-                    Text("●")
-                        .foregroundColor(bypassMode ? .green : .gray)
-                }
+                Text("\(L10n.t("bypass_mode"))  \(bypassMode ? "●" : "○")")
             }
 
             Divider()

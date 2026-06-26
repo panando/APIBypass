@@ -855,7 +855,7 @@ private struct CodexEnhancementsTab: View {
                                     Text(codexLaunchStatus.isEmpty ? L10n.t("codex_launch_button") : codexLaunchStatus)
                                 }
                             } else {
-                                Label(L10n.t("codex_launch_button"), systemImage: "play.fill")
+                                Text(L10n.t("codex_launch_button"))
                             }
                         }
                         .buttonStyle(.borderedProminent)

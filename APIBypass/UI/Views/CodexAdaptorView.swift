@@ -841,6 +841,34 @@ private struct CodexEnhancementsTab: View {
     var body: some View {
         ScrollView {
             VStack(spacing: 16) {
+                // Launch Codex
+                cardSection(header: Label(L10n.t("codex_launch_codex"), systemImage: "play.circle")) {
+                    HStack(spacing: 8) {
+                        Button {
+                            startLaunchCodexFlow()
+                        } label: {
+                            if isLaunchingCodex {
+                                HStack(spacing: 4) {
+                                    ProgressView().controlSize(.small)
+                                    Text(codexLaunchStatus.isEmpty ? L10n.t("codex_launch_button") : codexLaunchStatus)
+                                }
+                            } else {
+                                Label(L10n.t("codex_launch_button"), systemImage: "play.fill")
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+                        .disabled(isLaunchingCodex)
+
+                        if let err = codexLaunchError {
+                            Text(err)
+                                .font(.caption)
+                                .foregroundColor(.red)
+                                .lineLimit(2)
+                        }
+                        Spacer()
+                    }
+                }
+
                 // CDP Status
                 cardSection(header: Label(L10n.t("codex_cdp_status"), systemImage: "wand.and.stars")) {
                     HStack(spacing: 8) {
@@ -854,80 +882,51 @@ private struct CodexEnhancementsTab: View {
                     }
                     .padding(.bottom, 4)
 
-                    // Debug port + launch Codex row
-                    VStack(alignment: .leading, spacing: 8) {
-                        HStack(spacing: 8) {
-                            Text(L10n.t("codex_debug_port"))
-                                .frame(width: 96, alignment: .leading)
-                            TextField("", text: $cdpPortText)
-                                .textFieldStyle(.roundedBorder)
-                                .frame(width: 80)
-                                .onChange(of: cdpPortText) { _, newValue in
-                                    let filtered = newValue.filter(\.isNumber)
-                                    if filtered != newValue {
-                                        cdpPortText = filtered
-                                        return
-                                    }
-                                    if let p = UInt16(filtered), p > 0 {
-                                        if config.cdpDebugPort != p {
-                                            config.cdpDebugPort = p
-                                            saveConfig()
-                                        }
+                    // Debug port row
+                    HStack(spacing: 8) {
+                        Text(L10n.t("codex_debug_port"))
+                            .frame(width: 96, alignment: .leading)
+                        TextField("", text: $cdpPortText)
+                            .textFieldStyle(.roundedBorder)
+                            .frame(width: 80)
+                            .onChange(of: cdpPortText) { _, newValue in
+                                let filtered = newValue.filter(\.isNumber)
+                                if filtered != newValue {
+                                    cdpPortText = filtered
+                                    return
+                                }
+                                if let p = UInt16(filtered), p > 0 {
+                                    if config.cdpDebugPort != p {
+                                        config.cdpDebugPort = p
+                                        saveConfig()
                                     }
                                 }
-                            Text(L10n.t("codex_debug_port_help"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Spacer()
-                            Button {
-                                showManualCommand = true
-                            } label: {
-                                Image(systemName: "info.circle")
                             }
-                            .buttonStyle(.borderless)
-                            .controlSize(.small)
-                            .popover(isPresented: $showManualCommand) {
-                                VStack(alignment: .leading, spacing: 6) {
-                                    Text(L10n.t("codex_manual_command_help"))
-                                        .font(.caption)
-                                        .foregroundColor(.secondary)
-                                    Text(CodexAppLauncher.manualLaunchCommand(port: config.cdpDebugPort))
-                                        .font(.system(.caption, design: .monospaced))
-                                        .textSelection(.enabled)
-                                        .padding(6)
-                                        .background(Color.secondary.opacity(0.1))
-                                        .cornerRadius(4)
-                                }
-                                .padding(10)
-                                .frame(width: 340)
-                            }
+                        Text(L10n.t("codex_debug_port_help"))
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                        Button {
+                            showManualCommand = true
+                        } label: {
+                            Image(systemName: "info.circle")
                         }
-
-                        if shouldShowLaunchButton {
-                            HStack(spacing: 8) {
-                                Button {
-                                    startLaunchCodexFlow()
-                                } label: {
-                                    if isLaunchingCodex {
-                                        HStack(spacing: 4) {
-                                            ProgressView().controlSize(.small)
-                                            Text(codexLaunchStatus.isEmpty ? L10n.t("codex_launch_button") : codexLaunchStatus)
-                                        }
-                                    } else {
-                                        Label(L10n.t("codex_launch_button"), systemImage: "play.fill")
-                                    }
-                                }
-                                .buttonStyle(.borderedProminent)
-                                .disabled(isLaunchingCodex)
-
-                                if let err = codexLaunchError {
-                                    Text(err)
-                                        .font(.caption)
-                                        .foregroundColor(.red)
-                                        .lineLimit(2)
-                                }
-                                Spacer()
+                        .buttonStyle(.borderless)
+                        .controlSize(.small)
+                        .popover(isPresented: $showManualCommand) {
+                            VStack(alignment: .leading, spacing: 6) {
+                                Text(L10n.t("codex_manual_command_help"))
+                                    .font(.caption)
+                                    .foregroundColor(.secondary)
+                                Text(CodexAppLauncher.manualLaunchCommand(port: config.cdpDebugPort))
+                                    .font(.system(.caption, design: .monospaced))
+                                    .textSelection(.enabled)
+                                    .padding(6)
+                                    .background(Color.secondary.opacity(0.1))
+                                    .cornerRadius(4)
                             }
+                            .padding(10)
+                            .frame(width: 340)
                         }
                     }
                     .padding(.bottom, 4)
@@ -1069,14 +1068,6 @@ private struct CodexEnhancementsTab: View {
         }
     }
 
-    private var shouldShowLaunchButton: Bool {
-        guard codexAdaptor.isRunning, config.cdpSettings.enhancementsEnabled else { return false }
-        if case .failed = codexAdaptor.cdpConnectionState {
-            return true
-        }
-        return false
-    }
-
     // MARK: - Actions
 
     private func startLaunchCodexFlow() {
@@ -1088,6 +1079,18 @@ private struct CodexEnhancementsTab: View {
         Task { @MainActor [confirmBox] in
             isLaunchingCodex = true
             defer { isLaunchingCodex = false }
+
+            // Start service if not running
+            if !codexAdaptor.isRunning {
+                codexLaunchStatus = L10n.t("codex_launch_progress_starting_service")
+                do {
+                    try await codexAdaptor.start()
+                } catch {
+                    codexLaunchError = error.localizedDescription
+                    return
+                }
+            }
+
             do {
                 try await CodexAppLauncher.ensureCodexRunningWithDebugPort(
                     port: port,

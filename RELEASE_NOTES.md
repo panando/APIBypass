@@ -1,3 +1,46 @@
+# APIBypass v0.8.5
+
+## What's New
+
+### Menu Bar Redesign
+
+The menu bar now displays real-time status for each service with intuitive symbols:
+
+- **Status indicators** — ● (solid) = running, ○ (hollow) = stopped
+- **Launch Codex** — New one-click menu item that launches Codex.app with debug port, auto-starting Codex Adaptor service if needed
+- **Reorganized structure** — Logical grouping: services first, then launch actions, then configuration
+
+### Codex Adaptor Improvements
+
+- **CDP connection state tracking** — Real-time status indicator showing: disconnected → scanning → connected → injected
+- **Model whitelist unlock** — New toggle to unlock hidden models in Codex's model selector
+- **Statsig model patch** — Enables model selector to show all available models
+- **Fixed model duplication** — Resolved white screen on Codex startup caused by duplicate model entries
+- **Enhanced logging** — Diagnostic events for CDP injection, plugin patches, and model whitelist operations
+
+### Help Documentation
+
+- **New menu bar section** — Documents all menu items with status indicator explanations
+- **Codex usage guide** — Step-by-step instructions for launching and configuring Codex
+- **New FAQ entries** — Common questions about Codex adaptor, CDP injection, plugin settings
+- **Fixed punctuation** — Added missing punctuation to Chinese help strings
+
+### Documentation Updates
+
+- **Updated screenshots** — All screenshots replaced with current UI
+- **Launch Codex section** — New quickstart section with screenshot
+- **Status indicator explanation** — Documents ●/○ symbols in README
+
+### Bug Fixes
+
+- Fixed menu bar "Launch Codex" to actually launch Codex.app (previously only started adaptor service)
+- Fixed CDP state polling task lifecycle management
+- Fixed proxy port propagation to injector settings
+- Fixed thinking parameter defaults for Kimi K2.5/K2.6
+- Fixed model config reading with snake_case field names
+
+---
+
 # APIBypass v0.8.4
 
 ## What's New

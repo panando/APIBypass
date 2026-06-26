@@ -9,6 +9,7 @@
 *.bak.icns
 reference/
 RELEASE_NOTES.md
+release_note.md
 
 # Xcode
 *.xcuserdata/

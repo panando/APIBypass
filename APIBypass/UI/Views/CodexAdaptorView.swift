@@ -845,8 +845,6 @@ private struct CodexEnhancementsTab: View {
                 cardSection(header: Label(L10n.t("codex_launch_codex"), systemImage: "syringe")) {
                     HStack(spacing: 8) {
                         Text(L10n.t("codex_launch_description"))
-                            .font(.caption)
-                            .foregroundColor(.secondary)
                         Spacer()
                         Button {
                             startLaunchCodexFlow()

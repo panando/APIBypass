@@ -104,6 +104,15 @@ struct HelpView: View {
                 ])
             }
 
+            group(L10n.t("help_quick_start_codex_title")) {
+                body(L10n.t("help_quick_start_codex_desc"))
+                numberedList([
+                    L10n.t("help_quick_start_codex_step1"),
+                    L10n.t("help_quick_start_codex_step2"),
+                    L10n.t("help_quick_start_codex_step3")
+                ])
+            }
+
             note(L10n.t("help_quick_start_note"))
         }
     }

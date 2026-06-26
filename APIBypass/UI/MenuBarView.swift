@@ -1,4 +1,5 @@
 import SwiftUI
+import CodexRouterCore
 
 struct MenuBarView: View {
     let configManager: ConfigManager
@@ -92,6 +93,21 @@ struct MenuBarView: View {
             // Start adaptor service if not running
             if !codexAdaptor.isRunning {
                 try? await codexAdaptor.start()
+            }
+
+            // Load config to get debug port
+            let config = await CodexAdaptorConfigStore.shared.load()
+            let port = config.cdpDebugPort
+
+            // Launch Codex with debug port
+            do {
+                try await CodexAppLauncher.ensureCodexRunningWithDebugPort(
+                    port: port,
+                    onNeedConfirm: { true }, // Always restart if running (menu is disabled when Codex is already connected)
+                    onProgress: { _ in }
+                )
+            } catch {
+                print("[MenuBar] Failed to launch Codex: \(error.localizedDescription)")
             }
         }
     }

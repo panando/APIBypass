@@ -857,7 +857,7 @@ private struct CodexEnhancementsTab: View {
                             }
                         }
                         .buttonStyle(.borderedProminent)
-                        .disabled(isLaunchingCodex)
+                        .disabled(isLaunchingCodex || isCodexRunning)
 
                         if let err = codexLaunchError {
                             Text(err)
@@ -1065,6 +1065,13 @@ private struct CodexEnhancementsTab: View {
         case .connecting, .connected: return L10n.t("cdp_status_connecting")
         case .injected: return L10n.t("cdp_status_injected")
         case .failed(let reason): return "\(L10n.t("cdp_status_failed")) — \(reason)"
+        }
+    }
+
+    private var isCodexRunning: Bool {
+        switch codexAdaptor.cdpConnectionState {
+        case .connected, .injected: return true
+        default: return false
         }
     }
 

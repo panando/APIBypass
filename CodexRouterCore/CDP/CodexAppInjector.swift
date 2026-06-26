@@ -177,7 +177,14 @@ public actor CodexAppInjector {
                 await injectIntoCodex()
             }
         } catch {
-            logger?.logError("[CDP] Monitor error: \(error.localizedDescription)")
+            // Codex was closed or debug port unavailable
+            if connectionState != .disconnected {
+                logger?.logInfo("[CDP] Connection lost: \(error.localizedDescription)")
+                connectionState = .disconnected
+            }
+            await client?.disconnect()
+            client = nil
+            injectedPageId = nil
         }
     }
 

@@ -28,6 +28,8 @@ APIBypass 是一款 macOS 菜单栏应用，位于你的 AI 工具与上游 API 
 <p align="center">
   <a href="menu.png"><img src="menu.png" alt="APIBypass 菜单栏状态指示" width="400"></a>
 </p>
+
+
 ### 为什么用 APIBypass？
 
 Claude Code 只认 Anthropic 格式。大多数第三方模型说的是 OpenAI 格式。不同模型需要不同的 temperature、thinking 预算和上下文长度。切换提供商通常意味着重新配置每一个客户端。更重要的是，很多 AI 客户端要求你直接填写模型提供商的 API Key —— 你的真实凭据和 Base URL 就这样暴露给了每一个应用。

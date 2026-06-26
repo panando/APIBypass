@@ -28,6 +28,8 @@ APIBypass is a macOS menu bar app that sits between your AI tools and upstream A
 <p align="center">
   <a href="menu.png"><img src="menu.png" alt="APIBypass menu bar with status indicators" width="400"></a>
 </p>
+
+
 ### Why APIBypass?
 
 Claude Code speaks Anthropic. Most models speak OpenAI. Different models need different temperatures, thinking budgets, and context limits. Switching providers usually means reconfiguring every client. And many AI clients require you to enter your provider's API Key directly — exposing your real credentials and base URL to every app you use.

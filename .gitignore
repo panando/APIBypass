@@ -27,6 +27,7 @@ docs/
 
 # Tool configs
 .claude/
+.agents/
 .codegraph/
 .gemini/
 .mcp.json

@@ -50,6 +50,17 @@ enum CodexRoutes {
             let body = Data(buffer: bodyBuffer)
             let json = (try? JSONSerialization.jsonObject(with: body) as? [String: Any]) ?? [:]
             let event = (json["event"] as? String) ?? "unknown"
+            // Skip heartbeat logging unless there are JS errors (keep logs clean, retain diagnostic value)
+            if event == "injector_heartbeat" {
+                let detail = (json["detail"] as? [String: Any]) ?? [:]
+                let jsErrors = (detail["jsErrorsCaptured"] as? Int) ?? 0
+                if jsErrors == 0 {
+                    return Response(
+                        status: .ok,
+                        body: .init(byteBuffer: ByteBuffer(string: #"{"ok":true}"#))
+                    )
+                }
+            }
             let detail = (json["detail"] as? [String: Any]) ?? [:]
             let line = CodexRequestHandler.formatDiagnosticLogLine(event: event, detail: detail)
             let level = CodexRequestHandler.diagnosticLogLevel(for: event)

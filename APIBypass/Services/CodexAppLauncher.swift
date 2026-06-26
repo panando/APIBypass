@@ -99,7 +99,15 @@ enum CodexAppLauncher {
     ) async throws {
         if let existing = fs.runningApplication(bundleId: codexBundleId) {
             _ = fs.terminate(existing)
-            try? await Task.sleep(for: .milliseconds(800))
+            // Wait for termination with proper cancellation handling.
+            // Must propagate CancellationError to avoid swift_task_dealloc crash.
+            do {
+                try await Task.sleep(for: .milliseconds(800))
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                // Ignore other errors (shouldn't happen for sleep)
+            }
         }
 
         let config = NSWorkspace.OpenConfiguration()
@@ -122,7 +130,14 @@ enum CodexAppLauncher {
         let deadline = Date().addingTimeInterval(waitTimeout)
         while Date() < deadline {
             if await isDebugPortListening(port) { return }
-            try? await Task.sleep(for: .seconds(pollInterval))
+            // Must propagate CancellationError to avoid swift_task_dealloc crash.
+            do {
+                try await Task.sleep(for: .seconds(pollInterval))
+            } catch is CancellationError {
+                throw CancellationError()
+            } catch {
+                // Ignore other errors (shouldn't happen for sleep)
+            }
         }
         throw CodexAppLauncherError.portStillClosedAfterLaunch(port)
     }

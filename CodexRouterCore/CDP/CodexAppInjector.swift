@@ -153,7 +153,13 @@ public actor CodexAppInjector {
                 if Task.isCancelled { break }
                 let running = await self.isRunning
                 if !running { break }
-                try? await Task.sleep(for: .seconds(Self.monitorInterval))
+                do {
+                    try await Task.sleep(for: .seconds(Self.monitorInterval))
+                } catch is CancellationError {
+                    break
+                } catch {
+                    // Ignore other errors
+                }
                 if Task.isCancelled { break }
                 await self.monitorAndReinject()
             }

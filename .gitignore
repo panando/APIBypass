@@ -8,6 +8,7 @@
 *.dSYM/
 *.bak.icns
 reference/
+RELEASE_NOTES.md
 
 # Xcode
 *.xcuserdata/

@@ -174,9 +174,11 @@ private struct CodexServerTab: View {
                     }
                     .pickerStyle(.segmented)
                     .onChange(of: config.wireAPI) { oldValue, newValue in
-                        // Skip if still loading or this is a programmatic change
+                        // Skip if still loading or this is a programmatic change.
                         guard !isLoading else { return }
+                        guard hasLoadedConfig else { return }
                         guard !isHandlingProtocolSwitch else { return }
+                        guard oldValue != newValue else { return }
 
                         // Check for unsaved changes using OLD protocol's model list
                         // (draftCustomModels was loaded from old protocol, compare with old protocol's stored list)
@@ -674,8 +676,10 @@ private struct CodexServerTab: View {
 
     private func loadConfig() {
         guard !hasLoadedConfig else { return }
-        hasLoadedConfig = true
         Task {
+            // Set flag BEFORE assigning config to prevent onChange from processing this as a user edit.
+            // We reuse isHandlingProtocolSwitch since it's already checked in onChange.
+            isHandlingProtocolSwitch = true
             config = await CodexAdaptorConfigStore.shared.load()
             // Run migration for legacy configs
             config.migrateFromLegacy()
@@ -695,8 +699,13 @@ private struct CodexServerTab: View {
             }
             showReasoningConfig = config.reasoningOverrideEnabled
 
-            // Enable interactions after all state is loaded
+            // Mark loaded and enable interactions after all state is set.
+            hasLoadedConfig = true
             isLoading = false
+            // Clear the flag in the next run loop to ensure onChange has already processed.
+            DispatchQueue.main.async {
+                self.isHandlingProtocolSwitch = false
+            }
         }
     }
 
@@ -1117,16 +1126,25 @@ private struct CodexEnhancementsTab: View {
 
     private func loadConfig() {
         guard !hasLoadedConfig else { return }
-        hasLoadedConfig = true
         Task {
             config = await CodexAdaptorConfigStore.shared.load()
             cdpPortText = String(config.cdpDebugPort)
+            hasLoadedConfig = true
             isLoading = false
         }
     }
 
     private func saveConfig() {
-        Task { await CodexAdaptorConfigStore.shared.save(config) }
+        Task {
+            // Reload from store to get latest changes from other tabs (e.g., wireAPI changes
+            // in CodexServerTab), then merge our local changes and save via the service
+            // to ensure consistency and trigger syncCodexConfig.
+            var latestConfig = await CodexAdaptorConfigStore.shared.load()
+            latestConfig.cdpDebugPort = config.cdpDebugPort
+            latestConfig.cdpSettings = config.cdpSettings
+            try? await codexAdaptor.updateConfig(latestConfig)
+            config = latestConfig
+        }
     }
 }
 

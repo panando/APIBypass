@@ -64,7 +64,13 @@ final class CodexAdaptorService: ObservableObject {
                     if Task.isCancelled { break }
                     strongSelf.cdpConnectionState = state
                 }
-                try? await Task.sleep(for: .seconds(3))
+                do {
+                    try await Task.sleep(for: .seconds(3))
+                } catch is CancellationError {
+                    break
+                } catch {
+                    // Ignore other errors
+                }
             }
         }
     }

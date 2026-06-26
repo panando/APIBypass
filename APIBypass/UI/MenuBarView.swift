@@ -25,14 +25,21 @@ struct MenuBarView: View {
             Button {
                 if isRunning { onStop() } else { onStart() }
             } label: {
-                Text("\(L10n.t("apibypass_service"))  \(isRunning ? "●" : "○")")
+                Text("\(isRunning ? "●" : "○")  \(L10n.t("apibypass_service"))")
             }
 
             // Codex适配服务 - toggle with status indicator
             Button {
                 if codexAdaptor.isRunning { onStopCodex() } else { onStartCodex() }
             } label: {
-                Text("\(L10n.t("codex_adaptor_service"))  \(codexAdaptor.isRunning ? "●" : "○")")
+                Text("\(codexAdaptor.isRunning ? "●" : "○")  \(L10n.t("codex_adaptor_service"))")
+            }
+
+            // 纯代理模式 - toggle with status indicator
+            Button {
+                bypassMode.toggle()
+            } label: {
+                Text("\(bypassMode ? "●" : "○")  \(L10n.t("bypass_mode"))")
             }
 
             Divider()
@@ -47,13 +54,6 @@ struct MenuBarView: View {
                 openLaunchClaudeCodeWindow()
             }
             .disabled(configManager.providers.isEmpty)
-
-            // 纯代理模式 - toggle with status indicator
-            Button {
-                bypassMode.toggle()
-            } label: {
-                Text("\(L10n.t("bypass_mode"))  \(bypassMode ? "●" : "○")")
-            }
 
             Divider()
 

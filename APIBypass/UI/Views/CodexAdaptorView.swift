@@ -7,6 +7,7 @@ import CodexRouterCore
 
 private enum ConfigTab: String, CaseIterable, Identifiable {
     case server
+    case enhancements
     case logs
 
     var id: String { rawValue }
@@ -30,6 +31,7 @@ struct CodexAdaptorView: View {
                             .fill(codexAdaptor.isRunning ? Color.green : Color.red)
                             .frame(width: 7, height: 7)
                     }
+                    sidebarItem(tab: .enhancements, icon: "wand.and.stars")
                 }
                 Section {
                     sidebarItem(tab: .logs, icon: "doc.text.magnifyingglass")
@@ -71,6 +73,8 @@ struct CodexAdaptorView: View {
         switch selectedTab {
         case .server:
             CodexServerTab(configManager: configManager, codexAdaptor: codexAdaptor)
+        case .enhancements:
+            CodexEnhancementsTab(codexAdaptor: codexAdaptor)
         case .logs:
             CodexLogViewerTab()
         case nil:
@@ -91,6 +95,7 @@ private extension ConfigTab {
     var titleKey: String {
         switch self {
         case .server: return "codex_service"
+        case .enhancements: return "codex_enhancements"
         case .logs: return "codex_logs"
         }
     }
@@ -122,14 +127,6 @@ private struct CodexServerTab: View {
     @State private var isHandlingProtocolSwitch = false  // Prevent onChange re-entry during programmatic switch
     @State private var isLoading = true  // Disable interactions until config is fully loaded
     @State private var hasLoadedConfig = false  // Prevent multiple loads from onAppear
-    // CDP launch
-    @State private var cdpPortText: String = "9222"
-    @State private var isLaunchingCodex: Bool = false
-    @State private var codexLaunchStatus: String = ""
-    @State private var codexLaunchError: String? = nil
-    @State private var showRestartConfirm: Bool = false
-    @State private var confirmBox = LaunchConfirmBox()
-    @State private var showManualCommand: Bool = false
 
     var body: some View {
         ScrollView {
@@ -232,9 +229,6 @@ private struct CodexServerTab: View {
 
                 // Custom Models
                 customModelsSection
-
-                // Codex Enhancements
-                enhancementsCard
             }
             .padding(.horizontal, 20)
             .padding(.vertical, 16)
@@ -277,16 +271,6 @@ private struct CodexServerTab: View {
         } message: {
             Text(L10n.t("unsaved_changes_msg"))
         }
-        .alert(L10n.t("codex_launch_confirm_title"), isPresented: $showRestartConfirm) {
-            Button(L10n.t("cancel"), role: .cancel) {
-                confirmBox.resume(false)
-            }
-            Button(L10n.t("codex_launch_confirm_restart"), role: .destructive) {
-                confirmBox.resume(true)
-            }
-        } message: {
-            Text(L10n.t("codex_launch_confirm_message"))
-        }
         .disabled(isLoading)  // Prevent interactions until config is fully loaded
     }
 
@@ -312,225 +296,6 @@ private struct CodexServerTab: View {
             RoundedRectangle(cornerRadius: 10)
                 .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
         )
-    }
-
-    // MARK: - Enhancements Card
-
-    private var cdpStatusColor: Color {
-        switch codexAdaptor.cdpConnectionState {
-        case .disconnected: return .secondary
-        case .connecting, .connected: return .orange
-        case .injected: return .green
-        case .failed: return .red
-        }
-    }
-
-    private var cdpStatusText: String {
-        switch codexAdaptor.cdpConnectionState {
-        case .disconnected: return L10n.t("cdp_status_disconnected")
-        case .connecting, .connected: return L10n.t("cdp_status_connecting")
-        case .injected: return L10n.t("cdp_status_injected")
-        case .failed(let reason): return "\(L10n.t("cdp_status_failed")) — \(reason)"
-        }
-    }
-
-    /// Show the launch button when CDP failed (no debuggable page or WS handshake rejected).
-    private var shouldShowLaunchButton: Bool {
-        guard codexAdaptor.isRunning, config.cdpSettings.enhancementsEnabled else { return false }
-        if case .failed = codexAdaptor.cdpConnectionState {
-            return true
-        }
-        return false
-    }
-
-    private func startLaunchCodexFlow() {
-        guard let port = UInt16(cdpPortText), port > 0 else {
-            codexLaunchError = L10n.t("codex_debug_port_invalid")
-            return
-        }
-        codexLaunchError = nil
-        Task { @MainActor [confirmBox] in
-            isLaunchingCodex = true
-            defer { isLaunchingCodex = false }
-            do {
-                try await CodexAppLauncher.ensureCodexRunningWithDebugPort(
-                    port: port,
-                    onNeedConfirm: {
-                        showRestartConfirm = true
-                        return await confirmBox.wait()
-                    },
-                    onProgress: { msg in codexLaunchStatus = msg }
-                )
-                codexLaunchStatus = L10n.t("codex_launch_progress_done")
-            } catch {
-                codexLaunchError = error.localizedDescription
-            }
-        }
-    }
-
-    private var enhancementsCard: some View {
-        cardSection(header: Label(L10n.t("codex_enhancements"), systemImage: "wand.and.stars")) {
-            HStack(spacing: 8) {
-                Circle()
-                    .fill(cdpStatusColor)
-                    .frame(width: 8, height: 8)
-                Text(cdpStatusText)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
-                Spacer()
-            }
-            .padding(.bottom, 4)
-
-            // Debug port + launch Codex row
-            VStack(alignment: .leading, spacing: 8) {
-                HStack(spacing: 8) {
-                    Text(L10n.t("codex_debug_port"))
-                        .frame(width: 96, alignment: .leading)
-                    TextField("", text: $cdpPortText)
-                        .textFieldStyle(.roundedBorder)
-                        .frame(width: 80)
-                        .onChange(of: cdpPortText) { _, newValue in
-                            let filtered = newValue.filter(\.isNumber)
-                            if filtered != newValue {
-                                cdpPortText = filtered
-                                return
-                            }
-                            if let p = UInt16(filtered), p > 0 {
-                                if config.cdpDebugPort != p {
-                                    config.cdpDebugPort = p
-                                    saveConfig()
-                                }
-                            }
-                        }
-                    Text(L10n.t("codex_debug_port_help"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                    Spacer()
-                    Button {
-                        showManualCommand = true
-                    } label: {
-                        Image(systemName: "info.circle")
-                    }
-                    .buttonStyle(.borderless)
-                    .controlSize(.small)
-                    .popover(isPresented: $showManualCommand) {
-                        VStack(alignment: .leading, spacing: 6) {
-                            Text(L10n.t("codex_manual_command_help"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                            Text(CodexAppLauncher.manualLaunchCommand(port: config.cdpDebugPort))
-                                .font(.system(.caption, design: .monospaced))
-                                .textSelection(.enabled)
-                                .padding(6)
-                                .background(Color.secondary.opacity(0.1))
-                                .cornerRadius(4)
-                        }
-                        .padding(10)
-                        .frame(width: 340)
-                    }
-                }
-
-                if shouldShowLaunchButton {
-                    HStack(spacing: 8) {
-                        Button {
-                            startLaunchCodexFlow()
-                        } label: {
-                            if isLaunchingCodex {
-                                HStack(spacing: 4) {
-                                    ProgressView().controlSize(.small)
-                                    Text(codexLaunchStatus.isEmpty ? L10n.t("codex_launch_button") : codexLaunchStatus)
-                                }
-                            } else {
-                                Label(L10n.t("codex_launch_button"), systemImage: "play.fill")
-                            }
-                        }
-                        .buttonStyle(.borderedProminent)
-                        .disabled(isLaunchingCodex)
-
-                        if let err = codexLaunchError {
-                            Text(err)
-                                .font(.caption)
-                                .foregroundColor(.red)
-                                .lineLimit(2)
-                        }
-                        Spacer()
-                    }
-                }
-            }
-            .padding(.bottom, 4)
-
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.t("codex_plugin_entry_unlock")).fontWeight(.medium)
-                    Text(L10n.t("codex_plugin_entry_unlock_desc"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                Toggle("", isOn: $config.cdpSettings.codexAppPluginEntryUnlock)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .labelsHidden()
-            }
-            .onChange(of: config.cdpSettings.codexAppPluginEntryUnlock) { _, _ in
-                saveConfig()
-                Task { await codexAdaptor.pushInjectionSettings() }
-            }
-
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.t("codex_model_whitelist_unlock")).fontWeight(.medium)
-                    Text(L10n.t("codex_model_whitelist_unlock_desc"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                Toggle("", isOn: $config.cdpSettings.codexAppModelWhitelistUnlock)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .labelsHidden()
-            }
-            .onChange(of: config.cdpSettings.codexAppModelWhitelistUnlock) { _, _ in
-                saveConfig()
-                Task { await codexAdaptor.pushInjectionSettings() }
-            }
-
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.t("codex_marketplace_unlock")).fontWeight(.medium)
-                    Text(L10n.t("codex_marketplace_unlock_desc"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                Toggle("", isOn: $config.cdpSettings.codexAppPluginMarketplaceUnlock)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .labelsHidden()
-            }
-            .onChange(of: config.cdpSettings.codexAppPluginMarketplaceUnlock) { _, _ in
-                saveConfig()
-                Task { await codexAdaptor.pushInjectionSettings() }
-            }
-
-            HStack {
-                VStack(alignment: .leading, spacing: 2) {
-                    Text(L10n.t("codex_force_plugin_install")).fontWeight(.medium)
-                    Text(L10n.t("codex_force_plugin_install_desc"))
-                        .font(.caption)
-                        .foregroundColor(.secondary)
-                }
-                Spacer()
-                Toggle("", isOn: $config.cdpSettings.codexAppForcePluginInstall)
-                    .toggleStyle(.switch)
-                    .controlSize(.small)
-                    .labelsHidden()
-            }
-            .onChange(of: config.cdpSettings.codexAppForcePluginInstall) { _, _ in
-                saveConfig()
-                Task { await codexAdaptor.pushInjectionSettings() }
-            }
-        }
     }
 
     // MARK: - Reasoning Section
@@ -917,7 +682,6 @@ private struct CodexServerTab: View {
             // Run migration for legacy configs
             config.migrateFromLegacy()
             portText = String(config.port)
-            cdpPortText = String(config.cdpDebugPort)
             proxyURL = "http://127.0.0.1:\(config.port)/v1"
             // Load model list for current protocol
             draftCustomModels = config.currentCustomModels
@@ -1058,6 +822,302 @@ private struct CustomModelDropDelegate: DropDelegate {
 
         let position: CustomModelDropPosition = info.location.y < 16 ? .before : .after
         dropTarget = CustomModelDropTarget(id: targetId, position: position)
+    }
+}
+
+// MARK: - Enhancements Tab
+
+private struct CodexEnhancementsTab: View {
+    @ObservedObject var codexAdaptor: CodexAdaptorService
+    @State private var config = CodexAdaptorConfig()
+    @State private var cdpPortText: String = "9222"
+    @State private var isLaunchingCodex: Bool = false
+    @State private var codexLaunchStatus: String = ""
+    @State private var codexLaunchError: String? = nil
+    @State private var showRestartConfirm: Bool = false
+    @State private var confirmBox = LaunchConfirmBox()
+    @State private var showManualCommand: Bool = false
+    @State private var isLoading = true
+    @State private var hasLoadedConfig = false
+
+    var body: some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                // CDP Status
+                cardSection(header: Label(L10n.t("codex_enhancements"), systemImage: "wand.and.stars")) {
+                    HStack(spacing: 8) {
+                        Circle()
+                            .fill(cdpStatusColor)
+                            .frame(width: 8, height: 8)
+                        Text(cdpStatusText)
+                            .font(.caption)
+                            .foregroundColor(.secondary)
+                        Spacer()
+                    }
+                    .padding(.bottom, 4)
+
+                    // Debug port + launch Codex row
+                    VStack(alignment: .leading, spacing: 8) {
+                        HStack(spacing: 8) {
+                            Text(L10n.t("codex_debug_port"))
+                                .frame(width: 96, alignment: .leading)
+                            TextField("", text: $cdpPortText)
+                                .textFieldStyle(.roundedBorder)
+                                .frame(width: 80)
+                                .onChange(of: cdpPortText) { _, newValue in
+                                    let filtered = newValue.filter(\.isNumber)
+                                    if filtered != newValue {
+                                        cdpPortText = filtered
+                                        return
+                                    }
+                                    if let p = UInt16(filtered), p > 0 {
+                                        if config.cdpDebugPort != p {
+                                            config.cdpDebugPort = p
+                                            saveConfig()
+                                        }
+                                    }
+                                }
+                            Text(L10n.t("codex_debug_port_help"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                            Spacer()
+                            Button {
+                                showManualCommand = true
+                            } label: {
+                                Image(systemName: "info.circle")
+                            }
+                            .buttonStyle(.borderless)
+                            .controlSize(.small)
+                            .popover(isPresented: $showManualCommand) {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    Text(L10n.t("codex_manual_command_help"))
+                                        .font(.caption)
+                                        .foregroundColor(.secondary)
+                                    Text(CodexAppLauncher.manualLaunchCommand(port: config.cdpDebugPort))
+                                        .font(.system(.caption, design: .monospaced))
+                                        .textSelection(.enabled)
+                                        .padding(6)
+                                        .background(Color.secondary.opacity(0.1))
+                                        .cornerRadius(4)
+                                }
+                                .padding(10)
+                                .frame(width: 340)
+                            }
+                        }
+
+                        if shouldShowLaunchButton {
+                            HStack(spacing: 8) {
+                                Button {
+                                    startLaunchCodexFlow()
+                                } label: {
+                                    if isLaunchingCodex {
+                                        HStack(spacing: 4) {
+                                            ProgressView().controlSize(.small)
+                                            Text(codexLaunchStatus.isEmpty ? L10n.t("codex_launch_button") : codexLaunchStatus)
+                                        }
+                                    } else {
+                                        Label(L10n.t("codex_launch_button"), systemImage: "play.fill")
+                                    }
+                                }
+                                .buttonStyle(.borderedProminent)
+                                .disabled(isLaunchingCodex)
+
+                                if let err = codexLaunchError {
+                                    Text(err)
+                                        .font(.caption)
+                                        .foregroundColor(.red)
+                                        .lineLimit(2)
+                                }
+                                Spacer()
+                            }
+                        }
+                    }
+                    .padding(.bottom, 4)
+                }
+
+                // Plugin Settings
+                cardSection(header: Label(L10n.t("codex_plugin_settings"), systemImage: "puzzlepiece.extension")) {
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.t("codex_plugin_entry_unlock")).fontWeight(.medium)
+                            Text(L10n.t("codex_plugin_entry_unlock_desc"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $config.cdpSettings.codexAppPluginEntryUnlock)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+                    .onChange(of: config.cdpSettings.codexAppPluginEntryUnlock) { _, _ in
+                        saveConfig()
+                        Task { await codexAdaptor.pushInjectionSettings() }
+                    }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.t("codex_model_whitelist_unlock")).fontWeight(.medium)
+                            Text(L10n.t("codex_model_whitelist_unlock_desc"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $config.cdpSettings.codexAppModelWhitelistUnlock)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+                    .onChange(of: config.cdpSettings.codexAppModelWhitelistUnlock) { _, _ in
+                        saveConfig()
+                        Task { await codexAdaptor.pushInjectionSettings() }
+                    }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.t("codex_marketplace_unlock")).fontWeight(.medium)
+                            Text(L10n.t("codex_marketplace_unlock_desc"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $config.cdpSettings.codexAppPluginMarketplaceUnlock)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+                    .onChange(of: config.cdpSettings.codexAppPluginMarketplaceUnlock) { _, _ in
+                        saveConfig()
+                        Task { await codexAdaptor.pushInjectionSettings() }
+                    }
+
+                    HStack {
+                        VStack(alignment: .leading, spacing: 2) {
+                            Text(L10n.t("codex_force_plugin_install")).fontWeight(.medium)
+                            Text(L10n.t("codex_force_plugin_install_desc"))
+                                .font(.caption)
+                                .foregroundColor(.secondary)
+                        }
+                        Spacer()
+                        Toggle("", isOn: $config.cdpSettings.codexAppForcePluginInstall)
+                            .toggleStyle(.switch)
+                            .controlSize(.small)
+                            .labelsHidden()
+                    }
+                    .onChange(of: config.cdpSettings.codexAppForcePluginInstall) { _, _ in
+                        saveConfig()
+                        Task { await codexAdaptor.pushInjectionSettings() }
+                    }
+                }
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 16)
+        }
+        .onAppear { loadConfig() }
+        .alert(L10n.t("codex_launch_confirm_title"), isPresented: $showRestartConfirm) {
+            Button(L10n.t("cancel"), role: .cancel) {
+                confirmBox.resume(false)
+            }
+            Button(L10n.t("codex_launch_confirm_restart"), role: .destructive) {
+                confirmBox.resume(true)
+            }
+        } message: {
+            Text(L10n.t("codex_launch_confirm_message"))
+        }
+        .disabled(isLoading)
+    }
+
+    // MARK: - Card Section Helper
+
+    @ViewBuilder
+    private func cardSection<Header: View, Content: View>(
+        header: Header,
+        @ViewBuilder content: () -> Content
+    ) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            header
+                .font(.headline)
+            content()
+        }
+        .padding(16)
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .background(
+            RoundedRectangle(cornerRadius: 10)
+                .fill(Color(nsColor: .controlBackgroundColor))
+        )
+        .overlay(
+            RoundedRectangle(cornerRadius: 10)
+                .stroke(Color.secondary.opacity(0.15), lineWidth: 1)
+        )
+    }
+
+    // MARK: - Computed Properties
+
+    private var cdpStatusColor: Color {
+        switch codexAdaptor.cdpConnectionState {
+        case .disconnected: return .secondary
+        case .connecting, .connected: return .orange
+        case .injected: return .green
+        case .failed: return .red
+        }
+    }
+
+    private var cdpStatusText: String {
+        switch codexAdaptor.cdpConnectionState {
+        case .disconnected: return L10n.t("cdp_status_disconnected")
+        case .connecting, .connected: return L10n.t("cdp_status_connecting")
+        case .injected: return L10n.t("cdp_status_injected")
+        case .failed(let reason): return "\(L10n.t("cdp_status_failed")) — \(reason)"
+        }
+    }
+
+    private var shouldShowLaunchButton: Bool {
+        guard codexAdaptor.isRunning, config.cdpSettings.enhancementsEnabled else { return false }
+        if case .failed = codexAdaptor.cdpConnectionState {
+            return true
+        }
+        return false
+    }
+
+    // MARK: - Actions
+
+    private func startLaunchCodexFlow() {
+        guard let port = UInt16(cdpPortText), port > 0 else {
+            codexLaunchError = L10n.t("codex_debug_port_invalid")
+            return
+        }
+        codexLaunchError = nil
+        Task { @MainActor [confirmBox] in
+            isLaunchingCodex = true
+            defer { isLaunchingCodex = false }
+            do {
+                try await CodexAppLauncher.ensureCodexRunningWithDebugPort(
+                    port: port,
+                    onNeedConfirm: {
+                        showRestartConfirm = true
+                        return await confirmBox.wait()
+                    },
+                    onProgress: { msg in codexLaunchStatus = msg }
+                )
+                codexLaunchStatus = L10n.t("codex_launch_progress_done")
+            } catch {
+                codexLaunchError = error.localizedDescription
+            }
+        }
+    }
+
+    private func loadConfig() {
+        guard !hasLoadedConfig else { return }
+        hasLoadedConfig = true
+        Task {
+            config = await CodexAdaptorConfigStore.shared.load()
+            cdpPortText = String(config.cdpDebugPort)
+            isLoading = false
+        }
+    }
+
+    private func saveConfig() {
+        Task { await CodexAdaptorConfigStore.shared.save(config) }
     }
 }
 

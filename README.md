@@ -26,8 +26,12 @@ APIBypass is a macOS menu bar app that sits between your AI tools and upstream A
 ---
 
 <p align="center">
-  <a href="menu.png"><img src="menu.png" alt="APIBypass menu bar menu" width="380"></a>
+  <a href="menu.png"><img src="menu.png" alt="APIBypass menu bar with status indicators" width="400"></a>
 </p>
+
+The menu shows real-time status for each service:
+- ● (solid) = running
+- ○ (hollow) = stopped
 
 ### Why APIBypass?
 
@@ -105,10 +109,10 @@ Click the APIBypass icon in the menu bar — the server auto-starts on `127.0.0.
 
 ### 2. Add a Provider
 
-Menu bar → "Configure..." → create a provider:
+Menu bar → "Configure APIBypass" → create a provider:
 
 <p align="center">
-  <a href="screenshot_configure.png"><img src="screenshot_configure.png" alt="Provider and model mapping configuration" width="720"></a>
+  <a href="screenshot_apibypass_configure.png"><img src="screenshot_apibypass_configure.png" alt="Provider and model mapping configuration" width="720"></a>
 </p>
 
 | Field | Description | Example |
@@ -136,7 +140,7 @@ Set your AI client's base URL to `http://127.0.0.1:8390/v1`. The API Key field c
 Menu bar → "Launch Claude Code":
 
 <p align="center">
-  <a href="screenshot_launch.png"><img src="screenshot_launch.png" alt="Launch Claude Code configuration" width="720"></a>
+  <a href="screenshot_launch_claude_code.png"><img src="screenshot_launch_claude_code.png" alt="Launch Claude Code configuration" width="720"></a>
 </p>
 
 1. Pick a provider (base URL and token auto-configured)
@@ -146,6 +150,18 @@ Menu bar → "Launch Claude Code":
 5. Click "Launch"
 
 Claude Code opens with all environment variables set, routing each model role through your chosen provider.
+
+### 6. Launch Codex (Optional)
+
+Menu bar → "Launch Codex":
+
+<p align="center">
+  <a href="screenshot_launch_codex.png"><img src="screenshot_launch_codex.png" alt="Launch Codex configuration" width="720"></a>
+</p>
+
+1. Codex Adaptor service starts automatically if not running
+2. Codex app launches with the configured debug port
+3. Point Codex to `http://127.0.0.1:15721/v1`
 
 ---
 
@@ -176,7 +192,7 @@ Claude Code opens with all environment variables set, routing each model role th
 OpenAI's [Codex](https://github.com/openai/codex) uses the **Responses API** — a new format that almost no proxy or third-party provider supports. APIBypass is the first macOS tool to bridge this gap: it translates Responses API ↔ Chat Completions in real time, and passes requests through APIBypass's model mapping and parameter injection pipeline. The result: **Codex works with any provider, any model** — DeepSeek, Qwen, GLM, MiniMax, not just OpenAI.
 
 <p align="center">
-  <a href="screenshot_codexadaptor.png"><img src="screenshot_codexadaptor.png" alt="Codex Adaptor configuration" width="720"></a>
+  <a href="screenshot_codexadaptor_configure.png"><img src="screenshot_codexadaptor_configure.png" alt="Codex Adaptor configuration" width="720"></a>
 </p>
 
 ```
@@ -271,12 +287,18 @@ Client (Claude Code / Cursor / Anything) │
 Menu bar → "Settings...":
 
 <p align="center">
-  <a href="screenshot_settings.png"><img src="screenshot_settings.png" alt="APIBypass settings window" width="720"></a>
+  <a href="screenshot_settings.png"><img src="screenshot_settings.png" alt="APIBypass settings window" width="500"></a>
 </p>
 
 - **Language**: 中文 / English, takes effect immediately
 - **Server Port**: Default 8390, restart to apply
-- **About**: Version, description, GitHub link, MIT license
+- **Trace Log**: Enable request/response logging for debugging
+
+Menu bar → "About":
+
+<p align="center">
+  <a href="screenshot_about.png"><img src="screenshot_about.png" alt="About APIBypass" width="320"></a>
+</p>
 
 ## Tech Stack
 

@@ -125,25 +125,59 @@ final class CodexAdaptorConfigTests: XCTestCase {
         XCTAssertEqual(decoded.wireAPI, .chat)
     }
 
-    // MARK: - Test 1.5: 配置缓存一致性
+    // MARK: - Test 1.6: save 同步 upstreamWireAPI 到 providers.json
 
-    func test_load_returnsSavedConfig() async {
-        // 保存一个自定义配置
+    func test_save_syncsUpstreamWireAPIToProvidersJSON() async throws {
+        // 保存配置，wireAPI = .responses
         var config = CodexAdaptorConfig()
-        config.port = 12345
         config.wireAPI = .responses
-        let entry = CustomModelEntry(alias: "test-model", modelMappingId: UUID(), contextWindow: 200000)
-        config.chatCustomModels = [entry]
+        config.port = 15721
 
         await CodexAdaptorConfigStore.shared.save(config)
 
-        // 加载配置
-        let loaded = await CodexAdaptorConfigStore.shared.load()
+        // 读取 providers.json 验证 upstreamWireAPI 被同步
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let providersPath = home + "/.codex/providers.json"
 
-        // 验证加载的配置与保存的一致
-        XCTAssertEqual(loaded.port, 12345)
-        XCTAssertEqual(loaded.wireAPI, .responses)
-        XCTAssertEqual(loaded.chatCustomModels.count, 1)
-        XCTAssertEqual(loaded.chatCustomModels.first?.alias, "test-model")
+        guard let data = try? Data(contentsOf: URL(fileURLWithPath: providersPath)),
+              let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+              let providers = json["providers"] as? [String: Any],
+              let apibypass = providers["apibypass"] as? [String: Any],
+              let upstreamWireAPI = apibypass["upstreamWireAPI"] as? String else {
+            XCTFail("Failed to read providers.json")
+            return
+        }
+
+        XCTAssertEqual(upstreamWireAPI, "responses", "save() should sync upstreamWireAPI to providers.json")
+    }
+
+    // MARK: - Test 1.7: 切换协议时 providers.json 正确更新
+
+    func test_save_updatesProvidersJSON_whenSwitchingProtocol() async throws {
+        let home = FileManager.default.homeDirectoryForCurrentUser.path
+        let providersPath = home + "/.codex/providers.json"
+
+        // 先保存为 chat
+        var config = CodexAdaptorConfig()
+        config.wireAPI = .chat
+        await CodexAdaptorConfigStore.shared.save(config)
+
+        // 验证 providers.json 是 "chat"
+        var data = try Data(contentsOf: URL(fileURLWithPath: providersPath))
+        var json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        var providers = json["providers"] as? [String: Any] ?? [:]
+        var apibypass = providers["apibypass"] as? [String: Any] ?? [:]
+        XCTAssertEqual(apibypass["upstreamWireAPI"] as? String, "chat")
+
+        // 切换到 responses
+        config.wireAPI = .responses
+        await CodexAdaptorConfigStore.shared.save(config)
+
+        // 验证 providers.json 更新为 "responses"
+        data = try Data(contentsOf: URL(fileURLWithPath: providersPath))
+        json = try JSONSerialization.jsonObject(with: data) as? [String: Any] ?? [:]
+        providers = json["providers"] as? [String: Any] ?? [:]
+        apibypass = providers["apibypass"] as? [String: Any] ?? [:]
+        XCTAssertEqual(apibypass["upstreamWireAPI"] as? String, "responses", "Switching protocol should update providers.json")
     }
 }

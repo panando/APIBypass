@@ -26,6 +26,9 @@ final class CodexAdaptorService: ObservableObject {
         let config = await CodexAdaptorConfigStore.shared.load()
         port = config.port
 
+        // Apply verbose logging setting
+        await syncVerboseLogging(config: config)
+
         // Sync config to ~/.codex/ files
         try await syncCodexConfig(config: config)
 
@@ -95,6 +98,10 @@ final class CodexAdaptorService: ObservableObject {
             ? await injector?.configuredDebugPort
             : nil
         await CodexAdaptorConfigStore.shared.save(config)
+
+        // Apply verbose logging setting
+        await syncVerboseLogging(config: config)
+
         try await syncCodexConfig(config: config)
 
         if let inj = injector, let prev = previousDebugPort, prev != config.cdpDebugPort {
@@ -116,6 +123,11 @@ final class CodexAdaptorService: ObservableObject {
         }
 
         port = config.port
+    }
+
+    /// Sync verbose logging setting to logging services.
+    private func syncVerboseLogging(config: CodexAdaptorConfig) async {
+        CodexLogStore.shared.setVerboseMode(config.verboseLogging)
     }
 
     func pushInjectionSettings() async {

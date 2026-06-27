@@ -151,15 +151,21 @@ actor CodexRequestHandler {
             let toolContext = CodexToolContext(responsesBody: json)
 
             // Resolve Codex model name → APIBypass model name via the provider's model catalog
+            // Codex sends the "slug" field as the model identifier, which we store in the "model" field.
+            // We match by model first (slug), then fall back to displayName for backward compatibility.
             let rawModelName = json["model"] as? String ?? ""
             var modelName = rawModelName
             if let catalog = provider.modelCatalog {
-                if let entry = catalog.models.first(where: { $0.displayName == rawModelName }) {
+                if let entry = catalog.models.first(where: { $0.model == rawModelName }) {
+                    // Matched by model (slug) - the model field already contains the correct identifier
                     modelName = entry.model
                     json["model"] = modelName
-                    CodexLogStore.shared.info("[CodexRouter] Model resolved: '\(rawModelName)' → '\(modelName)'")
-                } else if catalog.models.contains(where: { $0.model == rawModelName }) {
-                    // Already resolved, no change needed
+                    CodexLogStore.shared.info("[CodexRouter] Model resolved by slug: '\(rawModelName)' → '\(modelName)'")
+                } else if let entry = catalog.models.first(where: { $0.displayName == rawModelName }) {
+                    // Matched by displayName for backward compatibility
+                    modelName = entry.model
+                    json["model"] = modelName
+                    CodexLogStore.shared.info("[CodexRouter] Model resolved by displayName: '\(rawModelName)' → '\(modelName)'")
                 }
             }
 
@@ -231,12 +237,67 @@ actor CodexRequestHandler {
         toolContext: CodexToolContext
     ) async throws -> Response {
         let needsTransformation = provider.usesChatCompletions && endpoint == .responses
-        CodexLogStore.shared.info("[CodexRouter] Streaming request to \(url), needsTransformation: \(needsTransformation)")
+        let requestStartTime = Date()
+        let requestId = String(UUID().uuidString.prefix(8))
 
-        let streamingResponse = try await httpClient.sendStreaming(
+        CodexLogStore.shared.info("[CodexRouter] 🚀 [\(requestId)] Streaming request START")
+        CodexLogStore.shared.info("[CodexRouter] 📍 [\(requestId)] URL: \(url)")
+        CodexLogStore.shared.info("[CodexRouter] 🔄 [\(requestId)] needsTransformation: \(needsTransformation), endpoint: \(endpoint)")
+        CodexLogStore.shared.info("[CodexRouter] 📦 [\(requestId)] Request body size: \(body?.count ?? 0) bytes")
+
+        var streamingResponse = try await httpClient.sendStreaming(
             url: url, method: .post, headers: headers, body: body
         )
-        CodexLogStore.shared.info("[CodexRouter] Upstream status: \(streamingResponse.status.code)")
+
+        // Check for retryable 400 errors
+        if streamingResponse.status.code == 400 {
+            CodexLogStore.shared.append(level: .error, message: "[CodexRouter] ❌ [\(requestId)] Upstream returned 400, checking for retryable error")
+
+            // Collect error body from stream
+            var errorData = Data()
+            for await chunk in streamingResponse.events {
+                errorData.append(chunk)
+            }
+
+            // Check if this is a retryable param error
+            if let action = parseParamErrorAction(status: 400, errorBody: errorData),
+               let originalBody = body,
+               var json = try? JSONSerialization.jsonObject(with: originalBody) as? [String: Any] {
+                let modifiedJSON = applyParamErrorAction(action, to: json)
+                if let modifiedBody = try? JSONSerialization.data(withJSONObject: modifiedJSON) {
+                    CodexLogStore.shared.info("[CodexRouter] 🔄 [\(requestId)] Retrying with modified parameters")
+
+                    // Retry with modified body
+                    streamingResponse = try await httpClient.sendStreaming(
+                        url: url, method: .post, headers: headers, body: modifiedBody
+                    )
+
+                    if streamingResponse.status.code != 200 {
+                        CodexLogStore.shared.append(level: .error, message: "[CodexRouter] ❌ [\(requestId)] Retry failed with status \(streamingResponse.status.code)")
+                        // Return the retry error
+                        var retryErrorData = Data()
+                        for await chunk in streamingResponse.events {
+                            retryErrorData.append(chunk)
+                        }
+                        return Response(
+                            status: streamingResponse.status,
+                            body: .init(byteBuffer: ByteBuffer(data: retryErrorData))
+                        )
+                    }
+
+                    CodexLogStore.shared.info("[CodexRouter] ✅ [\(requestId)] Retry successful")
+                }
+            } else {
+                // Not retryable - return the error response
+                return Response(
+                    status: streamingResponse.status,
+                    body: .init(byteBuffer: ByteBuffer(data: errorData))
+                )
+            }
+        }
+
+        let connectionTime = Date().timeIntervalSince(requestStartTime)
+        CodexLogStore.shared.info("[CodexRouter] ✅ [\(requestId)] Upstream connected: status=\(streamingResponse.status.code), time=\(String(format: "%.2f", connectionTime))s")
 
         var responseHeaders = HTTPFields()
         responseHeaders[.contentType] = "text/event-stream"
@@ -246,14 +307,18 @@ actor CodexRequestHandler {
         if needsTransformation {
             let transformer = ChatToResponsesStreamTransformer(toolContext: toolContext)
             var isFirstChunk = true
+            var eventCount = 0
 
             let eventSequence = AsyncStream<ByteBuffer> { continuation in
                 Task {
                     for await data in streamingResponse.events {
+                        eventCount += 1
                         if isFirstChunk {
                             isFirstChunk = false
+                            let timeToFirst = Date().timeIntervalSince(requestStartTime)
+                            CodexLogStore.shared.info("[CodexRouter] ⚡ [\(requestId)] First event in \(String(format: "%.2f", timeToFirst))s")
                             if let raw = String(data: data, encoding: .utf8) {
-                                CodexLogStore.shared.info("[CodexRouter] First raw upstream chunk: \(raw.prefix(500))")
+                                CodexLogStore.shared.info("[CodexRouter] 📥 [\(requestId)] First chunk: \(raw.prefix(500))")
                             }
                         }
                         if let transformedData = await transformer.transform(data) {
@@ -265,9 +330,11 @@ actor CodexRequestHandler {
                     // Stream ended — send completion events
                     if let finalData = await transformer.finish(),
                        let final = String(data: finalData, encoding: .utf8) {
-                        CodexLogStore.shared.info("[CodexRouter] Final flush: \(final.prefix(200))")
+                        CodexLogStore.shared.info("[CodexRouter] 🏁 [\(requestId)] Final flush: \(final.prefix(200))")
                         continuation.yield(ByteBuffer(data: finalData))
                     }
+                    let totalTime = Date().timeIntervalSince(requestStartTime)
+                    CodexLogStore.shared.info("[CodexRouter] ✅ [\(requestId)] Stream finished: \(eventCount) events in \(String(format: "%.2f", totalTime))s")
                     continuation.finish()
                 }
             }
@@ -275,7 +342,87 @@ actor CodexRequestHandler {
             let streamingBody = ResponseBody(asyncSequence: eventSequence)
             return Response(status: streamingResponse.status, headers: responseHeaders, body: streamingBody)
         } else {
-            let eventSequence = streamingResponse.events.map { ByteBuffer(data: $0) }
+            var eventCount = 0
+            var totalBytesSent = 0
+            var eventTypes: [String: Int] = [:]
+            var hasCompleted = false
+            var hasDone = false
+            var hasFailed = false
+
+            let eventSequence = AsyncStream<ByteBuffer> { continuation in
+                Task {
+                    for await data in streamingResponse.events {
+                        eventCount += 1
+                        totalBytesSent += data.count
+
+                        // Extract and log event type
+                        if let eventStr = String(data: data, encoding: .utf8) {
+                            // Extract type field
+                            if let typeRange = eventStr.range(of: "\"type\":\"") {
+                                let start = typeRange.upperBound
+                                if let end = eventStr.range(of: "\"", range: start..<eventStr.endIndex) {
+                                    let eventType = String(eventStr[start..<end.lowerBound])
+                                    eventTypes[eventType, default: 0] += 1
+
+                                    // Track critical events
+                                    if eventType == "response.completed" { hasCompleted = true }
+                                    if eventType == "response.failed" { hasFailed = true }
+
+                                    // Log first 3 events with details
+                                    if eventCount <= 3 {
+                                        let elapsed = Date().timeIntervalSince(requestStartTime)
+                                        CodexLogStore.shared.info("[CodexRouter] 📥 [\(requestId)] SSE #\(eventCount) [\(eventType)] @\(String(format: "%.2f", elapsed))s: \(eventStr.prefix(150))")
+                                    }
+
+                                    // Log completion event with full response body
+                                    if eventType == "response.completed" {
+                                        CodexLogStore.shared.info("[CodexRouter] ✅ [\(requestId)] response.completed: \(eventStr)")
+                                    }
+
+                                    // Log failure event
+                                    if eventType == "response.failed" {
+                                        CodexLogStore.shared.append(level: .error, message: "[CodexRouter] ❌ [\(requestId)] response.failed: \(eventStr)")
+                                    }
+                                }
+                            }
+
+                            // Check for [DONE]
+                            if eventStr.contains("[DONE]") {
+                                hasDone = true
+                                CodexLogStore.shared.info("[CodexRouter] 🏁 [\(requestId)] Received [DONE] marker")
+                            }
+                        }
+
+                        // Append \n\n to each SSE event for proper boundary
+                        var eventData = data
+                        eventData.append(contentsOf: [0x0A, 0x0A]) // \n\n
+                        continuation.yield(ByteBuffer(data: eventData))
+                    }
+
+                    // Summary logging
+                    let duration = Date().timeIntervalSince(requestStartTime)
+                    CodexLogStore.shared.info("[CodexRouter] 📊 [\(requestId)] SSE stream finished: \(eventCount) events, \(totalBytesSent) bytes, \(String(format: "%.2f", duration))s")
+
+                    // Warn about missing critical events
+                    if eventCount > 0 {
+                        if !hasCompleted {
+                            CodexLogStore.shared.append(level: .error, message: "[CodexRouter] ⚠️ [\(requestId)] WARNING: No response.completed event!")
+                        }
+                        if !hasDone {
+                            CodexLogStore.shared.append(level: .error, message: "[CodexRouter] ⚠️ [\(requestId)] WARNING: No [DONE] marker!")
+                        }
+                        if hasFailed {
+                            CodexLogStore.shared.append(level: .error, message: "[CodexRouter] ❌ [\(requestId)] Stream contained response.failed event!")
+                        }
+                    }
+
+                    // Log event type distribution
+                    let typeSummary = eventTypes.sorted { $0.key < $1.key }.map { "\($0.key)(\($0.value))" }.joined(separator: ", ")
+                    CodexLogStore.shared.info("[CodexRouter] 📈 [\(requestId)] Event types: \(typeSummary)")
+
+                    continuation.finish()
+                }
+            }
             let streamingBody = ResponseBody(asyncSequence: eventSequence)
             return Response(status: streamingResponse.status, headers: responseHeaders, body: streamingBody)
         }
@@ -819,6 +966,23 @@ actor CodexRequestHandler {
     }
 
     // MARK: - Helpers
+
+    /// Apply ParamErrorAction to request body JSON
+    private func applyParamErrorAction(_ action: ParamErrorAction, to json: [String: Any]) -> [String: Any] {
+        var result = json
+        switch action {
+        case .remove(let param):
+            result.removeValue(forKey: param)
+            CodexLogStore.shared.info("[CodexRouter] 🔄 Removed parameter: \(param)")
+        case .replace(let oldParam, let newParam):
+            if let value = result[oldParam] {
+                result.removeValue(forKey: oldParam)
+                result[newParam] = value
+                CodexLogStore.shared.info("[CodexRouter] 🔄 Replaced \(oldParam) → \(newParam)")
+            }
+        }
+        return result
+    }
 
     private func isOpenAIOseries(model: String) -> Bool {
         let m = model.lowercased()

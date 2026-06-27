@@ -564,6 +564,8 @@ struct L10n {
         "codex_copy_all": [.chinese: "复制全部", .english: "Copy All"],
         "codex_copied": [.chinese: "已复制", .english: "Copied"],
         "codex_entries": [.chinese: "条记录", .english: "entries"],
+        "codex_verbose_logging": [.chinese: "详细日志", .english: "Verbose"],
+        "codex_verbose_logging_help": [.chinese: "开启时记录所有事件，关闭时仅记录错误且不重复记录连续相同事件", .english: "When on, logs all events; when off, only errors and non-duplicate events"],
         "codex_adaptor_title": [.chinese: "Codex Adaptor 设置", .english: "Codex Adaptor Settings"],
         "codex_alias": [.chinese: "别名", .english: "Alias"],
         "codex_cdp_title": [.chinese: "CDP 设置", .english: "CDP Settings"],

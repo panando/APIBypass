@@ -12,7 +12,8 @@ public struct ModelCatalog: Codable, Equatable, Sendable {
 
 /// A single model entry in the user's catalog configuration.
 /// Fields match cc-switch's expected input format:
-/// - model: required (the model slug/id)
+/// - slug: optional (the model identifier used by Codex, takes precedence over model)
+/// - model: required (the model slug/id, used if slug is absent)
 /// - displayName / display_name: optional (defaults to model if not set)
 /// - contextWindow / context_window: optional (defaults to model_context_window or 128000)
 public struct ModelCatalogEntry: Codable, Identifiable, Equatable, Sendable {
@@ -37,6 +38,7 @@ public struct ModelCatalogEntry: Codable, Identifiable, Equatable, Sendable {
 
     enum CodingKeys: String, CodingKey {
         case model
+        case slug
         case displayName
         case contextWindow
         // Also support snake_case variants for compatibility
@@ -46,7 +48,12 @@ public struct ModelCatalogEntry: Codable, Identifiable, Equatable, Sendable {
 
     public init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
-        model = try container.decode(String.self, forKey: .model)
+        // slug takes precedence over model for the identifier
+        if let slug = try container.decodeIfPresent(String.self, forKey: .slug) {
+            model = slug
+        } else {
+            model = try container.decode(String.self, forKey: .model)
+        }
         // Try both camelCase and snake_case
         displayName = try container.decodeIfPresent(String.self, forKey: .displayName)
             ?? container.decodeIfPresent(String.self, forKey: .display_name)

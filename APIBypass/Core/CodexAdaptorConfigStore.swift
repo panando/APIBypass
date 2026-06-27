@@ -57,6 +57,35 @@ actor CodexAdaptorConfigStore {
                 atPath: dir, withIntermediateDirectories: true)
         }
         try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+
+        // Sync upstreamWireAPI to providers.json so CodexRouter uses the correct protocol.
+        syncUpstreamWireAPI(config.wireAPI.rawValue)
+    }
+
+    /// Update upstreamWireAPI in providers.json to match the current wireAPI setting.
+    private func syncUpstreamWireAPI(_ wireAPI: String) {
+        let providersPath = NSHomeDirectory() + "/.codex/providers.json"
+
+        // Read existing providers.json or create new structure
+        var json: [String: Any] = ["providers": [:]]
+        if let data = try? Data(contentsOf: URL(fileURLWithPath: providersPath)),
+           let existing = try? JSONSerialization.jsonObject(with: data) as? [String: Any] {
+            json = existing
+        }
+
+        // Update the apibypass provider's upstreamWireAPI
+        if var providers = json["providers"] as? [String: Any] {
+            var apibypass = providers["apibypass"] as? [String: Any] ?? [:]
+            apibypass["upstreamWireAPI"] = wireAPI
+            providers["apibypass"] = apibypass
+            json["providers"] = providers
+        } else {
+            json["providers"] = ["apibypass": ["upstreamWireAPI": wireAPI]]
+        }
+
+        // Write back
+        guard let outputData = try? JSONSerialization.data(withJSONObject: json, options: [.prettyPrinted, .sortedKeys]) else { return }
+        try? outputData.write(to: URL(fileURLWithPath: providersPath), options: .atomic)
     }
 
     private func loadFromMirrorFile() -> CodexAdaptorConfig? {

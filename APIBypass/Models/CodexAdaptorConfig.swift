@@ -18,6 +18,9 @@ struct CodexAdaptorConfig: Codable, Equatable {
     var cdpSettings: CDPInjectionSettings = CDPInjectionSettings()
     var cdpDebugPort: UInt16 = 9222
 
+    /// Verbose logging mode: when true, logs all events; when false, only errors and non-duplicate events.
+    var verboseLogging: Bool = true
+
     /// Convenience accessor for the current protocol's model list
     var currentCustomModels: [CustomModelEntry] {
         get { wireAPI == .chat ? chatCustomModels : responsesCustomModels }

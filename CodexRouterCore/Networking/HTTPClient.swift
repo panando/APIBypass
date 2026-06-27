@@ -95,9 +95,39 @@ public struct StreamingResponse: Sendable {
         AsyncStream { continuation in
             Task {
                 var buffer = Data()
+                var eventCount = 0
+                var totalBytes = 0
+                var eventTypes: [String: Int] = [:]  // 统计各类型事件数量
+                var maxEventSize = 0
+                let startTime = Date()
+                var firstEventTime: Date?
+
+                // Helper: extract event type from SSE data
+                func extractEventType(_ data: Data) -> String? {
+                    guard let str = String(data: data, encoding: .utf8) else { return nil }
+                    // Try to find "type":"xxx" in the data
+                    if let typeRange = str.range(of: "\"type\":\"") {
+                        let start = typeRange.upperBound
+                        if let end = str.range(of: "\"", range: start..<str.endIndex) {
+                            return String(str[start..<end.lowerBound])
+                        }
+                    }
+                    // Check for [DONE]
+                    if str.contains("[DONE]") { return "[DONE]" }
+                    // Check for event: line
+                    if let eventRange = str.range(of: "event: ") {
+                        let start = eventRange.upperBound
+                        if let end = str.range(of: "\n", range: start..<str.endIndex) {
+                            return String(str[start..<end.lowerBound])
+                        }
+                    }
+                    return nil
+                }
+
                 do {
                     for try await byte in asyncBytes {
                         buffer.append(byte)
+                        totalBytes += 1
 
                         // Check for SSE event boundaries (both \n\n and \r\n\r\n)
                         if buffer.count >= 4 {
@@ -105,6 +135,17 @@ public struct StreamingResponse: Sendable {
                             if lastFour == Data([0x0D, 0x0A, 0x0D, 0x0A]) { // \r\n\r\n
                                 let event = buffer.dropLast(4)
                                 if !event.isEmpty {
+                                    eventCount += 1
+                                    if firstEventTime == nil { firstEventTime = Date() }
+
+                                    // Track event type
+                                    if let eventType = extractEventType(Data(event)) {
+                                        eventTypes[eventType, default: 0] += 1
+                                    }
+
+                                    // Track max size
+                                    if event.count > maxEventSize { maxEventSize = event.count }
+
                                     continuation.yield(Data(event))
                                 }
                                 buffer.removeAll(keepingCapacity: true)
@@ -123,6 +164,17 @@ public struct StreamingResponse: Sendable {
                                 }
                                 let event = buffer.dropLast(2)
                                 if !event.isEmpty {
+                                    eventCount += 1
+                                    if firstEventTime == nil { firstEventTime = Date() }
+
+                                    // Track event type
+                                    if let eventType = extractEventType(Data(event)) {
+                                        eventTypes[eventType, default: 0] += 1
+                                    }
+
+                                    // Track max size
+                                    if event.count > maxEventSize { maxEventSize = event.count }
+
                                     continuation.yield(Data(event))
                                 }
                                 buffer.removeAll(keepingCapacity: true)
@@ -132,10 +184,37 @@ public struct StreamingResponse: Sendable {
 
                     // Send any remaining data
                     if !buffer.isEmpty {
+                        eventCount += 1
+                        if let eventType = extractEventType(buffer) {
+                            eventTypes[eventType, default: 0] += 1
+                        }
                         continuation.yield(buffer)
                     }
+
+                    // Log comprehensive stats
+                    let duration = Date().timeIntervalSince(startTime)
+                    let timeToFirstEvent = firstEventTime.map { $0.timeIntervalSince(startTime) } ?? -1
+                    print("[SSEParser] ✅ Stream finished: \(eventCount) events, \(totalBytes) bytes, \(String(format: "%.2f", duration))s")
+                    print("[SSEParser] 📊 Time to first event: \(String(format: "%.2f", timeToFirstEvent))s, max event size: \(maxEventSize) bytes")
+                    print("[SSEParser] 📈 Event types: \(eventTypes.sorted { $0.key < $1.key }.map { "\($0.key): \($0.value)" }.joined(separator: ", "))")
+
+                    // Check for critical events
+                    if eventTypes["response.completed"] == nil && eventCount > 0 {
+                        print("[SSEParser] ⚠️ WARNING: No response.completed event found!")
+                    }
+                    if eventTypes["[DONE]"] == nil && eventCount > 0 {
+                        print("[SSEParser] ⚠️ WARNING: No [DONE] marker found!")
+                    }
+                    if eventTypes["response.failed"] != nil {
+                        print("[SSEParser] ❌ ERROR: response.failed event detected!")
+                    }
+
                     continuation.finish()
                 } catch {
+                    let duration = Date().timeIntervalSince(startTime)
+                    print("[SSEParser] ❌ Stream error after \(String(format: "%.2f", duration))s: \(error)")
+                    print("[SSEParser] 📊 Before error: \(eventCount) events, \(totalBytes) bytes received")
+                    print("[SSEParser] 📈 Event types seen: \(eventTypes)")
                     continuation.finish()
                 }
             }

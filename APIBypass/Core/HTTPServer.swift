@@ -3,6 +3,7 @@ import Hummingbird
 import HTTPTypes
 import NIOCore
 import ServiceLifecycle
+import CodexRouterCore
 
 // MARK: - 流控与并发控制工具
 
@@ -526,6 +527,72 @@ final class HTTPServer: ObservableObject {
         incomingModel: String = "",
         reqId: String = "none"
     ) async throws -> Response {
+        // Try streaming request, handle retryable param errors
+        let streamResult: StreamingResult
+        do {
+            // Log the first request body
+            if let body = upstreamRequest.httpBody, let bodyStr = String(data: body, encoding: .utf8) {
+                TraceLogger.shared.log(reqId, "━━━ FIRST REQUEST BODY (\(body.count) bytes) ━━━")
+                TraceLogger.shared.log(reqId, bodyStr)
+            }
+            print("[SSE] 开始发送流式请求到上游...")
+            TraceLogger.shared.log(reqId, "━━━ UPSTREAM SSE (raw chunks from \(upstreamFormat)) ━━━")
+            streamResult = try await self.networkService.sendStream(request: upstreamRequest)
+            print("[SSE] 上游连接成功，开始接收流数据...")
+            TraceLogger.shared.log(reqId, "upstream connection established")
+        } catch ProxyError.upstreamError(let code, let data) where code == 400 {
+            // Log the error details first
+            let errorBodyString = String(data: data ?? Data(), encoding: .utf8) ?? "unknown"
+            TraceLogger.shared.log(reqId, "❌ First request failed with 400: \(errorBodyString)")
+
+            // Check if this is a retryable param error
+            guard let errorData = data,
+                  let action = parseParamErrorAction(status: 400, errorBody: errorData),
+                  let requestBody = upstreamRequest.httpBody,
+                  let json = try? JSONSerialization.jsonObject(with: requestBody) as? [String: Any] else {
+                // Not retryable - return error response
+                TraceLogger.shared.log(reqId, "❌ Not retryable error")
+                return Self.makeSSEErrorResponse(status: 400, errorBody: data)
+            }
+
+            // Apply the action to modify request
+            let modifiedJSON = Self.applyParamErrorAction(action, to: json, reqId: reqId)
+            guard let modifiedBody = try? JSONSerialization.data(withJSONObject: modifiedJSON) else {
+                return Self.makeSSEErrorResponse(status: 400, errorBody: data)
+            }
+
+            // Log the retry request body
+            if let bodyStr = String(data: modifiedBody, encoding: .utf8) {
+                TraceLogger.shared.log(reqId, "━━━ RETRY REQUEST BODY (\(modifiedBody.count) bytes) ━━━")
+                TraceLogger.shared.log(reqId, bodyStr)
+            }
+
+            // Retry with modified request
+            var retryRequest = upstreamRequest
+            retryRequest.httpBody = modifiedBody
+            TraceLogger.shared.log(reqId, "🔄 Retrying with modified parameters")
+
+            do {
+                streamResult = try await self.networkService.sendStream(request: retryRequest)
+                TraceLogger.shared.log(reqId, "✅ Retry successful")
+            } catch {
+                // Retry failed - return error
+                if case ProxyError.upstreamError(let retryCode, let retryData) = error {
+                    TraceLogger.shared.log(reqId, "❌ Retry failed with status \(retryCode)")
+                    return Self.makeSSEErrorResponse(status: retryCode, errorBody: retryData)
+                }
+                throw error
+            }
+        } catch {
+            // Non-retryable error
+            if case ProxyError.upstreamError(let code, let data) = error {
+                TraceLogger.shared.log(reqId, "❌ upstream error \(code): \(String(data: data ?? Data(), encoding: .utf8) ?? "unknown")")
+                return Self.makeSSEErrorResponse(status: code, errorBody: data)
+            }
+            throw error
+        }
+
+        // Create streaming response with successful stream
         var headers = HTTPFields()
         headers[.contentType] = "text/event-stream"
         headers[.cacheControl] = "no-cache"
@@ -533,12 +600,6 @@ final class HTTPServer: ObservableObject {
 
         let body = ResponseBody(contentLength: nil) { writer in
             do {
-                print("[SSE] 开始发送流式请求到上游...")
-                TraceLogger.shared.log(reqId, "━━━ UPSTREAM SSE (raw chunks from \(upstreamFormat)) ━━━")
-                let streamResult = try await self.networkService.sendStream(request: upstreamRequest)
-                print("[SSE] 上游连接成功，开始接收流数据...")
-                TraceLogger.shared.log(reqId, "upstream connection established")
-
                 if needsConversion {
                     let streamTranslator = StreamTranslator()
                     let convertedStream: AsyncThrowingStream<String, Error>
@@ -568,10 +629,11 @@ final class HTTPServer: ObservableObject {
                         try await self.streamWithBackpressure(
                             bytes: streamResult.bytes,
                             writer: &writer,
-                            modelReplacement: (from: actualModel, to: incomingModel)
+                            modelReplacement: (from: actualModel, to: incomingModel),
+                            reqId: reqId
                         )
                     } else {
-                        try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer)
+                        try await self.streamWithBackpressure(bytes: streamResult.bytes, writer: &writer, reqId: reqId)
                     }
                     try await writer.finish(nil)
                 }
@@ -611,11 +673,54 @@ final class HTTPServer: ObservableObject {
         return Response(status: .ok, headers: headers, body: body)
     }
 
+    /// Create an SSE error response
+    private static func makeSSEErrorResponse(status: Int, errorBody: Data?) -> Response {
+        let bodyStr = String(data: errorBody ?? Data(), encoding: .utf8) ?? "unknown"
+        let errorResponse: [String: Any] = [
+            "error": [
+                "message": "Upstream \(status): \(bodyStr)",
+                "type": "upstream_error"
+            ]
+        ]
+        let sseError: String
+        if let errorData = try? JSONSerialization.data(withJSONObject: errorResponse),
+           let errorJSON = String(data: errorData, encoding: .utf8) {
+            sseError = "data: \(errorJSON)\n\ndata: [DONE]\n\n"
+        } else {
+            sseError = "data: {\"error\":{\"type\":\"upstream_error\"}}\n\ndata: [DONE]\n\n"
+        }
+        var headers = HTTPFields()
+        headers[.contentType] = "text/event-stream"
+        headers[.cacheControl] = "no-cache"
+        return Response(status: .ok, headers: headers, body: .init(byteBuffer: ByteBuffer(string: sseError)))
+    }
+
+    /// Apply ParamErrorAction to request body JSON
+    private static func applyParamErrorAction(_ action: ParamErrorAction, to json: [String: Any], reqId: String) -> [String: Any] {
+        var result = json
+        switch action {
+        case .remove(let param):
+            let oldValue = result[param]
+            result.removeValue(forKey: param)
+            print("[SSE] 🔄 Removed parameter: \(param) (was: \(oldValue ?? "nil"))")
+            TraceLogger.shared.log(reqId, "🔄 Removed parameter: \(param) (was: \(oldValue ?? "nil"))")
+        case .replace(let oldParam, let newParam):
+            if let value = result[oldParam] {
+                result.removeValue(forKey: oldParam)
+                result[newParam] = value
+                print("[SSE] 🔄 Replaced \(oldParam) → \(newParam)")
+                TraceLogger.shared.log(reqId, "🔄 Replaced \(oldParam) → \(newParam)")
+            }
+        }
+        return result
+    }
+
     /// 带背压控制的流式传输
     private func streamWithBackpressure(
         bytes: URLSession.AsyncBytes,
         writer: inout any ResponseBodyWriter,
-        modelReplacement: (from: String, to: String)? = nil
+        modelReplacement: (from: String, to: String)? = nil,
+        reqId: String = "unknown"
     ) async throws {
         // 使用更大的缓冲区 (64KB) 进行批量读取
         let bufferSize = 65536
@@ -627,6 +732,10 @@ final class HTTPServer: ObservableObject {
         let checkpointInterval = 8192  // 每 8KB 检查一次背压
         var doneReceived = false  // 追踪是否收到 [DONE]
 
+        // 聚合响应内容用于日志记录
+        var responseBuffer = Data()
+        let maxLogSize = 100000  // 最多记录 100KB 响应
+
         for try await byte in bytes {
             buffer.writeInteger(byte)
             byteCount += 1
@@ -636,9 +745,25 @@ final class HTTPServer: ObservableObject {
                 // 检查是否是 [DONE] 标记
                 if let line = String(bytes: buffer.readableBytesView, encoding: .utf8),
                    line.contains("[DONE]") {
+                    // 记录响应
+                    if let lineStr = String(bytes: buffer.readableBytesView, encoding: .utf8) {
+                        TraceLogger.shared.log(reqId, "📥 SSE EVENT: \(lineStr.prefix(500))")
+                    }
                     try await writer.write(buffer)
                     doneReceived = true
                     break  // 收到 [DONE] 后停止处理
+                }
+
+                // 记录每个 SSE 事件
+                if let lineStr = String(bytes: buffer.readableBytesView, encoding: .utf8), !lineStr.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty {
+                    // 只记录有意义的行（data: 或 event: 开头的）
+                    if lineStr.hasPrefix("data:") || lineStr.hasPrefix("event:") {
+                        TraceLogger.shared.log(reqId, "📥 SSE EVENT: \(lineStr.prefix(500))")
+                        // 聚合到响应缓冲区
+                        if responseBuffer.count < maxLogSize {
+                            responseBuffer.append(contentsOf: buffer.readableBytesView)
+                        }
+                    }
                 }
 
                 // 替换模型名称（如果需要）
@@ -664,6 +789,15 @@ final class HTTPServer: ObservableObject {
                 outputBuffer = Self.replaceModelInBuffer(buffer, from: replacement.from, to: replacement.to)
             }
             try await writer.write(outputBuffer)
+        }
+
+        // 记录聚合的响应体
+        if !responseBuffer.isEmpty {
+            TraceLogger.shared.log(reqId, "━━━ RESPONSE BODY (\(responseBuffer.count) bytes aggregated) ━━━")
+            if let responseStr = String(data: responseBuffer, encoding: .utf8) {
+                let truncated = String(responseStr.prefix(maxLogSize))
+                TraceLogger.shared.log(reqId, truncated)
+            }
         }
     }
 

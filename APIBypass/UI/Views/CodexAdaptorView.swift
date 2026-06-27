@@ -1155,6 +1155,9 @@ private struct CodexLogViewerTab: View {
     @State private var autoScroll = true
     @State private var filterText = ""
     @State private var copyConfirmation = false
+    @State private var verboseLogging = true
+    @State private var config = CodexAdaptorConfig()
+    @State private var hasLoadedConfig = false
 
     private let timer = Timer.publish(every: 0.5, on: .main, in: .common).autoconnect()
 
@@ -1162,9 +1165,15 @@ private struct CodexLogViewerTab: View {
         VStack(spacing: 0) {
             // Toolbar
             HStack {
+                Toggle(L10n.t("codex_verbose_logging"), isOn: $verboseLogging)
+                    .toggleStyle(.switch)
+                    .controlSize(.small)
+                    .help(L10n.t("codex_verbose_logging_help"))
                 TextField(L10n.t("codex_filter"), text: $filterText)
                     .textFieldStyle(.roundedBorder)
+                Spacer()
                 Toggle(L10n.t("codex_auto_scroll"), isOn: $autoScroll)
+                    .toggleStyle(.checkbox)
 
                 Button(L10n.t("codex_copy_all")) { copyAll() }
                 Button(L10n.t("codex_export_logs")) { exportLogs() }
@@ -1174,6 +1183,9 @@ private struct CodexLogViewerTab: View {
                 }
             }
             .padding(8)
+            .onChange(of: verboseLogging) { _, newValue in
+                updateVerboseMode(newValue)
+            }
 
             Divider()
 
@@ -1208,6 +1220,7 @@ private struct CodexLogViewerTab: View {
             .background(Color.secondary.opacity(0.08))
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity)
+        .onAppear { loadConfig() }
     }
 
     private var filteredEntries: [LogEntry] {
@@ -1239,6 +1252,25 @@ private struct CodexLogViewerTab: View {
                 let text = formatEntries(entries)
                 try? text.write(to: url, atomically: true, encoding: .utf8)
             }
+        }
+    }
+
+    private func loadConfig() {
+        guard !hasLoadedConfig else { return }
+        Task {
+            config = await CodexAdaptorConfigStore.shared.load()
+            verboseLogging = config.verboseLogging
+            hasLoadedConfig = true
+            // Apply current verbose mode
+            CodexLogStore.shared.setVerboseMode(verboseLogging)
+        }
+    }
+
+    private func updateVerboseMode(_ enabled: Bool) {
+        config.verboseLogging = enabled
+        CodexLogStore.shared.setVerboseMode(enabled)
+        Task {
+            await CodexAdaptorConfigStore.shared.save(config)
         }
     }
 }

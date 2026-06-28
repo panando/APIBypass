@@ -262,7 +262,7 @@ actor CodexRequestHandler {
             // Check if this is a retryable param error
             if let action = parseParamErrorAction(status: 400, errorBody: errorData),
                let originalBody = body,
-               var json = try? JSONSerialization.jsonObject(with: originalBody) as? [String: Any] {
+               let json = try? JSONSerialization.jsonObject(with: originalBody) as? [String: Any] {
                 let modifiedJSON = applyParamErrorAction(action, to: json)
                 if let modifiedBody = try? JSONSerialization.data(withJSONObject: modifiedJSON) {
                     CodexLogStore.shared.info("[CodexRouter] 🔄 [\(requestId)] Retrying with modified parameters")

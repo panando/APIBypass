@@ -121,6 +121,7 @@ private struct CodexServerTab: View {
     @State private var customModelDropTarget: CustomModelDropTarget?
     @State private var showReasoningInfo = false
     @State private var showProtocolSwitchAlert = false
+    @State private var showRestartConfirmAlert = false
     @State private var pendingWireAPI: CodexAdaptorConfig.WireAPI?
     @State private var isHandlingProtocolSwitch = false  // Prevent onChange re-entry during programmatic switch
     @State private var isLoading = true  // Disable interactions until config is fully loaded
@@ -180,21 +181,43 @@ private struct CodexServerTab: View {
                         guard !isHandlingProtocolSwitch else { return }
                         guard oldValue != newValue else { return }
 
+                        // Check if Codex APP is running
+                        let codexAppRunning = isCodexAppRunning()
+
                         // Check for unsaved changes using OLD protocol's model list
-                        // (draftCustomModels was loaded from old protocol, compare with old protocol's stored list)
                         let oldProtocolModels: [CustomModelEntry] = oldValue == .chat ? config.chatCustomModels : config.responsesCustomModels
                         let hasChanges = draftCustomModels != oldProtocolModels
 
-                        if hasChanges {
-                            pendingWireAPI = newValue
-                            isHandlingProtocolSwitch = true  // Prevent onChange when reverting
-                            config.wireAPI = oldValue  // Revert temporarily
-                            isHandlingProtocolSwitch = false
-                            showProtocolSwitchAlert = true
-                        } else {
+                        // Use decision maker to determine action
+                        let decision = ProtocolSwitchDecisionMaker.decide(
+                            codexAppRunning: codexAppRunning,
+                            hasUnsavedChanges: hasChanges
+                        )
+
+                        switch decision {
+                        case .silentSwitch:
                             // No changes, just switch protocol and load new model list
                             draftCustomModels = config.currentCustomModels
                             saveConfig()
+
+                        case .showUnsavedChangesAlert, .showMergedAlert, .showRestartConfirmAlert:
+                            // Need to show alert - revert temporarily and set pending
+                            pendingWireAPI = newValue
+                            isHandlingProtocolSwitch = true
+                            config.wireAPI = oldValue  // Revert - this triggers another onChange
+                            // Use DispatchQueue.main.async to reset flag AFTER the second onChange fires
+                            DispatchQueue.main.async {
+                                self.isHandlingProtocolSwitch = false
+                            }
+
+                            switch decision {
+                            case .showUnsavedChangesAlert, .showMergedAlert:
+                                showProtocolSwitchAlert = true
+                            case .showRestartConfirmAlert:
+                                showRestartConfirmAlert = true
+                            case .silentSwitch:
+                                break
+                            }
                         }
                     }
                 }
@@ -241,7 +264,7 @@ private struct CodexServerTab: View {
                 saveConfig()
             }
         }
-        .alert(L10n.t("unsaved_changes"), isPresented: $showProtocolSwitchAlert) {
+        .alert(L10n.t("codex_protocol_switch_title"), isPresented: $showProtocolSwitchAlert) {
             Button(L10n.t("cancel"), role: .cancel) {
                 pendingWireAPI = nil
             }
@@ -252,7 +275,10 @@ private struct CodexServerTab: View {
                     config.wireAPI = newAPI
                     draftCustomModels = config.currentCustomModels
                     saveConfig()
-                    isHandlingProtocolSwitch = false
+                    // Use DispatchQueue.main.async to reset flag AFTER the onChange fires
+                    DispatchQueue.main.async {
+                        self.isHandlingProtocolSwitch = false
+                    }
                 }
                 pendingWireAPI = nil
             }
@@ -264,12 +290,35 @@ private struct CodexServerTab: View {
                     config.wireAPI = newAPI
                     draftCustomModels = config.currentCustomModels
                     saveConfig()
-                    isHandlingProtocolSwitch = false
+                    // Use DispatchQueue.main.async to reset flag AFTER the onChange fires
+                    DispatchQueue.main.async {
+                        self.isHandlingProtocolSwitch = false
+                    }
                 }
                 pendingWireAPI = nil
             }
         } message: {
-            Text(L10n.t("unsaved_changes_msg"))
+            Text(L10n.t("codex_protocol_switch_unsaved_restart_msg"))
+        }
+        .alert(L10n.t("codex_protocol_switch_title"), isPresented: $showRestartConfirmAlert) {
+            Button(L10n.t("cancel"), role: .cancel) {
+                pendingWireAPI = nil
+            }
+            Button(L10n.t("confirm_switch")) {
+                if let newAPI = pendingWireAPI {
+                    isHandlingProtocolSwitch = true
+                    config.wireAPI = newAPI
+                    draftCustomModels = config.currentCustomModels
+                    saveConfig()
+                    // Use DispatchQueue.main.async to reset flag AFTER the onChange fires
+                    DispatchQueue.main.async {
+                        self.isHandlingProtocolSwitch = false
+                    }
+                }
+                pendingWireAPI = nil
+            }
+        } message: {
+            Text(L10n.t("codex_protocol_switch_restart_msg"))
         }
         .disabled(isLoading)  // Prevent interactions until config is fully loaded
     }
@@ -755,6 +804,11 @@ private struct CodexServerTab: View {
         draftCustomModels != config.currentCustomModels
     }
 
+    /// Check if Codex APP is running
+    private func isCodexAppRunning() -> Bool {
+        NSRunningApplication.runningApplications(withBundleIdentifier: "com.openai.codex").first != nil
+    }
+
     private func saveCustomModels() {
         config.currentCustomModels = draftCustomModels
         saveConfig()
@@ -944,24 +998,6 @@ private struct CodexEnhancementsTab: View {
 
                 // Plugin Settings
                 cardSection(header: Label(L10n.t("codex_plugin_settings"), systemImage: "puzzlepiece.extension")) {
-                    HStack {
-                        VStack(alignment: .leading, spacing: 2) {
-                            Text(L10n.t("codex_plugin_entry_unlock")).fontWeight(.medium)
-                            Text(L10n.t("codex_plugin_entry_unlock_desc"))
-                                .font(.caption)
-                                .foregroundColor(.secondary)
-                        }
-                        Spacer()
-                        Toggle("", isOn: $config.cdpSettings.codexAppPluginEntryUnlock)
-                            .toggleStyle(.switch)
-                            .controlSize(.small)
-                            .labelsHidden()
-                    }
-                    .onChange(of: config.cdpSettings.codexAppPluginEntryUnlock) { _, _ in
-                        saveConfig()
-                        Task { await codexAdaptor.pushInjectionSettings() }
-                    }
-
                     HStack {
                         VStack(alignment: .leading, spacing: 2) {
                             Text(L10n.t("codex_model_whitelist_unlock")).fontWeight(.medium)

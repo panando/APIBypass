@@ -71,6 +71,8 @@ public enum CDPError: Error, LocalizedError {
 
 /// CDP settings exposed to injected JavaScript via /settings/get endpoint.
 public struct CDPInjectionSettings: Codable, Sendable, Equatable {
+    /// Legacy field kept for backward compatibility with existing stored settings.
+    /// Will be removed in a future version. Defaults to true if missing.
     public var codexAppPluginEntryUnlock: Bool
     public var codexAppForcePluginInstall: Bool
     public var enhancementsEnabled: Bool
@@ -101,6 +103,32 @@ public struct CDPInjectionSettings: Codable, Sendable, Equatable {
         self.codexAppModelWhitelistUnlock = codexAppModelWhitelistUnlock
         self.modelProvider = modelProvider
         self.proxyPort = proxyPort
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case codexAppPluginEntryUnlock
+        case codexAppForcePluginInstall
+        case enhancementsEnabled
+        case launchMode
+        case codexAppVersion
+        case codexAppPluginMarketplaceUnlock
+        case codexAppModelWhitelistUnlock
+        case modelProvider
+        case proxyPort
+    }
+
+    public init(from decoder: any Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        // codexAppPluginEntryUnlock is optional for backward compatibility
+        codexAppPluginEntryUnlock = try container.decodeIfPresent(Bool.self, forKey: .codexAppPluginEntryUnlock) ?? true
+        codexAppForcePluginInstall = try container.decode(Bool.self, forKey: .codexAppForcePluginInstall)
+        enhancementsEnabled = try container.decode(Bool.self, forKey: .enhancementsEnabled)
+        launchMode = try container.decode(String.self, forKey: .launchMode)
+        codexAppVersion = try container.decode(String.self, forKey: .codexAppVersion)
+        codexAppPluginMarketplaceUnlock = try container.decode(Bool.self, forKey: .codexAppPluginMarketplaceUnlock)
+        codexAppModelWhitelistUnlock = try container.decode(Bool.self, forKey: .codexAppModelWhitelistUnlock)
+        modelProvider = try container.decode(String.self, forKey: .modelProvider)
+        proxyPort = try container.decode(Int.self, forKey: .proxyPort)
     }
 }
 

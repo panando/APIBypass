@@ -4,9 +4,9 @@ import CodexRouterCore
 /// Persistence layer for CodexAdaptorConfig.
 ///
 /// Primary store: UserDefaults (key `com.apibypass.codexAdaptor`).
-/// Mirror store: `~/.codex/apibypass-config.json` — survives app reinstall (UserDefaults
-/// are wiped on reinstall, but `~/.codex/` is not). On load, if UserDefaults is empty
-/// we read the mirror file before falling back to `recoverFromProvidersJSON`.
+/// Mirror store: `~/Library/Application Support/com.apibypass.APIBypass/apibypass-config.json`
+/// — survives app reinstall and is not tied to Codex APP's directory. On load, if UserDefaults
+/// is empty we read the mirror file before falling back to `recoverFromProvidersJSON`.
 actor CodexAdaptorConfigStore {
     static let shared = CodexAdaptorConfigStore()
 
@@ -49,14 +49,14 @@ actor CodexAdaptorConfigStore {
         cached = config
         guard let data = try? JSONEncoder().encode(config) else { return }
         UserDefaults.standard.set(data, forKey: userDefaultsKey)
-        // Mirror to ~/.codex/apibypass-config.json so the config survives app reinstalls.
-        let dir = NSHomeDirectory() + "/.codex"
-        let path = dir + "/" + mirrorFileName
-        if !FileManager.default.fileExists(atPath: dir) {
-            try? FileManager.default.createDirectory(
-                atPath: dir, withIntermediateDirectories: true)
+        // Mirror to Application Support directory for durability across app reinstalls.
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let dir = appSupport.appendingPathComponent("com.apibypass.APIBypass")
+        let path = dir.appendingPathComponent(mirrorFileName)
+        if !FileManager.default.fileExists(atPath: dir.path) {
+            try? FileManager.default.createDirectory(at: dir, withIntermediateDirectories: true)
         }
-        try? data.write(to: URL(fileURLWithPath: path), options: .atomic)
+        try? data.write(to: path, options: .atomic)
 
         // Sync upstreamWireAPI to providers.json so CodexRouter uses the correct protocol.
         syncUpstreamWireAPI(config.wireAPI.rawValue)
@@ -89,8 +89,9 @@ actor CodexAdaptorConfigStore {
     }
 
     private func loadFromMirrorFile() -> CodexAdaptorConfig? {
-        let path = NSHomeDirectory() + "/.codex/" + mirrorFileName
-        guard let data = try? Data(contentsOf: URL(fileURLWithPath: path)) else { return nil }
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let path = appSupport.appendingPathComponent("com.apibypass.APIBypass/\(mirrorFileName)")
+        guard let data = try? Data(contentsOf: path) else { return nil }
         return try? JSONDecoder().decode(CodexAdaptorConfig.self, from: data)
     }
 

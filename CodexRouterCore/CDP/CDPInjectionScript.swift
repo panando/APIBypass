@@ -87,14 +87,13 @@ public let codexPluginInjectionScript: String = """
   let codexPlusBackendSettingsLoaded = false;
 
   const codexPlusBackendSettingMap = {
-    pluginEntryUnlock: "codexAppPluginEntryUnlock",
     forcePluginInstall: "codexAppForcePluginInstall",
     pluginMarketplaceUnlock: "codexAppPluginMarketplaceUnlock",
     modelWhitelistUnlock: "codexAppModelWhitelistUnlock",
   };
 
   function defaultCodexPlusSettings() {
-    return { pluginEntryUnlock: true, forcePluginInstall: true };
+    return { forcePluginInstall: true };
   }
 
   function backendCodexPlusSettings() {
@@ -110,20 +109,18 @@ public let codexPluginInjectionScript: String = """
   function codexPlusSettings() {
     const relayPatchDisabled = codexPlusBackendSettings.launchMode === "relay";
     if (codexPlusBackendSettings.enhancementsEnabled === false) {
-      return { pluginEntryUnlock: false, forcePluginInstall: false };
+      return { forcePluginInstall: false };
     }
     try {
       const stored = JSON.parse(localStorage.getItem("codexPlusSettings") || "{}");
       const settings = { ...defaultCodexPlusSettings(), ...stored, ...backendCodexPlusSettings() };
       if (relayPatchDisabled) {
-        settings.pluginEntryUnlock = false;
         settings.forcePluginInstall = false;
       }
       return settings;
     } catch {
       const settings = { ...defaultCodexPlusSettings(), ...backendCodexPlusSettings() };
       if (relayPatchDisabled) {
-        settings.pluginEntryUnlock = false;
         settings.forcePluginInstall = false;
       }
       return settings;
@@ -186,57 +183,6 @@ public let codexPluginInjectionScript: String = """
     if (!auth || auth.authMethod === "chatgpt") return false;
     auth.setAuthMethod("chatgpt");
     return true;
-  }
-
-  // ── Plugin Entry Unlock ───────────────────────────────────────────
-  function pluginEntryButton() {
-    const byIcon = document.querySelector(selectors.pluginNavButton + " " + selectors.pluginSvgPath)?.closest("button");
-    if (byIcon) return byIcon;
-    return Array.from(document.querySelectorAll(selectors.pluginNavButton))
-      .find((button) => /^(插件|Plugins)(\\s+-\\s+.*)?$/i.test((button.textContent || "").trim())) || null;
-  }
-
-  function labelUnlockedPluginEntry(button) {
-    const labelTextNode = Array.from(button.querySelectorAll("span, div")).reverse()
-      .flatMap((node) => Array.from(node.childNodes))
-      .find((node) => node.nodeType === 3 && /^(插件|Plugins)( - 已解锁| - Unlocked)?$/i.test((node.nodeValue || "").trim()));
-    if (!labelTextNode) return;
-    const current = (labelTextNode.nodeValue || "").trim();
-    labelTextNode.nodeValue = /^Plugins/i.test(current) ? "Plugins - Unlocked" : "插件 - 已解锁";
-  }
-
-  function clearPluginEntryUnlockLabel(button) {
-    const labelTextNode = Array.from(button.querySelectorAll("span, div")).reverse()
-      .flatMap((node) => Array.from(node.childNodes))
-      .find((node) => node.nodeType === 3 && /^(插件 - 已解锁|Plugins - Unlocked)$/i.test((node.nodeValue || "").trim()));
-    if (!labelTextNode) return;
-    labelTextNode.nodeValue = /^Plugins/i.test((labelTextNode.nodeValue || "").trim()) ? "Plugins" : "插件";
-  }
-
-  function enablePluginEntry() {
-    if (pluginPatchDisabledInRelayMode()) return;
-    if (!codexPlusSettings().pluginEntryUnlock) return;
-    const pluginButton = pluginEntryButton();
-    if (!pluginButton) return;
-    const spoofed = spoofChatGPTAuthMethod(pluginButton);
-    pluginButton.disabled = false;
-    pluginButton.removeAttribute("disabled");
-    pluginButton.style.display = "";
-    pluginButton.querySelectorAll("*").forEach((node) => {
-      node.style.display = "";
-    });
-    labelUnlockedPluginEntry(pluginButton);
-    const reactPropsKey = Object.keys(pluginButton).find((key) => key.startsWith("__reactProps"));
-    if (reactPropsKey) {
-      pluginButton[reactPropsKey].disabled = false;
-    }
-    if (pluginButton.dataset.codexPluginEnabled !== "true") {
-      pluginButton.dataset.codexPluginEnabled = "true";
-      sendCodexPlusDiagnostic("plugin_entry_unlocked", { spoofed: spoofed });
-      pluginButton.addEventListener("click", () => {
-        spoofChatGPTAuthMethod(pluginButton);
-      }, true);
-    }
   }
 
   // ── Force Plugin Install ──────────────────────────────────────────
@@ -333,11 +279,6 @@ public let codexPluginInjectionScript: String = """
   }
 
   function clearPluginPatchArtifacts() {
-    const pluginButton = pluginEntryButton();
-    if (pluginButton) {
-      delete pluginButton.dataset.codexPluginEnabled;
-      clearPluginEntryUnlockLabel(pluginButton);
-    }
     pluginInstallCandidates().forEach(clearForcedInstallButtonLabel);
   }
 
@@ -377,11 +318,6 @@ public let codexPluginInjectionScript: String = """
       clearPluginPatchArtifacts();
       refreshForcePluginInstallUnlockLoop();
     } else {
-      const strategy = codexPluginUnlockStrategy();
-      const settings = codexPlusSettings();
-      if ((strategy === "legacy" || strategy === "unknown") && settings.pluginEntryUnlock) {
-        enablePluginEntry();
-      }
       unblockPluginInstallButtons();
       refreshForcePluginInstallUnlockLoop();
     }
@@ -398,9 +334,7 @@ public let codexPluginInjectionScript: String = """
   // ── Mutation filtering (ported from CodexPlusPlus) ────────────────
   // Only schedule scans for mutations on scan-relevant DOM (sidebar threads,
   // chat content, install buttons). Without this filter, the MutationObserver
-  // fires on every React re-render — including re-renders triggered by
-  // `spoofChatGPTAuthMethod` inside `enablePluginEntry` — creating a feedback
-  // loop that freezes Codex on startup when `pluginEntryUnlock` is enabled.
+  // fires on every React re-render, causing excessive CPU usage.
   function scanRelevantSelector() {
     const parts = [
       '[data-message-author-role]',
@@ -1057,6 +991,14 @@ public let codexPluginInjectionScript: String = """
     // flash on Codex startup). The asset either loads later (success on next
     // retry) or never does (no amount of retrying helps).
     if (Date.now() < codexAppServerPatchFailedUntil) return;
+    // Check if the asset exists before attempting to load it.
+    // If it doesn't exist, this Codex version doesn't have this module.
+    const assetUrl = codexAppAssetUrl("app-server-manager-signals-");
+    if (!assetUrl) {
+      // Mark as installed (no-op) to avoid repeated attempts.
+      window.__codexPlusAppServerModelRequestPatchInstalled = codexAppServerModelRequestPatchVersion;
+      return;
+    }
     const patch = async () => {
       try {
         const module = await loadCodexAppModule("app-server-manager-signals-");
@@ -1275,9 +1217,7 @@ public let codexPluginInjectionScript: String = """
     scan();
     // Schedule subsequent scans via MutationObserver + debounce (matches
     // CodexPlusPlus's scheduleScan pattern). A tight requestAnimationFrame
-    // loop runs scanDeferred ~60fps; combined with spoofChatGPTAuthMethod's
-    // React fiber traversal this freezes Codex on startup when
-    // pluginEntryUnlock is enabled.
+    // loop runs scanDeferred ~60fps, causing excessive CPU usage.
     let scanPending = false;
     function scheduleScan(mutations) {
       if (!shouldScheduleScan(mutations)) return;

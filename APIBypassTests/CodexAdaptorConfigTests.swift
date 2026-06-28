@@ -180,4 +180,70 @@ final class CodexAdaptorConfigTests: XCTestCase {
         apibypass = providers["apibypass"] as? [String: Any] ?? [:]
         XCTAssertEqual(apibypass["upstreamWireAPI"] as? String, "responses", "Switching protocol should update providers.json")
     }
+
+    // MARK: - Test 2.1: 镜像文件存储在正确位置
+
+    func test_save_writesMirrorFileToApplicationSupport() async throws {
+        var config = CodexAdaptorConfig()
+        config.wireAPI = .responses
+        config.port = 15721
+
+        await CodexAdaptorConfigStore.shared.save(config)
+
+        // 验证镜像文件位置
+        let appSupport = FileManager.default.urls(for: .applicationSupportDirectory, in: .userDomainMask).first!
+        let expectedPath = appSupport.appendingPathComponent("com.apibypass.APIBypass/apibypass-config.json").path
+
+        XCTAssertTrue(FileManager.default.fileExists(atPath: expectedPath), "Mirror file should be at \(expectedPath)")
+    }
+
+    // MARK: - Test 2.2: UserDefaults 为空时能从镜像恢复
+
+    func test_load_recoversFromMirrorFile_whenUserDefaultsEmpty() async throws {
+        // 准备：先保存一个配置
+        var config = CodexAdaptorConfig()
+        config.wireAPI = .responses
+        config.port = 19999
+        let entry = CustomModelEntry(alias: "test-model", modelMappingId: UUID(), contextWindow: 128000)
+        config.chatCustomModels = [entry]
+
+        await CodexAdaptorConfigStore.shared.save(config)
+
+        // 清空 UserDefaults 模拟重装后的状态
+        UserDefaults.standard.removeObject(forKey: "com.apibypass.codexAdaptor")
+
+        // 加载配置
+        let loaded = await CodexAdaptorConfigStore.shared.load()
+
+        // 验证从镜像恢复
+        XCTAssertEqual(loaded.wireAPI, .responses, "Should recover wireAPI from mirror")
+        XCTAssertEqual(loaded.port, 19999, "Should recover port from mirror")
+        XCTAssertEqual(loaded.chatCustomModels.count, 1, "Should recover custom models from mirror")
+        XCTAssertEqual(loaded.chatCustomModels.first?.alias, "test-model")
+    }
+
+    // MARK: - Test 2.3: 保存配置后能正确加载（往返）
+
+    func test_saveAndLoad_roundTrip() async throws {
+        var config = CodexAdaptorConfig()
+        config.wireAPI = .chat
+        config.port = 18080
+        let entry = CustomModelEntry(alias: "roundtrip-model", modelMappingId: UUID(), contextWindow: 200000)
+        config.responsesCustomModels = [entry]
+
+        await CodexAdaptorConfigStore.shared.save(config)
+
+        // 清除缓存以强制重新加载
+        // 注意：由于 CodexAdaptorConfigStore 是 actor 且有缓存，
+        // 我们通过清空 UserDefaults 并依赖镜像文件来测试往返
+        UserDefaults.standard.removeObject(forKey: "com.apibypass.codexAdaptor")
+
+        let loaded = await CodexAdaptorConfigStore.shared.load()
+
+        XCTAssertEqual(loaded.wireAPI, .chat)
+        XCTAssertEqual(loaded.port, 18080)
+        XCTAssertEqual(loaded.responsesCustomModels.count, 1)
+        XCTAssertEqual(loaded.responsesCustomModels.first?.alias, "roundtrip-model")
+        XCTAssertEqual(loaded.responsesCustomModels.first?.contextWindow, 200000)
+    }
 }

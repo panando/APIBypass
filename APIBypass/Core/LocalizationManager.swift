@@ -170,6 +170,10 @@ struct L10n {
         "unsaved_changes_msg": [.chinese: "当前配置有未保存的更改，是否保存？", .english: "The current configuration has unsaved changes. Save?"],
         "discard_changes": [.chinese: "放弃更改", .english: "Discard Changes"],
         "save_and_switch": [.chinese: "保存并切换", .english: "Save & Switch"],
+        "codex_protocol_switch_title": [.chinese: "切换通信协议", .english: "Switch Communication Protocol"],
+        "codex_protocol_switch_restart_msg": [.chinese: "切换协议后需要重启 Codex APP 才能生效。是否继续？", .english: "Switching protocol requires restarting Codex APP to take effect. Continue?"],
+        "codex_protocol_switch_unsaved_restart_msg": [.chinese: "您有未保存的自定义模型配置更改。切换协议后需要重启 Codex APP 才能生效。是否继续？", .english: "You have unsaved custom model changes. Switching protocol requires restarting Codex APP to take effect. Continue?"],
+        "confirm_switch": [.chinese: "确认切换", .english: "Confirm Switch"],
         "create": [.chinese: "创建", .english: "Create"],
         "duplicate_model_title": [.chinese: "模型名重复", .english: "Duplicate Model Name"],
         "duplicate_model_msg": [.chinese: "客户端模型名已存在，请使用其他名称", .english: "This client model name already exists. Please use a different name."],
@@ -453,7 +457,6 @@ struct L10n {
         // Codex 适配器 - 插件设置
         "help_codex_plugin_settings_title": [.chinese: "插件设置", .english: "Plugin Settings"],
         "help_codex_plugin_settings_desc": [.chinese: "在「增强」标签页的插件设置区域，可以开启以下增强功能：", .english: "In the \"Plugin Settings\" section of the Enhancements tab, you can enable these enhancements:"],
-        "help_codex_plugin_entry": [.chinese: "插件入口解锁 — 解锁 Codex 桌面端的插件入口，让插件功能可见。", .english: "Plugin Entry Unlock — unlock the plugin entry in Codex desktop, making plugin features visible."],
         "help_codex_plugin_whitelist": [.chinese: "模型白名单解锁 — 移除 Codex 对可用模型的限制，允许使用自定义模型。", .english: "Model Whitelist Unlock — remove Codex's model restrictions, allowing use of custom models."],
         "help_codex_plugin_marketplace": [.chinese: "插件市场解锁 — 解锁插件市场，允许浏览和安装插件。", .english: "Plugin Marketplace Unlock — unlock the plugin marketplace for browsing and installing plugins."],
         "help_codex_plugin_force_install": [.chinese: "强制插件安装 — 允许安装未在官方市场发布的插件。", .english: "Force Plugin Install — allow installing plugins not published in the official marketplace."],
@@ -552,7 +555,6 @@ struct L10n {
         "codex_launch_failed": [.chinese: "启动 Codex 失败", .english: "Failed to launch Codex"],
         "codex_launch_port_timeout": [.chinese: "启动后端口 15 秒内未响应", .english: "Port did not respond within 15s"],
         "codex_manual_command_help": [.chinese: "手动启动命令（终端执行）：", .english: "Manual launch command (run in terminal):"],
-        "codex_plugin_entry_unlock": [.chinese: "强制解锁入口", .english: "Force Entry Unlock"],
         "codex_model_whitelist_unlock": [.chinese: "模型白名单解锁", .english: "Model Whitelist Unlock"],
         "codex_marketplace_unlock": [.chinese: "插件市场解锁", .english: "Plugin Marketplace Unlock"],
         "codex_force_plugin_install": [.chinese: "特殊插件强制安装", .english: "Force Plugin Install"],
@@ -611,7 +613,6 @@ struct L10n {
         "codex_context_window_eg": [.chinese: "如 128,000", .english: "e.g. 128,000"],
 
         // Codex Adaptor - CDP descriptions
-        "codex_plugin_entry_unlock_desc": [.chinese: "通过身份伪装强制显示插件入口按钮。", .english: "Force the Plugins button visible via auth spoofing."],
         "codex_model_whitelist_unlock_desc": [.chinese: "未登录 ChatGPT 时，将本地模型列表注入 Codex 的模型选择器。", .english: "Inject local model list into Codex's selector when not logged into ChatGPT."],
         "codex_marketplace_unlock_desc": [.chinese: "API Key 模式下扩展插件市场请求，尽量显示完整插件列表。", .english: "Expand marketplace requests under API Key mode to show full plugin list."],
         "codex_force_plugin_install_desc": [.chinese: "解除应用不可用导致的前端安装禁用。", .english: "Unblock install buttons disabled due to app unavailability restrictions."],

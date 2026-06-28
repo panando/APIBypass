@@ -283,7 +283,6 @@ struct HelpView: View {
             group(L10n.t("help_codex_plugin_settings_title")) {
                 body(L10n.t("help_codex_plugin_settings_desc"))
                 bulletList([
-                    L10n.t("help_codex_plugin_entry"),
                     L10n.t("help_codex_plugin_whitelist"),
                     L10n.t("help_codex_plugin_marketplace"),
                     L10n.t("help_codex_plugin_force_install")

@@ -828,6 +828,88 @@ final class CDPClientIntegrationTests: XCTestCase {
         XCTAssertEqual(count, 0,
                        "Irrelevant DOM mutation triggered a scan (count=\(count)). shouldScheduleScan filter is missing or broken — this is the feedback loop that freezes Codex on startup when pluginEntryUnlock is enabled.")
     }
+
+    /// Verifies that the injection script works correctly when `codexAppPluginEntryUnlock`
+    /// is absent from settings. This tests forward compatibility after the field is removed.
+    func test_bridge_worksWithoutPluginEntryUnlockField() async throws {
+        guard let wsURL = try? await Self.discoverPageWSURL() else {
+            throw XCTSkip("Codex not running with --remote-debugging-port=9222; skipping integration test")
+        }
+
+        let client = CDPClient(wsURL: wsURL)
+        try await client.connect()
+        defer { Task { await client.disconnect() } }
+
+        // Clean up globals from prior tests
+        _ = try? await client.evaluateJavaScript("""
+        delete window.__codexSessionDeleteBridge;
+        delete window.__codexSessionDeleteResolve;
+        delete window.__codexSessionDeleteReject;
+        delete window.__codexSessionDeletePending;
+        delete window.__codexSessionDeleteIdCounter;
+        delete window.__codexPlusBackendSettings;
+        """)
+
+        // Settings WITHOUT codexAppPluginEntryUnlock field
+        let pushedSettings = """
+        {"codexAppForcePluginInstall":true,"enhancementsEnabled":true,"launchMode":"patch","codexAppVersion":"","codexAppPluginMarketplaceUnlock":true,"codexAppModelWhitelistUnlock":true,"modelProvider":"NO_ENTRY_UNLOCK","proxyPort":15721}
+        """
+        let bridgeSettings = """
+        {"codexAppForcePluginInstall":true,"enhancementsEnabled":true,"launchMode":"patch","codexAppVersion":"","codexAppPluginMarketplaceUnlock":true,"codexAppModelWhitelistUnlock":true,"modelProvider":"apibypass","proxyPort":15721}
+        """
+        let mockCatalog = """
+        {"status":"ok","models":[{"model":"test-model","displayName":"Test Model","contextWindow":128000}]}
+        """
+
+        let bridgeCalls = BridgeCallLog()
+        try await client.addBinding(name: cdpBridgeBindingName) { request in
+            bridgeCalls.record(request.path)
+            let response: String
+            switch request.path {
+            case "/settings/get": response = bridgeSettings
+            case "/codex-model-catalog": response = mockCatalog
+            case "/cdp/diagnostic": response = "{}"
+            default: response = "{\"error\":\"unknown\"}"
+            }
+            return response.data(using: .utf8) ?? Data()
+        }
+
+        try await client.addScriptToEvaluateOnNewDocument(cdpBridgeScript)
+        _ = try await client.evaluateJavaScript(cdpBridgeScript)
+
+        let b64 = pushedSettings.data(using: .utf8)!.base64EncodedString()
+        _ = try await client.evaluateJavaScript("""
+        (function() {
+          try {
+            var s = JSON.parse(atob('\(b64)'));
+            window.__codexPlusBackendSettings = s;
+            window.postMessage({ type: 'codexPlusSettingsUpdate', settings: s }, '*');
+          } catch (e) {}
+        })();
+        """)
+
+        // Evaluate the injection script - should NOT throw
+        _ = try await client.evaluateJavaScript(codexPluginInjectionScript)
+
+        // Poll for the bridge to fetch settings
+        var modelProvider: String?
+        for _ in 0..<30 {
+            let result = try await client.evaluateJavaScript(
+                "window.__codexPlusBackendSettings && window.__codexPlusBackendSettings.modelProvider"
+            )
+            if let value = result.value, value != "NO_ENTRY_UNLOCK" && value != "undefined" && value != "null" {
+                modelProvider = value
+                break
+            }
+            try await Task.sleep(for: .milliseconds(100))
+        }
+
+        // The bridge must have been called
+        XCTAssertTrue(bridgeCalls.contains("/settings/get"),
+                      "Bridge was not called for /settings/get")
+        XCTAssertEqual(modelProvider, "apibypass",
+                       "Bridge-fetched settings did not reach the renderer when pluginEntryUnlock was absent")
+    }
 }
 
 /// Thread-safe log of bridge call paths, used by the integration test to verify

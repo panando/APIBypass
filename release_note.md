@@ -1,3 +1,20 @@
+# APIBypass v0.8.9
+
+## Bug Fixes
+
+- **swift_task_dealloc Crash** — Fix a crash (`swift_task_dealloc` with "freed pointer was not the last allocation") that occurred when clicking "Launch Codex" while CodexAdaptorService was running. The crash was caused by Swift Issue #86204 — `Task.sleep(for:)` cross-module Duration specialization conflict. Replaced all `Task.sleep(for:)` calls with `Task.sleep(nanoseconds:)` to work around this Swift compiler bug.
+
+- **Codex Not Restarting After Termination** — Fix an issue where Codex would close but fail to restart when clicking "Launch Codex". The previous fixed 800ms wait was unreliable — process exit time varies. Now polls every 200ms to detect when the process has actually exited (with 5-second timeout protection), ensuring reliable restart.
+
+## Technical Changes
+
+- Replace `Task.sleep(for:)` with `Task.sleep(nanoseconds:)` in three locations:
+  - `CodexAppLauncher.swift` — terminate wait and debug port polling
+  - `CodexAdaptorService.swift` — CDP state polling
+  - `CodexAppInjector.swift` (CodexRouterCore) — monitor loop
+
+---
+
 # APIBypass v0.8.8
 
 ## New Features

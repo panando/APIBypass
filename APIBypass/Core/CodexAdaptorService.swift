@@ -68,7 +68,8 @@ final class CodexAdaptorService: ObservableObject {
                     strongSelf.cdpConnectionState = state
                 }
                 do {
-                    try await Task.sleep(for: .seconds(3))
+                    // Use nanoseconds API to avoid Swift Issue #86204 cross-module specialization crash.
+                    try await Task.sleep(nanoseconds: 3_000_000_000)
                 } catch is CancellationError {
                     break
                 } catch {

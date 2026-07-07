@@ -154,7 +154,8 @@ public actor CodexAppInjector {
                 let running = await self.isRunning
                 if !running { break }
                 do {
-                    try await Task.sleep(for: .seconds(Self.monitorInterval))
+                    // Use nanoseconds API to avoid Swift Issue #86204 cross-module specialization crash.
+                    try await Task.sleep(nanoseconds: UInt64(Self.monitorInterval * 1_000_000_000))
                 } catch is CancellationError {
                     break
                 } catch {

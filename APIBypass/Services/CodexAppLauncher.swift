@@ -99,14 +99,14 @@ enum CodexAppLauncher {
     ) async throws {
         if let existing = fs.runningApplication(bundleId: codexBundleId) {
             _ = fs.terminate(existing)
-            // Wait for termination with proper cancellation handling.
-            // Must propagate CancellationError to avoid swift_task_dealloc crash.
-            do {
-                try await Task.sleep(for: .milliseconds(800))
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                // Ignore other errors (shouldn't happen for sleep)
+            // Poll until the process actually exits (up to 5 seconds).
+            // Fixed wait is unreliable - process exit time varies.
+            let deadline = Date().addingTimeInterval(5.0)
+            while Date() < deadline {
+                if fs.runningApplication(bundleId: codexBundleId) == nil {
+                    break // Process has exited
+                }
+                try await Task.sleep(nanoseconds: 200_000_000)
             }
         }
 
@@ -130,14 +130,8 @@ enum CodexAppLauncher {
         let deadline = Date().addingTimeInterval(waitTimeout)
         while Date() < deadline {
             if await isDebugPortListening(port) { return }
-            // Must propagate CancellationError to avoid swift_task_dealloc crash.
-            do {
-                try await Task.sleep(for: .seconds(pollInterval))
-            } catch is CancellationError {
-                throw CancellationError()
-            } catch {
-                // Ignore other errors (shouldn't happen for sleep)
-            }
+            // Use nanoseconds API to avoid Swift Issue #86204 cross-module specialization crash.
+            try await Task.sleep(nanoseconds: UInt64(pollInterval * 1_000_000_000))
         }
         throw CodexAppLauncherError.portStillClosedAfterLaunch(port)
     }

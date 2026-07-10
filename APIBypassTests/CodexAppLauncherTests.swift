@@ -64,12 +64,109 @@ final class CodexAppLauncherTests: XCTestCase {
         XCTAssertNil(CodexAppLauncher.detectCodexAppPath(fs: fs))
     }
 
-    // MARK: - manualLaunchCommand
+    // MARK: - ChatGPT.app detection (Task 2.1)
 
-    func test_manualLaunchCommand_format() {
+    func test_detectCodexAppPath_findsChatGPTApp() {
+        let fs = FakeFS(existingPaths: ["/Applications/ChatGPT.app"], runningBundleIds: [])
+        XCTAssertEqual(
+            CodexAppLauncher.detectCodexAppPath(fs: fs)?.path,
+            "/Applications/ChatGPT.app"
+        )
+    }
+
+    func test_detectCodexAppPath_prefersCodexOverChatGPT() {
+        let fs = FakeFS(
+            existingPaths: ["/Applications/Codex.app", "/Applications/ChatGPT.app"],
+            runningBundleIds: []
+        )
+        XCTAssertEqual(
+            CodexAppLauncher.detectCodexAppPath(fs: fs)?.path,
+            "/Applications/Codex.app"
+        )
+    }
+
+    func test_detectCodexAppPath_findsChatGPTInUserApplications() {
+        let home = "/Users/test"
+        let userApp = "\(home)/Applications/ChatGPT.app"
+        let fs = FakeFS(existingPaths: [userApp], runningBundleIds: [])
+        XCTAssertEqual(
+            CodexAppLauncher.detectCodexAppPath(fs: fs, home: home)?.path,
+            userApp
+        )
+    }
+
+    func test_detectCodexAppPath_returnsNilWhenNeitherExists() {
+        let fs = FakeFS(existingPaths: ["/Applications/Other.app"], runningBundleIds: [])
+        XCTAssertNil(CodexAppLauncher.detectCodexAppPath(fs: fs))
+    }
+
+    // MARK: - resolveExecutableName (Task 2.2)
+
+    func test_resolveExecutableName_readsFromPlist() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let contentsDir = tempDir.appendingPathComponent("Contents")
+        try FileManager.default.createDirectory(at: contentsDir, withIntermediateDirectories: true)
+
+        let plistContent = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleExecutable</key>
+          <string>ChatGPT</string>
+        </dict>
+        </plist>
+        """
+        try plistContent.write(to: contentsDir.appendingPathComponent("Info.plist"), atomically: true, encoding: .utf8)
+
+        XCTAssertEqual(CodexAppLauncher.resolveExecutableName(appURL: tempDir), "ChatGPT")
+
+        try? FileManager.default.removeItem(at: tempDir)
+    }
+
+    func test_resolveExecutableName_fallsBackWhenPlistMissing() {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        XCTAssertEqual(CodexAppLauncher.resolveExecutableName(appURL: tempDir), "Codex")
+
+        try? FileManager.default.removeItem(at: tempDir)
+    }
+
+    func test_resolveExecutableName_fallsBackWhenValueContainsPathSeparator() throws {
+        let tempDir = FileManager.default.temporaryDirectory
+            .appendingPathComponent(UUID().uuidString)
+        let contentsDir = tempDir.appendingPathComponent("Contents")
+        try FileManager.default.createDirectory(at: contentsDir, withIntermediateDirectories: true)
+
+        let plistContent = """
+        <?xml version="1.0" encoding="UTF-8"?>
+        <plist version="1.0">
+        <dict>
+          <key>CFBundleExecutable</key>
+          <string>../Malicious</string>
+        </dict>
+        </plist>
+        """
+        try plistContent.write(to: contentsDir.appendingPathComponent("Info.plist"), atomically: true, encoding: .utf8)
+
+        XCTAssertEqual(CodexAppLauncher.resolveExecutableName(appURL: tempDir), "Codex")
+
+        try? FileManager.default.removeItem(at: tempDir)
+    }
+
+    // MARK: - manualLaunchCommand (Task 2.3)
+
+    func test_manualLaunchCommand_defaultAppName() {
         XCTAssertEqual(
             CodexAppLauncher.manualLaunchCommand(port: 9222),
             "open -a Codex --args --remote-debugging-port=9222 --remote-allow-origins=*"
+        )
+    }
+
+    func test_manualLaunchCommand_chatgptAppName() {
+        XCTAssertEqual(
+            CodexAppLauncher.manualLaunchCommand(port: 9222, appName: "ChatGPT"),
+            "open -a ChatGPT --args --remote-debugging-port=9222 --remote-allow-origins=*"
         )
     }
 
@@ -78,5 +175,17 @@ final class CodexAppLauncherTests: XCTestCase {
             CodexAppLauncher.manualLaunchCommand(port: 9333),
             "open -a Codex --args --remote-debugging-port=9333 --remote-allow-origins=*"
         )
+    }
+
+    // MARK: - appNameFromURL
+
+    func test_appNameFromURL_chatgpt() {
+        let url = URL(fileURLWithPath: "/Applications/ChatGPT.app")
+        XCTAssertEqual(CodexAppLauncher.appNameFromURL(url), "ChatGPT")
+    }
+
+    func test_appNameFromURL_codex() {
+        let url = URL(fileURLWithPath: "/Applications/Codex.app")
+        XCTAssertEqual(CodexAppLauncher.appNameFromURL(url), "Codex")
     }
 }

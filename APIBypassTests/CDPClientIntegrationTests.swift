@@ -1,10 +1,10 @@
 import XCTest
 import CodexRouterCore
 
-/// Integration test against a real Codex CDP target.
+/// Integration test against a real Codex/ChatGPT CDP target.
 ///
-/// Skips automatically if Codex isn't running with `--remote-debugging-port=9222`.
-/// To enable: `open -a Codex --args --remote-debugging-port=9222 --remote-allow-origins=http://127.0.0.1:9222`
+/// Skips automatically if the app isn't running with `--remote-debugging-port=9222`.
+/// To enable: `open -a ChatGPT --args --remote-debugging-port=9222 --remote-allow-origins=http://127.0.0.1:9222`
 ///
 /// Validates that `CDPClient` (NWConnection-backed) can:
 ///   1. Complete the WebSocket handshake with Chromium DevTools

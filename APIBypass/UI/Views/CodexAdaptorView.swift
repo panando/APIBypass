@@ -982,7 +982,7 @@ private struct CodexEnhancementsTab: View {
                                 Text(L10n.t("codex_manual_command_help"))
                                     .font(.caption)
                                     .foregroundColor(.secondary)
-                                Text(CodexAppLauncher.manualLaunchCommand(port: config.cdpDebugPort))
+                                Text(CodexAppLauncher.manualLaunchCommand(port: config.cdpDebugPort, appName: CodexAppLauncher.detectCodexAppPath().map { CodexAppLauncher.appNameFromURL($0) } ?? "Codex"))
                                     .font(.system(.caption, design: .monospaced))
                                     .textSelection(.enabled)
                                     .padding(6)

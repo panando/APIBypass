@@ -39,12 +39,17 @@ enum CodexAppLauncherError: Error, LocalizedError {
     }
 }
 
-/// Launches Codex.app with `--remote-debugging-port` and waits for the CDP endpoint.
+/// Launches Codex.app / ChatGPT.app with `--remote-debugging-port` and waits for the CDP endpoint.
 enum CodexAppLauncher {
     static let codexBundleId = "com.openai.codex"
-    static let defaultCandidates = ["/Applications/Codex.app", "~/Applications/Codex.app"]
+    static let defaultCandidates = [
+        "/Applications/Codex.app",
+        "~/Applications/Codex.app",
+        "/Applications/ChatGPT.app",
+        "~/Applications/ChatGPT.app",
+    ]
 
-    /// Locate Codex.app in standard install locations. Returns the first match.
+    /// Locate Codex/ChatGPT app in standard install locations. Returns the first match.
     static func detectCodexAppPath(
         fs: CodexFileSystem = DefaultCodexFileSystem(),
         home: String = NSHomeDirectory()
@@ -60,9 +65,30 @@ enum CodexAppLauncher {
         return nil
     }
 
+    /// Resolve the main executable name from the app bundle's Info.plist.
+    /// Reads `CFBundleExecutable` and falls back to "Codex" if unavailable or suspicious.
+    static func resolveExecutableName(appURL: URL) -> String {
+        let plistPath = appURL.appendingPathComponent("Contents/Info.plist").path
+        guard let plistData = FileManager.default.contents(atPath: plistPath),
+              let plist = try? PropertyListSerialization.propertyList(from: plistData, options: [], format: nil) as? [String: Any],
+              let executable = plist["CFBundleExecutable"] as? String,
+              !executable.isEmpty,
+              !executable.contains("/"),
+              !executable.contains("\\") else {
+            return "Codex"
+        }
+        return executable
+    }
+
+    /// Derive the app display name from a bundle URL (e.g., "ChatGPT" from ".../ChatGPT.app").
+    static func appNameFromURL(_ appURL: URL) -> String {
+        let dirname = appURL.deletingPathExtension().lastPathComponent
+        return dirname.isEmpty ? "Codex" : dirname
+    }
+
     /// Manual fallback command shown to the user.
-    static func manualLaunchCommand(port: UInt16) -> String {
-        "open -a Codex --args --remote-debugging-port=\(port) --remote-allow-origins=*"
+    static func manualLaunchCommand(port: UInt16, appName: String = "Codex") -> String {
+        "open -a \(appName) --args --remote-debugging-port=\(port) --remote-allow-origins=*"
     }
 
     /// Probe `/json/version` on the debug port. Returns true if a CDP endpoint responds.

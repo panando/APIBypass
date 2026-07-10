@@ -216,21 +216,7 @@ public actor CodexAppInjector {
     }
 
     private func pickCodexTarget(_ targets: [CDPTarget]) -> CDPTarget? {
-        let pages = targets.filter { target in
-            target.type == "page"
-                && target.webSocketDebuggerUrl.map { !$0.isEmpty } ?? false
-        }
-
-        // Prefer a page with "codex" in title or URL
-        for target in pages {
-            let haystack = "\(target.title) \(target.url)".lowercased()
-            if haystack.contains("codex") {
-                return target
-            }
-        }
-
-        // Fall back to first page
-        return pages.first
+        return CodexRouterCore.pickCodexTarget(targets)
     }
 
     // MARK: - Settings HTTP endpoint handler
@@ -251,4 +237,54 @@ public actor CodexAppInjector {
         }
         settings = newSettings
     }
+}
+
+// MARK: - CDP Target Selection
+
+/// Select the best CDP page target for injection.
+///
+/// Matching order:
+/// 1. Page with "codex" in title or URL (backward compat with legacy Codex.app)
+/// 2. ChatGPT desktop page: title == "chatgpt" (exact, case-insensitive) AND url in whitelist
+/// 3. No match → nil (no fallback to first page)
+public func pickCodexTarget(_ targets: [CDPTarget]) -> CDPTarget? {
+    let pages = targets.filter { target in
+        target.type == "page"
+            && target.webSocketDebuggerUrl.map { !$0.isEmpty } ?? false
+    }
+
+    // Pass 1: Prefer a page with "codex" in title or URL (legacy)
+    for target in pages {
+        let haystack = "\(target.title) \(target.url)".lowercased()
+        if haystack.contains("codex") {
+            return target
+        }
+    }
+
+    // Pass 2: ChatGPT desktop page (exact title + URL whitelist)
+    for target in pages {
+        if isChatGPTDesktopPage(title: target.title, url: target.url) {
+            return target
+        }
+    }
+
+    // No match — return nil instead of falling back to first page
+    return nil
+}
+
+/// Check if a CDP target is a ChatGPT desktop page.
+///
+/// Title must be exactly "chatgpt" (case-insensitive) to avoid matching
+/// extension pages like "ChatGPT for Chrome". URL must be in a known whitelist.
+private func isChatGPTDesktopPage(title: String, url: String) -> Bool {
+    let normalizedTitle = title.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    guard normalizedTitle == "chatgpt" else { return false }
+
+    let normalizedURL = url.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
+    let knownPrefixes = [
+        "https://chatgpt.com",
+        "https://chat.openai.com",
+        "data:text/html",
+    ]
+    return knownPrefixes.contains(where: { normalizedURL.hasPrefix($0) })
 }

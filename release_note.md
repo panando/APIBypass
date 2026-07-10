@@ -1,3 +1,25 @@
+# APIBypass v0.9.0
+
+## New Features
+
+- **ChatGPT.app Support** — Adapt to OpenAI's Codex.app → ChatGPT.app rename. The app is now detected, launched, and injected correctly regardless of whether the installed version is named Codex.app or ChatGPT.app.
+
+## Bug Fixes
+
+- **CDP Target Matching** — Fix injection failure when ChatGPT.app is installed. The previous `pickCodexTarget` logic only matched pages with "codex" in the title/URL and fell back to the first page, which could inject into the wrong target (DevTools, extension pages). Now uses precise matching: ChatGPT desktop pages are identified by exact title ("ChatGPT") plus URL whitelist (chatgpt.com, chat.openai.com, data:text/html), and the unsafe first-page fallback is removed.
+
+## Technical Changes
+
+- Add ChatGPT.app paths to `CodexAppLauncher.defaultCandidates` (after legacy Codex.app paths, matching CodexPlusPlus priority order)
+- Add `resolveExecutableName(appURL:)` to read `CFBundleExecutable` from Info.plist instead of hardcoding "Codex"
+- Add `appNameFromURL(_:)` to derive app display name from bundle path
+- Update `manualLaunchCommand` to accept `appName` parameter for correct `open -a` command generation
+- Extract `pickCodexTarget` as a public function in CodexRouterCore with two-pass matching (codex keyword → ChatGPT desktop → nil)
+- Update localization strings to reference "Codex/ChatGPT" in detection and error messages
+- Add 29 new tests covering ChatGPT detection, executable resolution, and CDP target matching
+
+---
+
 # APIBypass v0.8.9
 
 ## Bug Fixes

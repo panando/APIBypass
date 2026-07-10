@@ -4,9 +4,9 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**任意客户端。任意模型。任意格式。一个地址。**
+**用 Claude Code 调用 DeepSeek。用 ChatGPT 应用跑 Qwen。一个本地代理，任意模型，零烦恼。**
 
-APIBypass 是一款 macOS 菜单栏应用，位于你的 AI 工具与上游 API 提供商之间 —— 自动转换 API 格式、重映射模型名称、注入参数配置、一键启动多模型 Claude Code。只配置一次，所有工具通用。
+APIBypass 是一款 macOS 菜单栏应用，让你用任意 AI 工具连接任意模型提供商。Claude Code 接 DeepSeek？ChatGPT 应用跑 Qwen？Cursor 用 GLM？只需配置一次，所有工具都能用你选的提供商 —— 不用逐个配置。
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![macOS 14.0+](https://img.shields.io/badge/macOS-14.0%2B-black?logo=apple)](https://github.com/panando/APIBypass)
@@ -32,17 +32,21 @@ APIBypass 是一款 macOS 菜单栏应用，位于你的 AI 工具与上游 API 
 
 ### 为什么用 APIBypass？
 
-Claude Code 只认 Anthropic 格式。大多数第三方模型说的是 OpenAI 格式。不同模型需要不同的 temperature、thinking 预算和上下文长度。切换提供商通常意味着重新配置每一个客户端。更重要的是，很多 AI 客户端要求你直接填写模型提供商的 API Key —— 你的真实凭据和 Base URL 就这样暴露给了每一个应用。
+你想用 Claude Code，但它只支持 Anthropic 的模型。你想用 ChatGPT 应用，但它被锁定在 OpenAI。你想试试 Cursor，结果又要配置一套新的 API Key。每次换工具，都要从头配置。
 
-APIBypass 在网络层解决所有这些问题 —— 一个本地地址，客户端零改动：
+APIBypass 在网络层解决这个问题 —— 一个本地地址，所有工具都配好：
 
-- **凭据保护** — 你的真实 API Key 不会离开本机。密钥存储在 macOS 钥匙串中，由 APIBypass 在请求时注入。客户端只能看到本地代理地址和一个占位 Key —— 你的真实 Base URL 和凭据始终保密。
-- **格式转换** — Anthropic ↔ OpenAI 双向互转，包括 SSE 流式、工具调用、思考模式。只在格式不匹配时才转换。
-- **模型映射** — 客户端请求 `claude-sonnet-4-6`，APIBypass 路由到你指定的任意模型。
-- **参数注入** — temperature、top-p、thinking 模式、自定义 JSON 参数 —— 每个模型设置一次，每次请求自动生效。
-- **Claude Code 启动器** — 为 Opus、Sonnet、Haiku、Subagent 分别指定不同的上游模型。一键启动，一个终端，全部配齐。
-- **Codex Adaptor** — OpenAI Codex 使用全新的 Responses API 格式，几乎没有代理支持。APIBypass 将其翻译为 Chat Completions，让你能通过任意提供商使用任意模型驱动 Codex，而不仅限于 OpenAI。附带 CDP 注入：解锁插件市场、强制安装插件等 Codex Electron 隐藏功能。
-- **钥匙串安全** — API Key 存储在 macOS 钥匙串中，绝不明文落盘。所有流量仅在本地处理。
+- **格式兼容** — Claude Code 说 Anthropic 格式。大多数模型说 OpenAI 格式。APIBypass 自动翻译，让你的工具直接对接任意提供商。无需改代码、打补丁、装插件。
+
+- **一套配置通用** — 在 APIBypass 里配置一次提供商。Claude Code、Cursor、ChatGPT 应用或其他兼容 OpenAI 的工具，指向同一个本地地址就行。换工具？不用重新配置。
+
+- **凭据保护** — 你的真实 API Key 不会离开本机。应用只能看到一个本地地址和一个占位 Key。真实凭据存在 macOS 钥匙串里，安全私密。
+
+- **解锁 ChatGPT / Codex 应用** — ChatGPT 桌面应用（原 Codex）使用新的 API 格式，大多数代理不支持。APIBypass 填补了这个空白，让你能用 ChatGPT 应用连接 DeepSeek、Qwen、GLM 等任意提供商 —— 不限于 OpenAI。
+
+- **Claude Code 多模型启动器** — 为 Claude Code 的 Opus、Sonnet、Haiku、Subagent 角色分别指定模型。一键启动，终端自动配好所有环境变量。
+
+- **模型映射与参数注入** — 客户端请求 `gpt-4`，APIBypass 路由到 `deepseek-chat`。为每个模型设置 temperature、thinking 模式、自定义参数 —— 每次请求自动应用。
 
 ## 安装
 
@@ -148,9 +152,11 @@ swift build -c release && .build/arm64-apple-macosx/release/APIBypass
 
 Claude Code 在终端中打开，所有环境变量已配好，每个模型角色通过你指定的提供商路由。
 
-### 6. 启动 Codex（可选）
+### 6. 启动 ChatGPT / Codex（可选）
 
 菜单栏 →「启动 Codex」：
+
+> **说明**：ChatGPT 桌面应用原名为 "Codex"。APIBypass 同时支持新版 ChatGPT 应用和旧版 Codex 应用 —— 菜单项「启动 Codex」对两者都适用。
 
 <p align="center">
   <a href="screenshot_launch_codex.png"><img src="screenshot_launch_codex.png" alt="启动 Codex 配置" width="720"></a>
@@ -184,9 +190,9 @@ Claude Code 在终端中打开，所有环境变量已配好，每个模型角�
 - 1M 上下文修复：自动为长上下文模型追加 `[1m]` 后缀
 - 启动模板：保存和切换模型配置组合
 
-### Codex Adaptor — Responses API 代理与 Codex 集成
+### ChatGPT / Codex 应用支持 —— 任意提供商，不限于 OpenAI
 
-OpenAI 的 [Codex](https://github.com/openai/codex) 使用 **Responses API** —— 一种新的 API 格式，几乎没有代理或第三方提供商支持。APIBypass 是首个填补这一空白的 macOS 工具：实时将 Responses API ↔ Chat Completions 互转，并通过 APIBypass 的模型映射和参数注入管线处理请求。结果：**Codex 可以使用任意提供商的任意模型** —— DeepSeek、Qwen、GLM、MiniMax，而不仅限于 OpenAI。
+ChatGPT 桌面应用（原 Codex）和旧版 Codex 应用使用新的 **Responses API** 格式，几乎没有代理支持。APIBypass 是首个填补这一空白的 macOS 工具：实时将 Responses API ↔ Chat Completions 互转，并通过模型映射和参数注入处理请求。结果：**ChatGPT / Codex 可以使用任意提供商的任意模型** —— DeepSeek、Qwen、GLM、MiniMax，而不仅限于 OpenAI。
 
 <p align="center">
   <a href="screenshot_codexadaptor_configure.png"><img src="screenshot_codexadaptor_configure.png" alt="Codex Adaptor 配置" width="720"></a>
@@ -243,7 +249,7 @@ Codex ──Responses API──▶ Codex Adaptor (:15721) ──Chat Completions
 ## 架构
 
 ```
-Codex ──▶ Codex Adaptor (:15721) ──▶┐
+ChatGPT / Codex ──▶ Codex Adaptor (:15721) ──▶┐
                                          │
 客户端 (Claude Code / Cursor / 任意工具)  │
     │                                    │

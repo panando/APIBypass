@@ -4,9 +4,9 @@
 
 <img src="APIBypass.png" alt="APIBypass" width="128">
 
-**Any AI client. Any model. Any format. One endpoint.**
+**Use Claude Code with DeepSeek. Use ChatGPT app with Qwen. One local proxy, any model, zero hassle.**
 
-APIBypass is a macOS menu bar app that sits between your AI tools and upstream API providers — translating formats, remapping model names, injecting parameters, and launching Claude Code with multi-model routing. Configure once, use everywhere.
+APIBypass is a macOS menu bar app that lets you use any AI tool with any model provider. Claude Code with DeepSeek? ChatGPT app with Qwen? Cursor with GLM? Just configure once, and all your tools work with your chosen providers — no need to set up each one separately.
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
 [![macOS 14.0+](https://img.shields.io/badge/macOS-14.0%2B-black?logo=apple)](https://github.com/panando/APIBypass)
@@ -32,17 +32,21 @@ APIBypass is a macOS menu bar app that sits between your AI tools and upstream A
 
 ### Why APIBypass?
 
-Claude Code speaks Anthropic. Most models speak OpenAI. Different models need different temperatures, thinking budgets, and context limits. Switching providers usually means reconfiguring every client. And many AI clients require you to enter your provider's API Key directly — exposing your real credentials and base URL to every app you use.
+You want to use Claude Code, but it only supports Anthropic's models. You want to use the ChatGPT app, but it's locked to OpenAI. You want to try Cursor, but now you need to configure yet another API key. And every time you switch tools, you start from scratch.
 
-APIBypass solves all of this at the network layer — one local endpoint, zero client changes:
+APIBypass solves this at the network layer — one local endpoint, all your tools configured:
 
-- **Credential protection** — Your real API Key never leaves your machine. API keys are stored in the macOS Keychain and injected by APIBypass at request time. Clients only see the local proxy address and a dummy key — your actual base URL and credentials stay private.
-- **Format translation** — Anthropic ↔ OpenAI in both directions, including SSE streaming, tool calls, and thinking mode. Only translates when formats don't match.
-- **Model mapping** — your client asks for `claude-sonnet-4-6`, APIBypass routes it to any model you choose.
-- **Parameter injection** — temperature, top-p, thinking mode, custom JSON fields — set once per model, applied to every request.
-- **Claude Code launcher** — assign different providers to Opus, Sonnet, Haiku, and Subagent roles. One click, one terminal, all models.
-- **Codex Adaptor** — OpenAI Codex speaks the new Responses API format that virtually no proxy supports. APIBypass translates it to Chat Completions, letting you use Codex with any model behind any provider — not just OpenAI. Plus CDP injection to unlock plugin marketplace, force plugin install, and more in the Codex Electron app.
-- **Keychain security** — API keys in macOS Keychain, never in plaintext. All traffic stays on your machine.
+- **Format compatibility** — Claude Code speaks Anthropic. Most models speak OpenAI. APIBypass translates automatically, so your tools just work with any provider. No code changes, no patches, no plugins.
+
+- **One config for all tools** — Set up your providers once in APIBypass. Point Claude Code, Cursor, ChatGPT app, or any OpenAI-compatible tool to the same local address. Switching tools? No reconfiguration needed.
+
+- **Credential protection** — Your real API key never leaves your machine. Apps only see a local address and a dummy key. Your actual credentials stay in macOS Keychain, safe and private.
+
+- **Unlock ChatGPT / Codex app** — The ChatGPT desktop app (formerly Codex) uses a new API format that most proxies don't support. APIBypass bridges this gap, letting you use ChatGPT app with DeepSeek, Qwen, GLM, or any provider — not just OpenAI.
+
+- **Claude Code multi-model launcher** — Assign different models to Opus, Sonnet, Haiku, and Subagent roles in Claude Code. One click launches a terminal with everything configured.
+
+- **Model mapping & parameters** — Your client asks for `gpt-4`, APIBypass routes it to `deepseek-chat`. Set temperature, thinking mode, and custom parameters per model — applied automatically to every request.
 
 ## Install
 
@@ -148,9 +152,11 @@ Menu bar → "Launch Claude Code":
 
 Claude Code opens with all environment variables set, routing each model role through your chosen provider.
 
-### 6. Launch Codex (Optional)
+### 6. Launch ChatGPT / Codex (Optional)
 
 Menu bar → "Launch Codex":
+
+> **Note**: The ChatGPT desktop app was previously called "Codex". APIBypass supports both the new ChatGPT app and the legacy Codex app — the menu item "Launch Codex" works with both.
 
 <p align="center">
   <a href="screenshot_launch_codex.png"><img src="screenshot_launch_codex.png" alt="Launch Codex configuration" width="720"></a>
@@ -184,9 +190,9 @@ Menu bar → "Launch Codex":
 - 1M context fix: auto-appends `[1m]` suffix for long-context models
 - Launch templates: save and switch between model configurations
 
-### Codex Adaptor — Responses API Proxy & Codex Integration
+### ChatGPT / Codex App Support — Use Any Provider, Not Just OpenAI
 
-OpenAI's [Codex](https://github.com/openai/codex) uses the **Responses API** — a new format that almost no proxy or third-party provider supports. APIBypass is the first macOS tool to bridge this gap: it translates Responses API ↔ Chat Completions in real time, and passes requests through APIBypass's model mapping and parameter injection pipeline. The result: **Codex works with any provider, any model** — DeepSeek, Qwen, GLM, MiniMax, not just OpenAI.
+The ChatGPT desktop app (formerly Codex) and the legacy Codex app use a new **Responses API** format that almost no proxy supports. APIBypass is the first macOS tool to bridge this gap: it translates Responses API ↔ Chat Completions in real time, passing requests through model mapping and parameter injection. The result: **ChatGPT / Codex works with any provider, any model** — DeepSeek, Qwen, GLM, MiniMax, not just OpenAI.
 
 <p align="center">
   <a href="screenshot_codexadaptor_configure.png"><img src="screenshot_codexadaptor_configure.png" alt="Codex Adaptor configuration" width="720"></a>
@@ -243,7 +249,7 @@ One-click toggle for pure proxy mode — requests pass through without format tr
 ## Architecture
 
 ```
-Codex ──▶ Codex Adaptor (:15721) ──▶┐
+ChatGPT / Codex ──▶ Codex Adaptor (:15721) ──▶┐
                                          │
 Client (Claude Code / Cursor / Anything) │
     │                                    │

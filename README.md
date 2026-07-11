@@ -162,6 +162,8 @@ Menu bar → "Launch Codex":
   <a href="screenshot_launch_codex.png"><img src="screenshot_launch_codex.png" alt="Launch Codex configuration" width="720"></a>
 </p>
 
+> **No ChatGPT Account?** If you don't have a registered ChatGPT account, you can select "API Key" login mode in the app. Enter any string as the API key (e.g., `sk-dummy`) — after logging in, the app will work normally through APIBypass with your configured provider.
+
 1. Codex Adaptor service starts automatically if not running
 2. Codex app launches with the configured debug port
 3. Point Codex to `http://127.0.0.1:15721/v1`

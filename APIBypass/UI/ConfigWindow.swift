@@ -187,7 +187,7 @@ struct ConfigWindow: View {
                         }
                         .onMove { source, destination in
                             Task {
-                                await configManager.moveProvider(from: source, to: destination)
+                                await configManager.moveProvider(.openai, from: source, to: destination)
                             }
                         }
                     }
@@ -202,7 +202,7 @@ struct ConfigWindow: View {
                         }
                         .onMove { source, destination in
                             Task {
-                                await configManager.moveProvider(from: source, to: destination)
+                                await configManager.moveProvider(.anthropic, from: source, to: destination)
                             }
                         }
                     }
@@ -217,7 +217,7 @@ struct ConfigWindow: View {
                         }
                         .onMove { source, destination in
                             Task {
-                                await configManager.moveProvider(from: source, to: destination)
+                                await configManager.moveProvider(.responses, from: source, to: destination)
                             }
                         }
                     }

@@ -1,3 +1,18 @@
+# APIBypass v0.9.1
+
+## Bug Fixes
+
+- **Provider Sidebar Reorder** — Fix drag-to-reorder in the config page's provider list landing in wrong positions. The list groups providers by API protocol (Chat Completions / Anthropic / Responses API) into separate sections, each with its own `.onMove`. SwiftUI gives `.onMove` offsets relative to that section's filtered subset, but `moveProvider` treated them as global array offsets — so reordering landed wrong in every group (including the first) whenever the stored order wasn't perfectly clustered by protocol. `moveProvider` now takes the `apiProvider` scope and remaps section-local offsets onto the group's fixed global slots (extract group → `Array.move` → backfill), keeping non-group items in place. Drag is scoped to within-group; cross-group drags clamp to the group boundary.
+
+## Technical Changes
+
+- `ConfigDataStore.moveProvider` gains an `apiProvider: APIProvider` parameter and uses the extract-group → `Array.move` → backfill-slots algorithm (preserves the group's occupied global slots)
+- `ConfigManager.moveProvider` forwards the `apiProvider` scope
+- `ConfigWindow.swift`'s three `.onMove` handlers pass `.openai` / `.anthropic` / `.responses` respectively
+- Add `APIBypassTests/ProviderReorderTests.swift` with 7 cases covering within-group move (forward/backward/mixed-storage), cross-group clamp, persistence, empty-group no-op, and out-of-range source drop
+
+---
+
 # APIBypass v0.9.0
 
 ## New Features

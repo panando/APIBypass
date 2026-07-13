@@ -74,8 +74,8 @@ final class ConfigManager: ObservableObject {
 
     // MARK: - Reordering
 
-    func moveProvider(from source: IndexSet, to destination: Int) async {
-        await store.moveProvider(from: source, to: destination)
+    func moveProvider(_ apiProvider: APIProvider, from source: IndexSet, to destination: Int) async {
+        await store.moveProvider(apiProvider, from: source, to: destination)
         await refresh()
     }
 

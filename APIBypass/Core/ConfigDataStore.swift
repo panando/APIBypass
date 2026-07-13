@@ -114,9 +114,22 @@ actor ConfigDataStore {
 
     // MARK: - Reordering
 
-    func moveProvider(from source: IndexSet, to destination: Int) {
+    func moveProvider(_ apiProvider: APIProvider, from source: IndexSet, to destination: Int) {
         ensureInitialized()
-        providers.move(fromOffsets: source, toOffset: destination)
+        // 该 apiProvider 在全局数组中占用的槽位（升序）。组内排列不改变这些槽位，
+        // 只是把组内元素在这些固定槽位间重排，因此非组元素原位不动。
+        let slots = providers.indices.filter { providers[$0].apiProvider == apiProvider }
+        guard !slots.isEmpty else { return }
+
+        // `.onMove` 给的 source/destination 是相对该组过滤后子集的局部偏移，
+        // 与 Array.move 的 after-removal 帧语义天然对齐。
+        var group = providers.filter { $0.apiProvider == apiProvider }
+        group.move(fromOffsets: source, toOffset: destination)
+
+        // 回填到原槽位
+        for (i, slot) in slots.enumerated() where i < group.count {
+            providers[slot] = group[i]
+        }
         saveProvidersSync()
     }
 

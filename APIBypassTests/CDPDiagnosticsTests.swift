@@ -55,4 +55,12 @@ final class CDPDiagnosticsTests: XCTestCase {
         XCTAssertEqual(CodexRequestHandler.diagnosticLogLevel(for: "script_loaded"), .info)
         XCTAssertEqual(CodexRequestHandler.diagnosticLogLevel(for: "model_whitelist_refresh_scheduled"), .info)
     }
+
+    // New interception / forced-refresh / retry events from the model-selector
+    // fix. None end in `_failed`, so all default to `.info`.
+    func test_diagnosticLogLevel_modelSelectorFixEvents_returnInfo() {
+        XCTAssertEqual(CodexRequestHandler.diagnosticLogLevel(for: "model_fetch_intercepted"), .info)
+        XCTAssertEqual(CodexRequestHandler.diagnosticLogLevel(for: "forced_refresh_dispatched"), .info)
+        XCTAssertEqual(CodexRequestHandler.diagnosticLogLevel(for: "appserver_request_retry"), .info)
+    }
 }

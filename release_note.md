@@ -1,3 +1,19 @@
+# APIBypass v0.9.2
+
+## Bug Fixes
+
+- **Codex Model Selector Empty After Restart** - Fix the model selector frequently showing "Custom" with an empty list for 5-10+ minutes after quitting Codex (ChatGPT.app) and relaunching via APIBypass. Chat already worked (models resolved by slug), but the selector stayed empty until Codex's own periodic refresh happened to hit an installed hook. Root cause was a timing race: Codex's startup model fetch often completed before APIBypass's CDP injection hooks were installed, and once Codex cached an empty list nothing forced a re-fetch. Three fixes: (1) the injector fast-polls (400ms vs 3s) after a page disappears so hooks are re-installed within 2s of a relaunch; (2) after bootstrap the injection script proactively dispatches a `model/list` request so an already-installed hook is guaranteed to intercept at least one fetch, refilling the selector within seconds; (3) the request-side app-server patch no longer permanently gives up when its webpack chunk isn't loaded yet at injection time - it retries via a PerformanceObserver plus a bounded poll once the chunk loads, restoring the most direct interception channel.
+
+## Technical Changes
+
+- `CodexAppInjector`: add `reconnectMonitorInterval` (400ms) and a pure `monitorInterval(for:)` selector; the monitor loop sleeps fast while disconnected/reconnecting and 3s once stable
+- `CDPInjectionScript`: add `forceCodexModelListRefresh()` (force-reload catalog, dispatch `model/list` on the appserver_message channel, extend refresh window to 10s), called after `ensureCodexModelWhitelistInstalls()` in `bootstrapModelWhitelist`
+- `CDPInjectionScript`: replace the "mark installed and give up" branch in `installAppServerModelRequestPatch` with `scheduleAppServerModelRequestPatchRetry()` (PerformanceObserver + ~2s bounded poll, max ~30s) so the request-side patch installs when the `app-server-manager-signals-` chunk loads lazily; extract the chunk name to `codexAppServerSignalsChunkName`
+- `CDPInjectionScript`: emit `model_fetch_intercepted { channel, modelCount }` at the four model-container rewrite sites (json_response / appserver_message / appserver_request / statsig), plus `forced_refresh_dispatched { hasModels }` and `appserver_request_retry { attempt, assetFound }` - distinguishing "hook installed" from "hook actually intercepted" so timing-race outcomes are observable
+- Add `APIBypassTests/CodexAppInjectorTests.swift` (monitor interval selection) and extend `CDPDiagnosticsTests` (new events -> `.info`)
+
+---
+
 # APIBypass v0.9.1
 
 ## Bug Fixes

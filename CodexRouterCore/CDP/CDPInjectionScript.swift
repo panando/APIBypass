@@ -475,6 +475,10 @@ public let codexPluginInjectionScript: String = """
   const codexModelCatalogCacheMs = 10000;
   const codexPlusModelListRequestIds = new Set();
   const codexAppServerModelRequestPatchVersion = "1";
+  // Webpack chunk exporting the app-server request client (sendRequest). Codex
+  // loads it lazily, so it may be absent at injection time - the retry logic in
+  // installAppServerModelRequestPatch waits for it to load.
+  const codexAppServerSignalsChunkName = "app-server-manager-signals-";
   const codexAppModulePromises = new Map();
   let codexAppServerPatchFailedUntil = 0;
 
@@ -695,6 +699,19 @@ public let codexPluginInjectionScript: String = """
     } catch (_) {}
   }
 
+  // Emit `model_fetch_intercepted` when a hook actually rewrote a model
+  // container (not merely installed). `channel` identifies which hook
+  // intercepted the request, closing the "installed vs intercepted" gap so a
+  // timing-race loss is observable in the logs.
+  function emitModelFetchIntercepted(channel, extra) {
+    try {
+      sendCodexPlusDiagnostic("model_fetch_intercepted", Object.assign({
+        channel: channel,
+        modelCount: codexPlusModelNames().length,
+      }, extra || {}));
+    } catch (_) {}
+  }
+
   function patchModelContainer(value) {
     try {
       if (!value || typeof value !== "object") return false;
@@ -856,6 +873,7 @@ public let codexPluginInjectionScript: String = """
     } catch {
       return { ...config, value: nextValue };
     }
+    emitModelFetchIntercepted("statsig");
     return config;
   }
 
@@ -904,7 +922,9 @@ public let codexPluginInjectionScript: String = """
       const requestId = message?.id != null ? String(message.id) : "";
       if (codexPlusModelListRequestIds.size > 0 && !codexPlusModelListRequestIds.has(requestId)) return false;
       codexPlusModelListRequestIds.delete(requestId);
-      return patchModelContainer(data) || patchModelContainer(message) || patchModelContainer(message?.result) || patchModelContainer(message?.result?.data);
+      const changed = patchModelContainer(data) || patchModelContainer(message) || patchModelContainer(message?.result) || patchModelContainer(message?.result?.data);
+      if (changed) emitModelFetchIntercepted("appserver_message");
+      return changed;
     } catch {
       return false;
     }
@@ -958,11 +978,13 @@ public let codexPluginInjectionScript: String = """
     if (method !== "list-models-for-host") return result;
     try {
       if (!shouldPatchModels()) return result;
-      if (Array.isArray(result)) patchModelArray(result, true, "appserver.result");
-      if (Array.isArray(result?.data)) patchModelArray(result.data, true, "appserver.result.data");
-      if (Array.isArray(result?.models)) patchModelArray(result.models, true, "appserver.result.models");
-      patchModelContainer(result);
-      patchObjectGraphForModels(result, new WeakSet(), 0);
+      let changed = false;
+      if (Array.isArray(result)) { if (patchModelArray(result, true, "appserver.result")) changed = true; }
+      if (Array.isArray(result?.data)) { if (patchModelArray(result.data, true, "appserver.result.data")) changed = true; }
+      if (Array.isArray(result?.models)) { if (patchModelArray(result.models, true, "appserver.result.models")) changed = true; }
+      if (patchModelContainer(result)) changed = true;
+      if (patchObjectGraphForModels(result, new WeakSet(), 0)) changed = true;
+      if (changed) emitModelFetchIntercepted("appserver_request", { requestMethod: method });
     } catch (_) {}
     return result;
   }
@@ -991,17 +1013,18 @@ public let codexPluginInjectionScript: String = """
     // flash on Codex startup). The asset either loads later (success on next
     // retry) or never does (no amount of retrying helps).
     if (Date.now() < codexAppServerPatchFailedUntil) return;
-    // Check if the asset exists before attempting to load it.
-    // If it doesn't exist, this Codex version doesn't have this module.
-    const assetUrl = codexAppAssetUrl("app-server-manager-signals-");
+    // The app-server webpack chunk loads lazily AFTER Codex starts. If it's
+    // absent at injection time, do NOT permanently give up - the old behavior
+    // marked the patch "installed" and never retried, so the request-side
+    // channel never came back. Schedule a deferred retry instead.
+    const assetUrl = codexAppAssetUrl(codexAppServerSignalsChunkName);
     if (!assetUrl) {
-      // Mark as installed (no-op) to avoid repeated attempts.
-      window.__codexPlusAppServerModelRequestPatchInstalled = codexAppServerModelRequestPatchVersion;
+      scheduleAppServerModelRequestPatchRetry();
       return;
     }
     const patch = async () => {
       try {
-        const module = await loadCodexAppModule("app-server-manager-signals-");
+        const module = await loadCodexAppModule(codexAppServerSignalsChunkName);
         const candidates = Object.values(module).filter((value) => value && typeof value === "object");
         let patchedCount = 0;
         for (const candidate of candidates) {
@@ -1015,6 +1038,11 @@ public let codexPluginInjectionScript: String = """
         if (patchedCount > 0) {
           window.__codexPlusAppServerModelRequestPatchInstalled = codexAppServerModelRequestPatchVersion;
           sendCodexPlusDiagnostic("appserver_request_patch_installed", { patchedCount: patchedCount });
+          // Patch is in place - stop watching for the chunk to load.
+          if (window.__codexPlusAppServerPatchObserver) {
+            try { window.__codexPlusAppServerPatchObserver.disconnect(); } catch (_) {}
+            window.__codexPlusAppServerPatchObserver = null;
+          }
         } else {
           sendCodexPlusDiagnostic("appserver_request_patch_not_found", {
             exportCount: Object.keys(module || {}).length,
@@ -1029,6 +1057,53 @@ public let codexPluginInjectionScript: String = """
     void patch();
   }
 
+  // Deferred retry for the request-side patch when the app-server webpack
+  // chunk isn't loaded yet at injection time. Two idempotent mechanisms
+  // (guarded by codexAppServerPatchRetryStarted):
+  //   1. PerformanceObserver on "resource" entries - fires the moment the
+  //      chunk loads later, triggering an install attempt immediately.
+  //   2. Bounded poll (~2s, max ~30s) - covers resources already loaded
+  //      before the observer subscribed, and any edge cases it misses.
+  let codexAppServerPatchRetryStarted = false;
+  let codexAppServerPatchRetryAttempts = 0;
+  const codexAppServerPatchRetryMaxAttempts = 15;
+
+  function scheduleAppServerModelRequestPatchRetry() {
+    if (codexAppServerPatchRetryStarted) return;
+    codexAppServerPatchRetryStarted = true;
+
+    try {
+      const observer = new PerformanceObserver((list) => {
+        try {
+          for (const entry of list.getEntries()) {
+            if (typeof entry.name === "string" && entry.name.includes(codexAppServerSignalsChunkName)) {
+              codexAppServerPatchRetryAttempts += 1;
+              sendCodexPlusDiagnostic("appserver_request_retry", { attempt: codexAppServerPatchRetryAttempts, assetFound: true });
+              installAppServerModelRequestPatch();
+              return;
+            }
+          }
+        } catch (_) {}
+      });
+      observer.observe({ entryTypes: ["resource"] });
+      window.__codexPlusAppServerPatchObserver = observer;
+    } catch (_) {}
+
+    const poll = () => {
+      if (window.__codexPlusAppServerModelRequestPatchInstalled === codexAppServerModelRequestPatchVersion) return;
+      if (codexAppServerPatchRetryAttempts >= codexAppServerPatchRetryMaxAttempts) return;
+      codexAppServerPatchRetryAttempts += 1;
+      const assetFound = !!codexAppAssetUrl(codexAppServerSignalsChunkName);
+      sendCodexPlusDiagnostic("appserver_request_retry", { attempt: codexAppServerPatchRetryAttempts, assetFound: assetFound });
+      if (assetFound) {
+        installAppServerModelRequestPatch();
+      } else {
+        setTimeout(poll, 2000);
+      }
+    };
+    setTimeout(poll, 2000);
+  }
+
   // ── HTTP fetch response patch (Response.prototype.json) ───────────
   async function patchModelJsonResponse(payload) {
     if (!shouldPatchModels()) return payload;
@@ -1036,8 +1111,9 @@ public let codexPluginInjectionScript: String = """
     if (!payload || typeof payload !== "object") return payload;
     try {
       logModelContainerShape(payload);
-      patchModelContainer(payload);
-      patchObjectGraphForModels(payload, new WeakSet(), 0);
+      let changed = patchModelContainer(payload);
+      if (patchObjectGraphForModels(payload, new WeakSet(), 0)) changed = true;
+      if (changed) emitModelFetchIntercepted("json_response");
     } catch (_) {}
     return payload;
   }
@@ -1138,11 +1214,42 @@ public let codexPluginInjectionScript: String = """
     } catch (_) {}
   }
 
+  // Force Codex to re-fetch its model list after bootstrap so an already-
+  // installed hook is guaranteed to intercept at least one request - even when
+  // Codex's own startup fetch raced ahead of injection (the empty-selector
+  // bug). Dispatches a `model/list` mcp-request on the appserver_message
+  // channel (the same path the selector uses when opened); the response-side
+  // patch intercepts and rewrites it. The extended 10s refresh window holds
+  // the React re-patch loop open for the async response.
+  function forceCodexModelListRefresh() {
+    if (!shouldPatchModels()) return;
+    void loadCodexModelCatalog(true).then(() => {
+      if (!codexPlusModelNames().length) return;
+      try {
+        const requestId = Date.now();
+        const event = new CustomEvent("codex-message-from-view", {
+          detail: { type: "mcp-request", request: { id: requestId, method: "model/list", params: { includeHidden: true } } },
+        });
+        window.dispatchEvent(event);
+        // If Codex doesn't echo our request id in the response, the tracked id
+        // would never be consumed and would block other model/list responses
+        // from being patched (patchMcpModelResponseData filters by id when the
+        // set is non-empty). Clean it up after the response window.
+        setTimeout(() => { codexPlusModelListRequestIds.delete(String(requestId)); }, 5000);
+        sendCodexPlusDiagnostic("forced_refresh_dispatched", { hasModels: true });
+      } catch (e) {
+        sendCodexPlusDiagnostic("forced_refresh_dispatched", { hasModels: true, error: String(e?.message || e) });
+      }
+      scheduleCodexModelWhitelistRefresh(10000);
+    });
+  }
+
   async function bootstrapModelWhitelist() {
     await loadCodexModelCatalog();
     if (!shouldPatchModels()) return;
     ensureCodexModelWhitelistInstalls();
     runCodexModelWhitelistRefreshPass();
+    forceCodexModelListRefresh();
     startModelWhitelistObserver();
     startInjectorHeartbeat();
   }

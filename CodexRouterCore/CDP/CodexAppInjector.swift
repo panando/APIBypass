@@ -15,6 +15,24 @@ public actor CodexAppInjector {
 
     private static let httpTimeout: TimeInterval = 3
     private static let monitorInterval: TimeInterval = 3
+    /// Fast poll interval used while waiting for a new Codex page to reappear
+    /// after the previous page disappeared (quit/restart). Keeps re-injection
+    /// latency under the 2s spec target; restored to `monitorInterval` once a
+    /// new page is injected.
+    private static let reconnectMonitorInterval: TimeInterval = 0.4
+
+    /// Poll interval for a given connection state. Stable states (connected /
+    /// injected) use the slow 3s interval; reconnecting states use the fast
+    /// 400ms interval so a new Codex page is re-injected within 2s of the
+    /// previous page disappearing. Pure function - safe to unit-test.
+    public static func monitorInterval(for state: CDPConnectionState) -> TimeInterval {
+        switch state {
+        case .connected, .injected:
+            return monitorInterval
+        default:
+            return reconnectMonitorInterval
+        }
+    }
     private static let httpSession: URLSession = {
         let config = URLSessionConfiguration.default
         config.timeoutIntervalForRequest = 3
@@ -155,7 +173,10 @@ public actor CodexAppInjector {
                 if !running { break }
                 do {
                     // Use nanoseconds API to avoid Swift Issue #86204 cross-module specialization crash.
-                    try await Task.sleep(nanoseconds: UInt64(Self.monitorInterval * 1_000_000_000))
+                    // Fast-poll (400ms) while disconnected/reconnecting so a new page is re-injected
+                    // within 2s of the previous page disappearing; 3s once stable.
+                    let interval = Self.monitorInterval(for: await self.snapshotState())
+                    try await Task.sleep(nanoseconds: UInt64(interval * 1_000_000_000))
                 } catch is CancellationError {
                     break
                 } catch {

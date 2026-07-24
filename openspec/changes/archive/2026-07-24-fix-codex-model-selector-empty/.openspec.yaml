@@ -1,0 +1,4 @@
+schema: spec-driven
+created: 2026-07-24
+goal: Codex model selector reliably shows APIBypass-sourced models immediately
+  after (re)launch, no multi-minute delay
